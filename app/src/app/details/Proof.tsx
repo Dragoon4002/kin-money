@@ -9,6 +9,7 @@ import { useRequireAccount } from "@/lib/account";
 import { CATEGORIES, categoryOf, setCategory, noteOf } from "@/lib/categories";
 import { addr, explorerTx, publicClient } from "@/lib/chain";
 import { formatMoney } from "@/lib/money";
+import { describe, isKinContract } from "@/lib/counterparty";
 import { nameOf } from "@/lib/names";
 
 type Receipt = { amount: bigint; from: string; to: string; out: boolean; at: Date; block: bigint; ok: boolean };
@@ -20,11 +21,14 @@ async function load(hash: Hex, me?: Address): Promise<Receipt> {
   const block = await publicClient.getBlock({ blockNumber: r.blockNumber });
   const transfers = parseEventLogs({ abi: erc20Abi, eventName: "Transfer", logs: r.logs }).filter((l) => isAddressEqual(l.address, addr.ausd));
   const t = transfers.find((l) => me && (isAddressEqual(l.args.from, me) || isAddressEqual(l.args.to, me))) ?? transfers[0];
-  const [from, to] = t ? await Promise.all([nameOf(t.args.from).catch(() => ""), nameOf(t.args.to).catch(() => "")]) : ["", ""];
+  // A Kin contract on either side → describe what it was for ("Chore for @b"), else the person's @name.
+  const side = async (a: Address, dir: "in" | "out") =>
+    isKinContract(a) && me ? describe(hash, a, dir, me) : label(await nameOf(a).catch(() => ""));
+  const [from, to] = t ? await Promise.all([side(t.args.from, "in"), side(t.args.to, "out")]) : [label(""), label("")];
   return {
     amount: t?.args.value ?? 0n,
-    from: label(from),
-    to: label(to),
+    from,
+    to,
     out: !!(t && me && isAddressEqual(t.args.from, me)),
     at: new Date(Number(block.timestamp) * 1000),
     block: r.blockNumber,

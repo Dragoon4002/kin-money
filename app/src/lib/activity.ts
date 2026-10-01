@@ -1,6 +1,7 @@
 "use client";
 import { erc20Abi, isAddressEqual, parseEventLogs, type Address, type Hex } from "viem";
 import { addr, publicClient } from "./chain";
+import { describe, isKinContract } from "./counterparty";
 import { nameOf } from "./names";
 import { history } from "./programs";
 
@@ -22,17 +23,10 @@ export function getBalance(me: Address): Promise<bigint> {
   return publicClient.readContract({ address: addr.ausd, abi: erc20Abi, functionName: "balanceOf", args: [me] });
 }
 
-const LABELS: [Address, string][] = [
-  [addr.stream, "Allowance"],
-  [addr.pot, "Family pot"],
-  [addr.circle, "Circle"],
-];
-
 const names = new Map<string, Promise<string>>();
-function who(other: Address, dir: Item["dir"]): Promise<string> {
-  if (isAddressEqual(other, addr.escrow)) return Promise.resolve(dir === "in" ? "Unlocked for you" : "Held safely");
-  const label = LABELS.find(([a]) => isAddressEqual(a, other))?.[1];
-  if (label) return Promise.resolve(label);
+function who(other: Address, dir: Item["dir"], hash: Hex, me: Address): Promise<string> {
+  // Kin contracts (allowance, pot, escrow…): say what the money was for ("Chore for @b").
+  if (isKinContract(other)) return describe(hash, other, dir, me);
   const k = other.toLowerCase();
   if (!names.has(k)) names.set(k, nameOf(other).catch(() => ""));
   return names.get(k)!.then((n) => (n ? `@${n}` : dir === "in" ? "Money received" : "Payment"));
@@ -71,7 +65,7 @@ async function scan(me: Address): Promise<Item[]> {
       const time = log.blockTimestamp ? Number(log.blockTimestamp) * 1000 : Date.now();
       return [{ hash: log.transactionHash, logIndex: log.logIndex, dir: out ? "out" : "in", other: out ? to : from, amount: value, time } as const];
     });
-    const items = await Promise.all(found.reverse().slice(0, KEEP).map(async (i) => ({ ...i, who: await who(i.other, i.dir), when: ago(i.time) })));
+    const items = await Promise.all(found.reverse().slice(0, KEEP).map(async (i) => ({ ...i, who: await who(i.other, i.dir, i.hash, me), when: ago(i.time) })));
     last.set(k, items);
     return items;
   } catch (e) {
