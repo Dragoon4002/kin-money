@@ -10,6 +10,7 @@ import { Avatar, Button, Delivered, ErrorText, Ico, inputClass, Screen, Tabs } f
 import { getAccount, isUnlocked, useRequireAccount } from "@/lib/account";
 import { getBalance } from "@/lib/activity";
 import { CATEGORIES, setCategory, setNote, type CategoryId } from "@/lib/categories";
+import { parseAmt, unitsToLocal } from "@/lib/payLink";
 import { createLink } from "@/lib/claimLink";
 import { recordPayment } from "@/lib/contacts";
 import { humanError } from "@/lib/errors";
@@ -38,11 +39,14 @@ export function SendForm() {
   const [mode, setMode] = useState<Mode>("person");
   const [person, setPerson] = useState<Person | null>(null);
   const [picking, setPicking] = useState(!to);
+  // From a pay link / QR: exact dollar units (`amt`) win over a typed local `amount`.
+  const [linkUnits] = useState(() => parseAmt(params.get("amt")));
   const [amount, setAmount] = useState(() => {
+    if (linkUnits) return unitsToLocal(linkUnits, currency);
     const a = params.get("amount") ?? "";
     return AMOUNT_RE.test(a) ? a : "";
   });
-  const [note, setNoteText] = useState("");
+  const [note, setNoteText] = useState(() => (params.get("note") ?? "").slice(0, 80));
   const [cat, setCat] = useState<CategoryId | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [err, setErr] = useState("");
@@ -56,7 +60,7 @@ export function SendForm() {
       .catch(() => setPicking(true));
   }, [to]);
 
-  const units = Number(amount) > 0 ? fromLocal(amount, currency) : 0n;
+  const units = linkUnits && amount === unitsToLocal(linkUnits, currency) ? linkUnits : Number(amount) > 0 ? fromLocal(amount, currency) : 0n;
   const ready = units > 0n && (mode === "link" || person);
 
   function label(hash: Hex) {

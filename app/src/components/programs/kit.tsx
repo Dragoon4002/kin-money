@@ -3,7 +3,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import type { Address } from "viem";
 import { isUnlocked, useRequireAccount } from "@/lib/account";
 import { humanError } from "@/lib/errors";
-import { FX, currencySymbol, getCurrency } from "@/lib/money";
+import { FX, getCurrency } from "@/lib/money";
+import { useCurrencySymbol } from "@/lib/useCurrencySymbol";
 import { nameOf } from "@/lib/names";
 import { nowSec, same } from "@/lib/programs";
 import { ICON, type IconName } from "@/lib/icons";
@@ -94,11 +95,11 @@ export function localParts(units: number, currency = getCurrency()) {
 }
 
 export function MoneyInput({ label, value, onChange, hint }: { label: string; value: string; onChange: (v: string) => void; hint?: string }) {
-  const currency = getCurrency();
+  const symbol = useCurrencySymbol();
   return (
     <Field label={label} hint={hint}>
       <div className="relative">
-        <span className="pointer-events-none absolute inset-y-0 left-4 grid place-items-center font-display text-3xl text-muted">{currencySymbol(currency)}</span>
+        <span className="pointer-events-none absolute inset-y-0 left-4 grid place-items-center font-display text-3xl text-muted">{symbol}</span>
         <input
           className={`${inputClass} h-16 pl-14 font-display text-3xl tabular`}
           inputMode="decimal"

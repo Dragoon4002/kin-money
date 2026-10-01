@@ -1,7 +1,7 @@
 "use client";
 import { type ReactNode } from "react";
 import { useRequireAccount } from "@/lib/account";
-import { currencySymbol } from "@/lib/money";
+import { useCurrencySymbol } from "@/lib/useCurrencySymbol";
 import { Avatar, Band, Row } from "../ui";
 
 /** Unlocked-only screens: bounce to welcome when there is no saved account. */
@@ -9,11 +9,12 @@ export const useSignedIn = () => useRequireAccount().profile;
 
 /** Huge serif local-currency amount input. `value` is the typed local amount ("50.5"). */
 export function AmountInput({ value, onChange, label = "Amount", hint }: { value: string; onChange: (v: string) => void; label?: string; hint?: ReactNode }) {
+  const symbol = useCurrencySymbol();
   return (
     <label className="flex flex-col items-center gap-2 py-2">
       <span className="text-sm font-medium text-muted">{label}</span>
       <span className="flex max-w-full items-baseline justify-center font-display leading-none">
-        <span suppressHydrationWarning className="text-5xl text-muted">{currencySymbol()}</span>
+        <span className="text-5xl text-muted">{symbol}</span>
         <input
           className="tabular min-w-0 bg-transparent text-center text-7xl text-ink outline-none placeholder:text-muted/50"
           style={{ width: `${Math.max(1, value.length) + 0.5}ch` }}

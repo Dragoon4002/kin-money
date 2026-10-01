@@ -9,7 +9,8 @@ import { Amount, Avatar, Ico, Screen } from "@/components/ui";
 import { useRequireAccount } from "@/lib/account";
 import { getBalance } from "@/lib/activity";
 import { recentPeople } from "@/lib/contacts";
-import { currencySymbol, formatMoney } from "@/lib/money";
+import { formatMoney } from "@/lib/money";
+import { useCurrencySymbol } from "@/lib/useCurrencySymbol";
 
 export default function Home() {
   const { profile, unlocked } = useRequireAccount();
@@ -39,7 +40,8 @@ export default function Home() {
   }, [unlocked]);
 
   const q = Number(amount) > 0 ? `?amount=${amount}` : "";
-  const shown = `${currencySymbol()}${amount || "0"}`;
+  const symbol = useCurrencySymbol();
+  const shown = `${symbol}${amount || "0"}`;
   const big = shown.length > 10 ? "text-5xl" : shown.length > 7 ? "text-6xl" : "text-7xl";
 
   return (

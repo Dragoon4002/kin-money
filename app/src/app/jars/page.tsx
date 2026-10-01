@@ -26,7 +26,7 @@ export default function JarsPage() {
     <Screen title="Savings jars" back="/money" wide>
       <Pad className="flex flex-col items-center gap-2 text-center">
         <p className="text-xs font-semibold uppercase tracking-widest text-muted">Saved so far</p>
-        <Amount value={formatMoney(saved)} size="xl" />
+        {data ? <Amount value={formatMoney(saved)} size="xl" /> : <span className="h-14 w-40 animate-pulse rounded-2xl bg-surface-2" />}
         <ErrorText>{error}</ErrorText>
       </Pad>
       {!data && !error && <Loading />}

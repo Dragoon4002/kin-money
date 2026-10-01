@@ -60,7 +60,7 @@ export default function ChoresPage() {
       <Pad className="flex flex-col items-center gap-2 text-center">
         <Kinko size={88} mood={check.length ? "happy" : "calm"} />
         <p className="text-xs font-semibold uppercase tracking-widest text-muted">{kid ? "You've earned" : "Paid for chores"}</p>
-        <Amount value={formatMoney(kid ? earned : paidOut)} size="xl" />
+        {data ? <Amount value={formatMoney(kid ? earned : paidOut)} size="xl" /> : <span className="h-14 w-40 animate-pulse rounded-2xl bg-surface-2" />}
         <ErrorText>{error}</ErrorText>
       </Pad>
       {!data && !error && <Loading />}

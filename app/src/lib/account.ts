@@ -128,12 +128,13 @@ export function useAccount(): AccountState {
   return useSyncExternalStore(subscribe, load, () => server);
 }
 
-/** For signed-in-only screens: redirects to "/" once hydrated if there is no account. */
+/** For signed-in-only screens: redirects to "/?next=<here>" once hydrated if there is no account. */
 export function useRequireAccount(): AccountState {
   const s = useAccount();
   const router = useRouter();
   useEffect(() => {
-    if (s.ready && !s.profile) router.replace("/");
+    // Keep the deep link (pay link, QR, invoice…) so sign-up returns here with everything pre-filled.
+    if (s.ready && !s.profile) router.replace(`/?next=${encodeURIComponent(location.pathname + location.search)}`);
   }, [s.ready, s.profile, router]);
   return s;
 }

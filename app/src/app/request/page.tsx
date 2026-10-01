@@ -2,12 +2,17 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
+import { PayQr } from "@/components/core/PayQr";
+import { share } from "@/components/core/share";
 import { PersonPicker, type Person } from "@/components/PersonPicker";
 import { AmountInput, Bubble, useSignedIn } from "@/components/social/bits";
-import { Button, Delivered, ErrorText, Field, Screen, inputClass } from "@/components/ui";
+import { Button, Card, Delivered, ErrorText, Field, Ico, Screen, Tabs, inputClass } from "@/components/ui";
 import { createRequest } from "@/lib/contacts";
 import { humanError } from "@/lib/errors";
 import { formatMoney, fromLocal } from "@/lib/money";
+import { payLink } from "@/lib/payLink";
+
+const MODES = [["person", "From a person"], ["link", "As a link"]] as const;
 
 const EMOJI = ["📚", "🍕", "🏠", "🚕", "💊", "🎁"];
 
@@ -21,7 +26,10 @@ export default function RequestPage() {
 
 /** #18 Request as message: "Need $50 for books 📚". `?amount=` prefills (local currency). */
 function RequestForm() {
-  useSignedIn();
+  const profile = useSignedIn();
+  const handle = profile?.name;
+  const [mode, setMode] = useState<"person" | "link">("person");
+  const [copied, setCopied] = useState(false);
   const prefill = useSearchParams().get("amount") ?? "";
   const [person, setPerson] = useState<Person | null>(null);
   const [amount, setAmount] = useState(/^\d{0,9}(\.\d{0,2})?$/.test(prefill) ? prefill : "");
@@ -46,6 +54,14 @@ function RequestForm() {
     }
   }
 
+  // Link mode: a pay-me link (and QR) anyone can open — even people not on Kin yet.
+  const link = mode === "link" && handle && units ? payLink(handle, units, note.trim()) : "";
+  const linkText = `Hi! Please pay me ${formatMoney(units)}${note.trim() ? ` for ${note.trim()}` : ""} on Kin:`;
+
+  async function shareLink() {
+    if (link && (await share(linkText, link)) === "copied") setCopied(true);
+  }
+
   if (sent && person)
     return (
       <Screen>
@@ -59,7 +75,8 @@ function RequestForm() {
 
   return (
     <Screen title="Request" back="/home">
-      <PersonPicker label="Ask who?" onPick={setPerson} />
+      <Tabs value={mode} options={MODES} onChange={(m) => (setMode(m), setCopied(false))} />
+      {mode === "person" && <PersonPicker label="Ask who?" onPick={setPerson} />}
       <AmountInput value={amount} onChange={setAmount} />
       <Field label="What's it for?">
         <input className={`${inputClass} text-center`} placeholder="school books" maxLength={140} value={note} onChange={(e) => setNote(e.target.value)} />
@@ -78,18 +95,45 @@ function RequestForm() {
         ))}
       </div>
 
-      {units > 0n && (
+      {mode === "person" && units > 0n && (
         <div className="flex flex-col gap-1">
           <span className="text-sm font-medium text-muted">{person ? `@${person.name} will see` : "Preview"}</span>
           <Bubble mine amount={`Need ${formatMoney(units)}`} note={note.trim() ? `for ${note.trim()}` : undefined} />
         </div>
       )}
 
+      {mode === "link" && !handle && (
+        <Card className="text-center text-sm">Pick a Kin name first so people know who they&apos;re paying.</Card>
+      )}
+      {link && (
+        <Card className="flex flex-col items-center gap-2 text-center">
+          <div className="w-full max-w-56"><PayQr text={link} label={`QR code to pay @${handle} ${formatMoney(units)}`} /></div>
+          <p className="text-sm text-muted">They scan or tap the link — amount and your name are filled in.</p>
+        </Card>
+      )}
+
       <ErrorText>{err}</ErrorText>
-      <div className="mt-auto pt-2">
-        <Button onClick={send} disabled={!person || !units} busy={busy}>
-          {person ? `Ask @${person.name}` : "Send request"}
-        </Button>
+      <div className="mt-auto flex flex-col gap-2 pt-2">
+        {mode === "person" ? (
+          <Button onClick={send} disabled={!person || !units} busy={busy}>
+            {person ? `Ask @${person.name}` : "Send request"}
+          </Button>
+        ) : (
+          <>
+            <a
+              href={link ? `https://wa.me/?text=${encodeURIComponent(`${linkText} ${link}`)}` : undefined}
+              target="_blank"
+              rel="noreferrer"
+              aria-disabled={!link}
+              className={`flex h-14 items-center justify-center gap-2 rounded-full bg-good font-semibold text-fun-ink active:scale-[0.98] ${link ? "" : "pointer-events-none opacity-40"}`}
+            >
+              <Ico name="share" /> Send on WhatsApp
+            </a>
+            <Button variant="ghost" onClick={shareLink} disabled={!link}>
+              {copied ? "Link copied ✓" : "Share or copy link"}
+            </Button>
+          </>
+        )}
       </div>
     </Screen>
   );

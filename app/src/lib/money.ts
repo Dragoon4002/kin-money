@@ -36,3 +36,4 @@ export function fromLocal(amount: string, currency = getCurrency()): bigint {
 /** "₹" for INR, "$" for USD. */
 export const currencySymbol = (currency = getCurrency()) =>
   new Intl.NumberFormat(undefined, { style: "currency", currency }).formatToParts(0).find((p) => p.type === "currency")?.value ?? currency;
+
