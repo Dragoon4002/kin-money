@@ -2,6 +2,8 @@
 import Link from "next/link";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { ICON, type IconName } from "@/lib/icons";
+import { Kinko } from "@/components/kinko/Kinko";
+import { useAvatarLook } from "@/lib/kinko";
 
 // Kin UI kit. Colors ONLY via token classes (see globals.css). Mobile-first, 44px+ targets.
 
@@ -197,11 +199,13 @@ const FUN = ["bg-fun-1", "bg-fun-2", "bg-fun-3", "bg-fun-4", "bg-fun-5"];
 export const funIndex = (name = "") => [...name].reduce((h, c) => h + c.charCodeAt(0), 0) % FUN.length;
 export const funBg = (name = "") => FUN[funIndex(name)];
 
+/** Person's picture = their Kinko character (published look, or a stable default from their name). */
 export function Avatar({ name, size = 44 }: { name?: string; size?: number }) {
-  const letter = (name ?? "?").replace(/^@/, "").charAt(0).toUpperCase();
+  const handle = name?.replace(/^@/, "");
+  const look = useAvatarLook(handle);
   return (
-    <span className={`grid shrink-0 place-items-center rounded-full font-bold text-fun-ink ${funBg(name)}`} style={{ width: size, height: size, fontSize: size * 0.42 }}>
-      {letter}
+    <span className="grid shrink-0 place-items-end overflow-hidden rounded-full bg-surface-2" style={{ width: size, height: size }} aria-label={handle ? `@${handle}` : undefined}>
+      <Kinko look={look} size={size} avatar />
     </span>
   );
 }

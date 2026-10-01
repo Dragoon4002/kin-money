@@ -7,7 +7,7 @@ import { Button, ErrorText, Screen } from "@/components/ui";
 import { setName, unlock, useAccount } from "@/lib/account";
 import { registerMe } from "@/lib/contacts";
 import { humanError } from "@/lib/errors";
-import { captureRef } from "@/lib/kinko";
+import { captureRef, savedLook } from "@/lib/kinko";
 import { nameOf } from "@/lib/names";
 
 // Where to go after signup/unlock: same-origin `?next=/path` (e.g. an invoice link), else home.
@@ -36,7 +36,7 @@ export default function Welcome() {
     setErr("");
     try {
       const p = await unlock();
-      void registerMe(); // backfills accounts created before phonebook registration existed
+      void registerMe(savedLook(p.address)); // backfills older accounts + publishes my Kinko look
       if (!p.name) {
         const n = await nameOf(p.address).catch(() => "");
         if (n) setName(n);

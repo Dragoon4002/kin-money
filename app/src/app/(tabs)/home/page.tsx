@@ -3,7 +3,6 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Keypad } from "@/components/core/Keypad";
 import { MeButton } from "@/components/core/NavBar";
-import { Kinko } from "@/components/kinko/Kinko";
 import type { Person } from "@/components/PersonPicker";
 import { Amount, Avatar, Ico, Screen } from "@/components/ui";
 import { useRequireAccount } from "@/lib/account";
@@ -48,7 +47,6 @@ export default function Home() {
     <>
       <Screen>
         <header className="flex h-12 items-center gap-3">
-          <Link href="/kinko" aria-label="Kinko" className="active:scale-95"><Kinko size={40} /></Link>
           <p className="flex-1 truncate text-lg font-semibold">Hi{profile?.name ? `, ${profile.name}` : ""}</p>
           <MeButton name={profile?.name} />
         </header>

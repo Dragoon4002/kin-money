@@ -1,6 +1,7 @@
 "use client";
 import type { Address, Hex } from "viem";
 import type { Person } from "@/components/PersonPicker";
+import { DEFAULT_LOOK, type Look } from "@/components/kinko/Kinko";
 import { Trie } from "./trie";
 import { getAccount } from "./account";
 
@@ -50,19 +51,47 @@ export async function recordPayment(to: Address, amount: bigint): Promise<void> 
   await api("/api/contacts/paid", "POST", { to, amount: amount.toString() }).catch(() => {});
 }
 
-let nameTrie: Promise<Trie> | null = null;
-/** All Kin @names as a prefix tree, fetched once per session (public list, no Face ID). */
-export function loadNameTrie(): Promise<Trie> {
-  nameTrie ??= fetch("/api/names")
+// Public directory: every @name + its published Kinko look. Fetched once per session (no Face ID).
+type Directory = { trie: Trie; looks: Map<string, Look> };
+let directory: Promise<Directory> | null = null;
+let dirLooks = new Map<string, Look>();
+const dirListeners = new Set<() => void>();
+
+export function loadDirectory(): Promise<Directory> {
+  directory ??= fetch("/api/names")
     .then((r) => r.json())
-    .then((j: { names?: string[] }) => new Trie(j.names ?? []))
-    .catch(() => ((nameTrie = null), new Trie()));
-  return nameTrie;
+    .then((j: { names?: string[]; looks?: Record<string, string> }) => {
+      const looks = new Map<string, Look>();
+      for (const [n, raw] of Object.entries(j.looks ?? {})) {
+        try { looks.set(n, { ...DEFAULT_LOOK, ...(JSON.parse(raw) as Partial<Look>) }); } catch {}
+      }
+      dirLooks = looks;
+      dirListeners.forEach((l) => l());
+      return { trie: new Trie(j.names ?? []), looks };
+    })
+    .catch(() => ((directory = null), { trie: new Trie(), looks: new Map<string, Look>() }));
+  return directory;
+}
+
+/** All Kin @names as a prefix tree. */
+export const loadNameTrie = () => loadDirectory().then((d) => d.trie);
+
+/** Subscribe to a person's published look (undefined until the directory loads / if none). */
+export const subscribeDirectory = (l: () => void) => {
+  dirListeners.add(l);
+  void loadDirectory();
+  return () => dirListeners.delete(l);
+};
+export const publishedLook = (name?: string) => (name ? dirLooks.get(name) : undefined);
+
+/** Publish my Kinko look so others see my character. Fire-and-forget. */
+export async function publishLook(look: Look): Promise<void> {
+  await api("/api/contacts/me", "POST", { look }).catch(() => {});
 }
 
 /** Put me in the phonebook so people can find me. Fire-and-forget; never throws. */
-export async function registerMe(): Promise<void> {
-  await api("/api/contacts/me", "POST", {}).catch(() => {});
+export async function registerMe(look?: Look): Promise<void> {
+  await api("/api/contacts/me", "POST", look ? { look } : {}).catch(() => {});
 }
 
 export const listContacts = () => api<Phonebook>("/api/contacts");

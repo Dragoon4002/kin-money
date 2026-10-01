@@ -2,6 +2,8 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { Address } from "viem";
 import { DEFAULT_LOOK, type Look } from "@/components/kinko/Kinko";
+import { useAccount } from "./account";
+import { publishLook, publishedLook, subscribeDirectory } from "./contacts";
 import { HANDLE_RE } from "./names";
 import { listCircles, listEscrows, listPots, listStreams, same } from "./programs";
 
@@ -147,6 +149,31 @@ export function useKinko(address?: Address) {
     if (!address) return;
     localStorage.setItem(keyOf(address), JSON.stringify(next));
     listeners.forEach((l) => l());
+    void publishLook(next); // others see my character
   };
   return { look, setLook, level, score, progress, unlocked, achievements: set, ready: got.for === address };
+}
+
+/** Look saved on this phone for `a`, or undefined if never customised. */
+export const savedLook = (a: Address): Look | undefined => (localStorage.getItem(keyOf(a)) ? readLook(a) : undefined);
+
+// ---------- avatars ----------
+
+const AVATAR_SKINS = ["classic", "mint", "sunset", "night", "gold"];
+const AVATAR_FACES = ["smile", "grin", "sleepy", "wink", "cool"];
+
+/** Stable default character for someone who hasn't published a look: same name → same Kinko. */
+export function lookForName(name = ""): Look {
+  let h = 0;
+  for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return { skin: AVATAR_SKINS[h % AVATAR_SKINS.length], expression: AVATAR_FACES[(h >>> 3) % AVATAR_FACES.length], accessories: [] };
+}
+
+/** Look to show for @name: mine from this phone, others' published look, else the stable default. */
+export function useAvatarLook(name?: string): Look {
+  const { profile } = useAccount();
+  const own = name !== undefined && name === profile?.name;
+  const mine = useSyncExternalStore(subscribe, () => (own ? readLook(profile?.address) : undefined), () => undefined);
+  const theirs = useSyncExternalStore(subscribeDirectory, () => publishedLook(name), () => undefined);
+  return mine ?? theirs ?? lookForName(name);
 }
