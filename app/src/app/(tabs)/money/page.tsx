@@ -115,7 +115,7 @@ export default function Money() {
           <div aria-hidden className="pointer-events-none absolute -right-16 -top-16 size-48 rounded-full bg-brand/15 blur-2xl" />
           <div className="relative flex items-center justify-between">
             <p className="text-sm text-muted">Total balance</p>
-            <Chip>Test mode</Chip>
+            <Chip>Practice money</Chip>
           </div>
           <div className="relative mt-3 min-h-16">
             {balance === null ? (
@@ -127,7 +127,7 @@ export default function Money() {
           {balance !== null && !hide && getCurrency() !== "USD" && <p className="tabular relative mt-1 text-sm text-muted">{formatMoney(balance, "USD")}</p>}
           <div className="relative mt-6">
             <Button onClick={addMoney} busy={adding === "busy"} disabled={adding === "done" || adding === "had"}>
-              {adding === "done" ? "Added ✓" : adding === "had" ? "You already have test money" : "Add test money"}
+              {adding === "done" ? "Added ✓" : adding === "had" ? "You already have practice money" : "Add practice money"}
             </Button>
             {adding === "busy" && <p className="mt-3 text-center text-sm text-muted">Adding practice money — a few seconds…</p>}
           </div>

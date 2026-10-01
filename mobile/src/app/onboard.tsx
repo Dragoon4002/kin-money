@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { useRef, useState } from "react";
-import { KeyboardAvoidingView, Pressable, View } from "react-native";
+import { KeyboardAvoidingView, Pressable, View, ActivityIndicator } from "react-native";
 import { Button, ErrorText, Label, Screen, Serif, Text, TextInput, useInputStyle } from "@/components/ui";
 import { KinNamesAbi } from "@/lib/abi";
 import { setName, signUp, unlock, useAccount } from "@/lib/account";
@@ -107,6 +107,7 @@ export default function Onboard() {
     return (
       <Screen>
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12 }}>
+          <ActivityIndicator color={t.brand} size="large" />
           <Serif size={36}>Adding {formatMoney(toUnits(10_000))} welcome money</Serif>
           <Text style={{ color: t.muted, textAlign: "center" }}>Practice money so you can try Kin. Just a moment…</Text>
         </View>

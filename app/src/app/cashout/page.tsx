@@ -17,7 +17,7 @@ export default function CashOut() {
     <Screen title="Cash out to bank" back="/money">
       <Card className="flex items-center gap-3">
         <Chip tone="warn">Coming soon</Chip>
-        <p className="text-sm text-muted">Cash out is in test mode. No money moves.</p>
+        <p className="text-sm text-muted">Cash out is coming soon. Nothing moves yet.</p>
       </Card>
 
       <AmountInput label="How much?" value={amount} onChange={setAmount} />
@@ -37,7 +37,7 @@ export default function CashOut() {
       <div className="mt-auto flex flex-col gap-3 pt-2">
         {tried && (
           <p aria-live="polite" className="text-center text-sm font-medium">
-            Coming soon — cash out is in test mode. Your money stays in your balance.
+            {"We'll let you know when cash out is ready. Your money stays in your balance."}
           </p>
         )}
         <Button onClick={() => setTried(true)} disabled={!bank || !(Number(amount) > 0) || tried}>
