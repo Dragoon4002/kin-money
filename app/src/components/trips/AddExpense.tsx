@@ -23,7 +23,9 @@ export function AddExpense({ members, me, onAdd }: { members: Person[]; me: Addr
   const toggle = (a: Address) => setSplit((s) => (s.includes(a) ? s.filter((x) => x !== a) : [...s, a]));
 
   return (
-    <div className="-mx-5 flex max-h-[80dvh] flex-col gap-4 overflow-y-auto px-5">
+    <div className="-mx-5 flex max-h-[85dvh] flex-col">
+      {/* Scrolling fields. Children must not shrink: a sideways scroller (category chips) would collapse to 0 height. */}
+      <div className="flex min-h-0 flex-col gap-4 overflow-y-auto px-5 pb-2 [&>*]:shrink-0">
       <h2 className="text-lg font-bold">Add expense</h2>
       <MoneyInput label="How much?" value={amount} onChange={setAmount} />
 
@@ -70,10 +72,14 @@ export function AddExpense({ members, me, onAdd }: { members: Person[]; me: Addr
           </li>
         ))}
       </ul>
+      </div>
 
-      <Button disabled={units <= 0n || !split.length} onClick={() => onAdd({ payer, amount: units, participants: split, note: note.trim(), category })}>
-        {units > 0n ? `Add ${formatMoney(units)}` : "Add expense"}
-      </Button>
+      {/* Footer stays visible below the fields, never on top of them. */}
+      <div className="shrink-0 border-t border-line px-5 pt-3">
+        <Button disabled={units <= 0n || !split.length} onClick={() => onAdd({ payer, amount: units, participants: split, note: note.trim(), category })}>
+          {units > 0n ? `Add ${formatMoney(units)}` : "Add expense"}
+        </Button>
+      </div>
     </div>
   );
 }
