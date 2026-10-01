@@ -7,7 +7,8 @@ import { nameOf } from "../names";
 // Phonebook graph (docs/ARCHITECTURE.md → Graph model). Optional: with no NEO4J_* env,
 // every route answers empty/ok so the app still works.
 
-const { NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD, PHONE_HASH_SECRET } = process.env;
+const { NEO4J_URI, NEO4J_PASSWORD, PHONE_HASH_SECRET } = process.env;
+const NEO4J_USER = process.env.NEO4J_USER ?? process.env.NEO4J_USERNAME; // Aura's credentials file uses NEO4J_USERNAME
 
 export const graphEnabled = () => Boolean(NEO4J_URI && NEO4J_USER && NEO4J_PASSWORD);
 
