@@ -39,6 +39,7 @@ Every money action ends with a receipt → **Details → Proof of payment** (exp
 | **Invoice** | B (freelancer): Invoice → client `@a`, title, milestones 30/20, auto-release 3 days → share link | A opens link → confirms each milestone (money held) → **Work looks good — pay** releases to B; untouched milestones release automatically after the days pass |
 | **Gift** | A: Gift → `@b`, 25, unlock date (tomorrow or a few minutes ahead), optional guardian | B sees a locked gift card with countdown → after the date **Open** → +25 |
 | **AutoPay** 🌿 | A: Explore → AutoPay → payee `@b`, 10, **Demo: 5 min**, 3 times → Set up | After 5 min: B (or the daily job) **Collect** → +10 per due payment; A **Stop** → due ones paid, rest refunded |
+| **Trips (group splitter)** 🌿 | A: Explore → Trips → New trip "Goa" → add `@b`, `@c` (all on Kin). Add expenses: A paid 90 "Hotel" split A,B,C; C paid 30 "Taxi" split B,C | **Balances**: A +60, B −45, C −15. **Settle up**: "B pays A 45", "C pays A 15". B taps **Pay all I owe** (one Face ID) → paid onchain → row ✓; B's balance 0. Automated: `node --experimental-strip-types --env-file=.env.local scripts/e2e-trip.mts` |
 | **Split a bill** | A: Split → pick `@b` (+others), total 90, Even or **Custom** 🌿 | Each gets a request; custom blocks until parts add up |
 
 ## 4. People & identity

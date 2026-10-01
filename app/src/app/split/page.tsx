@@ -65,6 +65,9 @@ export default function SplitPage() {
 
   return (
     <Screen title="Split a bill" back="/home">
+      <Link href="/trips" className="flex min-h-11 items-center gap-2 self-center rounded-full bg-surface-2 px-4 text-sm font-medium text-muted active:scale-95">
+        <Ico name="trip" size={16} /> Planning a trip? Use Trips
+      </Link>
       <AmountInput label="Total bill" value={total} onChange={setTotal} />
       <Field label="What was it?">
         <input className={`${inputClass} text-center`} placeholder="Dinner 🍕" maxLength={140} value={note} onChange={(e) => setNote(e.target.value)} />

@@ -35,7 +35,7 @@ async function authHeaders(): Promise<Record<string, string>> {
   return headers;
 }
 
-async function api<T>(path: string, method = "GET", body?: unknown): Promise<T> {
+export async function api<T>(path: string, method = "GET", body?: unknown): Promise<T> {
   const res = await fetch(path, {
     method,
     headers: { "content-type": "application/json", ...(await authHeaders()) },

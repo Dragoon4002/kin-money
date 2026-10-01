@@ -18,6 +18,7 @@ const TILES: [string, string, string, IconName, boolean][] = [
   ["Circles", "Save together, take turns", "/circle", "circle", false],
   ["Family pot", "Chip in for home", "/pot", "pot", false],
   ["This month's spends", "Where your money went", "/spends", "spends", true],
+  ["Trips", "Who paid what, settled in one tap", "/trips", "trip", true],
   ["Split a bill", "Share the cost", "/split", "split", false],
   ["People", "Your Kin contacts", "/contacts", "people", false],
   ["Invite & earn", "You both get a Kinko treat", "/invite", "invite", true],
