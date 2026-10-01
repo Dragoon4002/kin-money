@@ -1,0 +1,57 @@
+{
+  "expo": {
+    "name": "Kin",
+    "slug": "kin",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/kin-icon.png",
+    "scheme": "kin",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "bundleIdentifier": "xyz.kin.app"
+    },
+    "android": {
+      "package": "xyz.kin.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/kin-adaptive.png",
+        "backgroundColor": "#e2573b"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0d0c0b",
+          "image": "./assets/images/kin-icon.png",
+          "imageWidth": 96
+        }
+      ],
+      "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Kin uses the camera to scan Kin QR codes so you can pay people quickly.",
+          "recordAudioAndroid": false
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "rpId": "kin-money.vercel.app",
+      "apiBase": "https://kin-money.vercel.app",
+      "router": {},
+      "eas": {
+        "projectId": "4ad3b63a-f4e8-4ad4-96ec-09f8763a368d"
+      }
+    },
+    "owner": "dragoon4002"
+  }
+}

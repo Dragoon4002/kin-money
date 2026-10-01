@@ -1,0 +1,56 @@
+import { CameraView, useCameraPermissions } from "expo-camera";
+import { router, type Href } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
+import { Flashlight } from "lucide-react-native";
+import { useRef, useState } from "react";
+import { Pressable, Text, Vibration, View } from "react-native";
+import { Button, ErrorText, Screen } from "@/components/ui";
+import { API_BASE } from "@/lib/config";
+import { kinTarget } from "@/lib/scan";
+import { useTheme } from "@/theme";
+
+/** Scan & pay: camera QR → native Pay screen (or claim/invoice/chores on web). */
+export default function Scan() {
+  const t = useTheme();
+  const [perm, requestPerm] = useCameraPermissions();
+  const [torch, setTorch] = useState(false);
+  const [err, setErr] = useState("");
+  const done = useRef(false);
+
+  async function handle(text: string) {
+    if (done.current) return;
+    const path = kinTarget(text, API_BASE);
+    if (!path) return setErr("That's not a Kin code. Ask them to open My QR in Kin.");
+    done.current = true;
+    Vibration.vibrate(30);
+    if (path.startsWith("/send")) return router.replace(path as Href);
+    await WebBrowser.openBrowserAsync(API_BASE + path);
+    router.back();
+  }
+
+  return (
+    <Screen title="Scan to pay" back>
+      <View style={{ aspectRatio: 3 / 4, borderRadius: 28, overflow: "hidden", borderWidth: 1, borderColor: t.line, backgroundColor: t.surface2 }}>
+        {perm?.granted ? (
+          <CameraView style={{ flex: 1 }} facing="back" enableTorch={torch}
+            barcodeScannerSettings={{ barcodeTypes: ["qr"] }} onBarcodeScanned={({ data }) => void handle(data)} />
+        ) : (
+          <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 16 }}>
+            <Text style={{ color: t.muted, textAlign: "center" }}>
+              {perm && !perm.canAskAgain ? "Camera is off for Kin. Turn it on in your phone's settings." : "Kin needs your camera to scan codes."}
+            </Text>
+            {(!perm || perm.canAskAgain) && <Button title="Allow camera" onPress={requestPerm} />}
+          </View>
+        )}
+        {perm?.granted && (
+          <Pressable onPress={() => setTorch((v) => !v)} accessibilityLabel="Flashlight" accessibilityState={{ checked: torch }}
+            style={{ position: "absolute", right: 16, bottom: 16, width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center", backgroundColor: torch ? t.ink : t.surface }}>
+            <Flashlight color={torch ? t.bg : t.ink} size={22} />
+          </Pressable>
+        )}
+      </View>
+      <Text style={{ color: t.muted, textAlign: "center" }}>Point at someone&apos;s Kin QR. Their name and amount fill in for you.</Text>
+      <ErrorText>{err}</ErrorText>
+    </Screen>
+  );
+}
