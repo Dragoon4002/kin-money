@@ -27,6 +27,8 @@ const names = new Map<string, Promise<string>>();
 function who(other: Address, dir: Item["dir"], hash: Hex, me: Address): Promise<string> {
   // Kin contracts (allowance, pot, escrow…): say what the money was for ("Chore for @b").
   if (isKinContract(other)) return describe(hash, other, dir, me);
+  // Testnet faucet (Agora) that funds the welcome gift on sign-up.
+  if (isAddressEqual(other, "0xd236c18D274E54FAccC3dd9DDA4b27965a73ee6C")) return Promise.resolve("Welcome money");
   const k = other.toLowerCase();
   if (!names.has(k)) names.set(k, nameOf(other).catch(() => ""));
   return names.get(k)!.then((n) => (n ? `@${n}` : dir === "in" ? "Money received" : "Payment"));
