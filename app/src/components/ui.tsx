@@ -1,9 +1,10 @@
 "use client";
 import Link from "next/link";
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { useState, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { ICON, type IconName } from "@/lib/icons";
 import { Kinko } from "@/components/kinko/Kinko";
 import { useAvatarLook } from "@/lib/kinko";
+import { usePrivate } from "@/lib/privacy";
 
 // Kin UI kit. Colors ONLY via token classes (see globals.css). Mobile-first, 44px+ targets.
 
@@ -95,9 +96,25 @@ export function IconButton({ icon, label, href, onClick, big }: { icon: ReactNod
 }
 
 /** Big serif money figure. Pass the already-formatted string ("₹4,425.50"); cents are dimmed. */
-export function Amount({ value, size = "xl", className = "" }: { value: string; size?: "md" | "lg" | "xl"; className?: string }) {
+/** `secret` = mask with "••••" in private mode; tap to peek for 3s. */
+export function Amount({ value, size = "xl", className = "", secret }: { value: string; size?: "md" | "lg" | "xl"; className?: string; secret?: boolean }) {
+  const hidden = usePrivate() && secret;
+  const [peek, setPeek] = useState(false);
   const m = value.match(/^(.*?)([.,]\d{2})(\D*)$/);
   const cls = { md: "text-4xl", lg: "text-5xl", xl: "text-6xl" }[size];
+  if (hidden && !peek)
+    return (
+      <span
+        role="button"
+        tabIndex={0}
+        aria-label="Amount hidden. Tap to peek"
+        onClick={(e) => (e.stopPropagation(), setPeek(true), setTimeout(() => setPeek(false), 3000))}
+        onKeyDown={(e) => e.key === "Enter" && (e.stopPropagation(), setPeek(true), setTimeout(() => setPeek(false), 3000))}
+        className={`font-display tabular inline-block min-h-11 cursor-pointer leading-none tracking-widest text-muted ${cls} ${className}`}
+      >
+        ••••
+      </span>
+    );
   return (
     <span className={`font-display tabular leading-none tracking-tight ${cls} ${className}`}>
       {m ? (

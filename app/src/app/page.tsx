@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Onboard } from "@/components/core/Onboard";
 import { Kinko } from "@/components/kinko/Kinko";
+import { Landing } from "@/components/landing/Landing";
 import { Button, ErrorText, Screen } from "@/components/ui";
 import { setName, unlock, useAccount } from "@/lib/account";
 import { registerMe } from "@/lib/contacts";
@@ -55,6 +56,12 @@ export default function Welcome() {
         <Onboard start={onboard} onDone={() => router.replace(nextPath())} />
       </Screen>
     );
+  }
+
+  // Signed-out visitors without a deep link get the landing. `ready` is false on the server and during
+  // hydration, so SSR and first client render match (existing welcome markup) and `location` is safe here.
+  if (ready && !profile && !new URLSearchParams(location.search).has("next")) {
+    return <Landing onStart={() => setOnboard("name")} onUnlock={doUnlock} busy={busy} err={err} />;
   }
 
   return (

@@ -22,6 +22,7 @@ export const addr = {
   stream: env(process.env.NEXT_PUBLIC_KIN_STREAM),
   pot: env(process.env.NEXT_PUBLIC_KIN_POT),
   circle: env(process.env.NEXT_PUBLIC_KIN_CIRCLE),
+  mandate: env(process.env.NEXT_PUBLIC_KIN_MANDATE),
 };
 
 export const explorerTx = (hash: string) => `${chain.blockExplorers.default.url}/tx/${hash}`;

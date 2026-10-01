@@ -64,7 +64,7 @@ export default function Home() {
             ) : balance === null ? (
               <span className="h-5 w-24 animate-pulse rounded-full bg-surface-2" />
             ) : (
-              <><Amount value={formatMoney(balance)} size="md" className="text-2xl! text-ink" /><Ico name="chevron" size={16} className="-rotate-90" /></>
+              <><Amount value={formatMoney(balance)} size="md" className="text-2xl! text-ink" secret /><Ico name="chevron" size={16} className="-rotate-90" /></>
             )}
           </button>
         </div>

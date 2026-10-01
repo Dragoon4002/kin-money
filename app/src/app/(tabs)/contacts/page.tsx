@@ -4,7 +4,7 @@ import { PersonPicker, type Person } from "@/components/PersonPicker";
 import { PersonRow, Section, SkeletonRows, useSignedIn } from "@/components/social/bits";
 import { Button, Card, ErrorText, Field, IconTile, Screen, inputClass } from "@/components/ui";
 import { unlock, useAccount } from "@/lib/account";
-import { addContact, listContacts, type Phonebook } from "@/lib/contacts";
+import { addContact, addContactByPhone, listContacts, type Phonebook } from "@/lib/contacts";
 import { humanError } from "@/lib/errors";
 import { formatMoney } from "@/lib/money";
 
@@ -19,6 +19,9 @@ export default function ContactsPage() {
   const [person, setPerson] = useState<Person | null>(null);
   const [label, setLabel] = useState("");
   const [busy, setBusy] = useState(false);
+  const [phone, setPhone] = useState("");
+  const e164 = phone.replace(/[\s()-]/g, "");
+  const phoneOk = /^\+[1-9]\d{6,14}$/.test(e164);
 
   // Loading people needs a signed request — only when unlocked, so swiping here never pops Face ID.
   useEffect(() => {
@@ -44,13 +47,27 @@ export default function ContactsPage() {
     }
   }
 
+  function close() {
+    setAdding(false);
+    setPerson(null);
+    setLabel("");
+    setPhone("");
+  }
+
   async function submit() {
-    if (!person) return;
     setBusy(true);
-    if (await save(person, label.trim())) {
-      setAdding(false);
-      setPerson(null);
-      setLabel("");
+    setErr("");
+    if (person) {
+      if (await save(person, label.trim())) close();
+    } else if (phoneOk) {
+      try {
+        await addContactByPhone(e164, label.trim());
+        close();
+        setBook(await listContacts());
+      } catch (e) {
+        const s = String(e);
+        setErr(/ 404$/.test(s) ? "No one on Kin with that number yet. Invite them from Me." : / 400$/.test(s) ? "Check the number — start with + and the country code." : humanError(e));
+      }
     }
     setBusy(false);
   }
@@ -82,14 +99,19 @@ export default function ContactsPage() {
       {adding && (
         <Card className="mx-5 flex flex-col gap-4">
           <PersonPicker label="Who?" onPick={setPerson} />
+          {!person && (
+            <Field label="Or their phone number" hint="We only use it to find them. It's never shown.">
+              <input className={inputClass} type="tel" inputMode="tel" autoComplete="off" placeholder="+91 98765 43210" maxLength={20} value={phone} onChange={(e) => setPhone(e.target.value)} />
+            </Field>
+          )}
           <Field label="What do you call them?" hint="Only you see this.">
             <input className={inputClass} placeholder="Mum, Ravi, Landlord…" maxLength={40} value={label} onChange={(e) => setLabel(e.target.value)} />
           </Field>
           <div className="flex gap-3">
-            <Button variant="ghost" onClick={() => setAdding(false)}>
+            <Button variant="ghost" onClick={close}>
               Cancel
             </Button>
-            <Button onClick={submit} disabled={!person} busy={busy}>
+            <Button onClick={submit} disabled={!person && !phoneOk} busy={busy}>
               Save
             </Button>
           </div>

@@ -9,6 +9,7 @@ import type { IconName } from "@/lib/icons";
 // [title, sub, href, icon, wide]. Neutral tiles everywhere; "Pay a bill" is the one brand (primary) tile.
 const TILES: [string, string, string, IconName, boolean][] = [
   ["Pay a bill", "Money only for school, rent, doctor", "/earmark", "bill", true],
+  ["AutoPay", "Paid automatically every month", "/autopay", "schedule", true],
   ["Chores", "Earn for helping", "/chores", "chores", false],
   ["Savings jars", "Save for a goal", "/jars", "jars", false],
   ["Kinko & Kin Score", "Dress up your buddy", "/kinko", "kinko", true],

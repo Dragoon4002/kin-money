@@ -1,8 +1,8 @@
 import QRCode from "qrcode";
 import { useMemo, useState } from "react";
-import { Share, Text, TextInput, View } from "react-native";
+import { Share, View } from "react-native";
 import Svg, { Path, Rect } from "react-native-svg";
-import { Button, Label, Screen, Serif, useInputStyle } from "@/components/ui";
+import { Button, Label, Screen, Serif, Text, TextInput, useInputStyle } from "@/components/ui";
 import { useAccount } from "@/lib/account";
 import { currencySymbol, formatMoney, fromLocal } from "@/lib/money";
 import { payLink } from "@/lib/payLink";

@@ -110,6 +110,12 @@ export async function recentPeople(): Promise<Person[]> {
 /** Save someone with a nickname ("Mum"). */
 export const addContact = (p: Person, label = "") => api<{ ok: true }>("/api/contacts", "POST", { address: p.address, label });
 
+/** Save someone by phone (E.164). Server hashes it; 404 = no one on Kin with that number. */
+export const addContactByPhone = (phone: string, label = "") => api<{ ok: true }>("/api/contacts", "POST", { phone, label });
+
+/** Let people find me by my phone number (stored only as a hash). */
+export const saveMyPhone = (myPhone: string) => api<{ ok: true }>("/api/contacts", "POST", { myPhone });
+
 /** Ask `to` for `amount` base units. */
 export const createRequest = (to: Address, amount: bigint, note: string) =>
   api<{ id: string }>("/api/requests", "POST", { to, amount: amount.toString(), note });

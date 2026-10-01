@@ -4,7 +4,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { Onboard } from "@/components/core/Onboard";
 import { Amount, Avatar, Button, Card, Delivered, ErrorText, Screen } from "@/components/ui";
 import { getAccount, useAccount } from "@/lib/account";
-import { registerMe } from "@/lib/contacts";
+import { addContact, registerMe } from "@/lib/contacts";
 import { collectLink, parseLink, readLink, type LinkInfo } from "@/lib/claimLink";
 import { humanError } from "@/lib/errors";
 import { formatMoney } from "@/lib/money";
@@ -39,6 +39,8 @@ export default function Claim() {
       const t0 = performance.now();
       await collectLink(link.id, link.key, me);
       void registerMe();
+      // Sender shows up in People. Fire-and-forget; never blocks the collect.
+      if (info?.sender) void addContact({ address: info.from, name: info.sender }).catch(() => {});
       setSecs(((performance.now() - t0) / 1000).toFixed(1));
       setPhase("done");
     } catch (e) {

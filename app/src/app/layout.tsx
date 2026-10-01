@@ -30,7 +30,7 @@ const themeScript = `try{var t=localStorage.getItem("kin.theme");if(t==="light"|
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${jakarta.variable} ${serif.variable} antialiased`} suppressHydrationWarning>
-      <body className="min-h-dvh">
+      <body className="min-h-dvh overflow-x-clip">
         <Script id="kin-theme" strategy="beforeInteractive">{themeScript}</Script>
         <div className="mx-auto flex min-h-dvh max-w-md flex-col">{children}</div>
         <InstallPrompt />

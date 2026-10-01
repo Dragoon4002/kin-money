@@ -38,7 +38,8 @@
           "cameraPermission": "Kin uses the camera to scan Kin QR codes so you can pay people quickly.",
           "recordAudioAndroid": false
         }
-      ]
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true,

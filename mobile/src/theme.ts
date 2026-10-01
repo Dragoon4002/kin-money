@@ -33,8 +33,11 @@ const dark: Theme = {
   warn: "#f0b445",
 };
 
-// ponytail: Instrument Serif / Plus Jakarta Sans aren't installed (@expo-google-fonts); system fonts until added.
-export const fonts = { serif: "serif", sans: undefined } as const;
+// Loaded in app/_layout.tsx (@expo-google-fonts). One family per weight: custom fonts ignore fontWeight on Android.
+export const fonts = {
+  serif: "InstrumentSerif_400Regular",
+  sans: { "400": "PlusJakartaSans_400Regular", "500": "PlusJakartaSans_500Medium", "600": "PlusJakartaSans_600SemiBold", "700": "PlusJakartaSans_700Bold", "800": "PlusJakartaSans_800ExtraBold" } as Record<string, string>,
+} as const;
 
 /** Dark-first: anything but an explicit light scheme gets dark. */
 export function useTheme(): Theme {

@@ -1,7 +1,7 @@
 import { router } from "expo-router";
 import { useRef, useState } from "react";
-import { KeyboardAvoidingView, Pressable, Text, TextInput, View } from "react-native";
-import { Button, ErrorText, Label, Screen, Serif, useInputStyle } from "@/components/ui";
+import { KeyboardAvoidingView, Pressable, View } from "react-native";
+import { Button, ErrorText, Label, Screen, Serif, Text, TextInput, useInputStyle } from "@/components/ui";
 import { KinNamesAbi } from "@/lib/abi";
 import { setName, signUp, unlock, useAccount } from "@/lib/account";
 import { addr, API_BASE } from "@/lib/config";

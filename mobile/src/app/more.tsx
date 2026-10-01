@@ -4,8 +4,8 @@ import {
   AlignLeft, Briefcase, ChartPie, ChevronRight, Gift, House, ListChecks, Lock, type LucideIcon, PiggyBank, Receipt,
   RefreshCcw, Smile, Split, Sprout, SunMoon, Trash2, UserPlus, Users,
 } from "lucide-react-native";
-import { Alert, Pressable, Text, View } from "react-native";
-import { Screen } from "@/components/ui";
+import { Alert, Pressable, View } from "react-native";
+import { Screen, Text } from "@/components/ui";
 import { lock, signOut, useAccount } from "@/lib/account";
 import { API_BASE } from "@/lib/config";
 import { useTheme } from "@/theme";

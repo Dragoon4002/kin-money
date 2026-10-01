@@ -1,9 +1,23 @@
 import { router } from "expo-router";
 import { ChevronLeft, Delete, type LucideIcon } from "lucide-react-native";
 import type { ReactNode } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Text, View, type TextStyle } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text as RNText, TextInput as RNTextInput, View, type StyleProp, type TextInputProps, type TextProps, type TextStyle } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Kinko } from "@/components/Kinko";
+import { useAvatarLook } from "@/lib/names";
 import { fonts, useTheme } from "@/theme";
+
+/** Plus Jakarta Sans at the style's fontWeight, unless a fontFamily is set (e.g. Serif). */
+function sans(style: StyleProp<TextStyle>): StyleProp<TextStyle> {
+  const s = StyleSheet.flatten(style) ?? {};
+  if (s.fontFamily) return style;
+  const w = s.fontWeight === "bold" ? "700" : String(s.fontWeight ?? "400");
+  return [style, { fontFamily: fonts.sans[w] ?? fonts.sans["400"], fontWeight: "normal" }];
+}
+
+/** Use these instead of react-native's Text/TextInput so UI text gets the brand font. */
+export const Text = (p: TextProps) => <RNText {...p} style={sans(p.style)} />;
+export const TextInput = (p: TextInputProps) => <RNTextInput {...p} style={sans(p.style)} />;
 
 /** Full-screen page: safe area, optional back + title header. */
 export function Screen({ title, back, scroll, children }: { title?: string; back?: boolean; scroll?: boolean; children: ReactNode }) {
@@ -69,14 +83,15 @@ export function IconButton({ icon: Icon, label, onPress }: { icon: LucideIcon; l
   );
 }
 
-/** Person's initial in a neutral circle (Kinko artwork lives on web). */
+/** Person's Kinko: published look, else the stable per-name default (same as web). */
 export function Avatar({ name, size = 44 }: { name?: string; size?: number }) {
   const t = useTheme();
   const h = name?.replace(/^@/, "") ?? "";
+  const look = useAvatarLook(h);
   return (
     <View accessibilityLabel={h ? `@${h}` : undefined}
-      style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: t.surface2, borderWidth: 1, borderColor: t.line, alignItems: "center", justifyContent: "center" }}>
-      <Text style={{ color: t.ink, fontSize: size * 0.42, fontWeight: "700" }}>{(h[0] ?? "?").toUpperCase()}</Text>
+      style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: t.surface2, borderWidth: 1, borderColor: t.line, overflow: "hidden" }}>
+      <Kinko look={look} size={size} avatar />
     </View>
   );
 }

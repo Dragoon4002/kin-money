@@ -1,8 +1,8 @@
 import { ArrowDownLeft, ArrowUpRight } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import type { Address } from "viem";
-import { FlatList, RefreshControl, Text, View } from "react-native";
-import { Screen, Serif } from "@/components/ui";
+import { FlatList, RefreshControl, View } from "react-native";
+import { Screen, Serif, Text } from "@/components/ui";
 import { useAccount } from "@/lib/account";
 import { getBalance, loadActivity, type Item } from "@/lib/activity";
 import { formatMoney } from "@/lib/money";

@@ -1,15 +1,17 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, KeyboardAvoidingView, Pressable, ScrollView, Text, TextInput, View } from "react-native";
-import { Avatar, Button, ErrorText, Label, Screen, Serif, useInputStyle } from "@/components/ui";
-import { getAccount, isUnlocked } from "@/lib/account";
+import { ActivityIndicator, KeyboardAvoidingView, Pressable, ScrollView, View } from "react-native";
+import { Avatar, Button, ErrorText, Label, Screen, Serif, Text, TextInput, useInputStyle } from "@/components/ui";
+import { getAccount, getProfile, isUnlocked } from "@/lib/account";
 import { getBalance } from "@/lib/activity";
+import { CATEGORIES, setCategory, type CategoryId } from "@/lib/categories";
 import { recentPeople, recordPayment, type Person } from "@/lib/contacts";
 import { humanError } from "@/lib/errors";
 import { currencySymbol, formatMoney, fromLocal, getCurrency } from "@/lib/money";
-import { HANDLE_RE, resolveName } from "@/lib/names";
+import { HANDLE_RE, loadDirectory, resolveName } from "@/lib/names";
 import { parseAmt, unitsToLocal } from "@/lib/payLink";
 import { sendDollars } from "@/lib/tx";
+import type { Trie } from "@/lib/trie";
 import { useTheme } from "@/theme";
 
 const AMOUNT_RE = /^\d{0,9}(\.\d{0,2})?$/;
@@ -35,6 +37,8 @@ export default function Send() {
   const [status, setStatus] = useState<string | null>(null);
   const [done, setDone] = useState<{ ms: number; units: bigint; name: string } | null>(null);
   const [err, setErr] = useState("");
+  const [category, setCat] = useState<CategoryId | null>(null);
+  const [trie, setTrie] = useState<Trie | null>(null);
   const seq = useRef(0);
 
   const [finding, setFinding] = useState(() => HANDLE_RE.test(to));
@@ -62,6 +66,11 @@ export default function Send() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, for the prefilled name
   }, []);
 
+  // Autocomplete: prefix tree of all Kin names (same as web PersonPicker).
+  useEffect(() => {
+    loadDirectory().then((d) => setTrie(d.trie));
+  }, []);
+
   useEffect(() => {
     if (!isUnlocked()) return; // never pop Face ID just to show suggestions
     let live = true;
@@ -84,7 +93,8 @@ export default function Send() {
       if ((await getBalance(account.address)) < units) throw new Error("insufficient balance");
       setStatus(`Sending to @${person.name}…`);
       const t0 = Date.now();
-      await sendDollars(person.address, units);
+      const hash = await sendDollars(person.address, units);
+      if (category) setCategory(hash, category).catch(() => {});
       recordPayment(person.address, units).catch(() => {});
       setDone({ ms: Date.now() - t0, units, name: person.name });
     } catch (e) {
@@ -121,6 +131,8 @@ export default function Send() {
     );
   }
 
+  const me = getProfile()?.name;
+  const suggestions = to && !person ? (trie?.suggest(to, 6) ?? []).filter((n) => n !== me && n !== to).slice(0, 5) : [];
   const hint = !to ? "" : finding ? `Finding @${to}…` : person ? `@${person.name} ✓` : HANDLE_RE.test(to) ? "No one on Kin with that name yet." : "";
 
   return (
@@ -130,7 +142,18 @@ export default function Send() {
         <TextInput style={input} value={to ? `@${to}` : ""} placeholder="@name" placeholderTextColor={t.muted}
           onChangeText={onTo}
           autoCapitalize="none" autoCorrect={false} maxLength={21} />
-        {!!hint && <Text style={{ color: person ? t.good : t.muted }}>{hint}</Text>}
+        {suggestions.length > 0 && (
+          <View accessibilityLabel="Suggestions" style={{ borderRadius: 20, borderWidth: 1, borderColor: t.line, backgroundColor: t.surface, overflow: "hidden" }}>
+            {suggestions.map((n) => (
+              <Pressable key={n} onPress={() => onTo(n)} accessibilityRole="button" accessibilityLabel={`@${n}`}
+                style={({ pressed }) => ({ minHeight: 48, flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 12, backgroundColor: pressed ? t.surface2 : "transparent" })}>
+                <Avatar name={n} size={32} />
+                <Text style={{ fontWeight: "600", color: t.muted }}><Text style={{ fontWeight: "600", color: t.ink }}>@{n.slice(0, to.length)}</Text>{n.slice(to.length)}</Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
+        {!!hint && !suggestions.length && <Text style={{ color: person ? t.good : t.muted }}>{hint}</Text>}
         {!person && people.length > 0 && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 16 }}>
             {people.map((p) => (
@@ -152,6 +175,20 @@ export default function Send() {
 
         <TextInput style={[input, { textAlign: "center" }]} placeholder="Add a note" placeholderTextColor={t.muted}
           value={note} maxLength={80} onChangeText={setNote} />
+
+        <Label>What&apos;s it for?</Label>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: 8 }}>
+          {CATEGORIES.map(({ id, label, icon: Icon }) => {
+            const on = category === id;
+            return (
+              <Pressable key={id} onPress={() => setCat(on ? null : id)} accessibilityRole="button" accessibilityState={{ selected: on }}
+                style={{ height: 40, borderRadius: 20, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderColor: on ? t.brand : t.line, backgroundColor: on ? t.brandSoft : t.surface }}>
+                <Icon color={on ? t.brand : t.muted} size={16} />
+                <Text style={{ color: on ? t.brand : t.ink, fontSize: 14, fontWeight: "600" }}>{label}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
 
         <ErrorText>{err}</ErrorText>
         <View style={{ marginTop: "auto" }}>

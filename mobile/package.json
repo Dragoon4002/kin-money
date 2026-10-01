@@ -4,6 +4,8 @@
   "version": "1.0.0",
   "dependencies": {
     "@category-labs/mera": "0.2.0",
+    "@expo-google-fonts/instrument-serif": "^0.4.1",
+    "@expo-google-fonts/plus-jakarta-sans": "^0.4.2",
     "@expo/ui": "~57.0.21",
     "@scure/bip32": "^2.4.0",
     "@scure/bip39": "^2.4.0",
@@ -43,6 +45,8 @@
   "devDependencies": {
     "@types/qrcode": "^1.5.6",
     "@types/react": "~19.2.2",
+    "eslint": "^9.0.0",
+    "eslint-config-expo": "~57.0.2",
     "typescript": "~6.0.3"
   },
   "scripts": {

@@ -1,14 +1,14 @@
 "use client";
-import { parseEventLogs, type Abi, type Address, type Hex } from "viem";
+import { formatLog, parseEventLogs, type Abi, type Address, type Hex, type Log, type RpcLog } from "viem";
 import { KinCircleAbi, KinEscrowAbi, KinPotAbi, KinStreamAbi } from "./abi";
 import { addr, publicClient } from "./chain";
 
 // Readers for programmable money (allowance, reserves, bills, invoices, gifts, pots, circles).
 // Listing = enumerate ids 1..count() with multicall (public Monad RPCs cap getLogs at 100 blocks).
-// Logs only feed recent extras (emergency asks, circle/pot history) over a short window.
+// Logs (asks, circle/pot history) come from /api/history (full range since deploy) plus a short live tail.
 
-// ponytail: ~15 min of log history; swap for Envio HyperSync if older asks/history matter.
-const WINDOW = 3_000n;
+// Blocks past the server's cached head we fetch ourselves (its response may be up to 30s old).
+const TAIL = 300n;
 const MIN_CHUNK = 100n;
 let chunk = MIN_CHUNK;
 // ponytail: scans newest MAX_IDS records per contract; add an indexer when usage outgrows it.
@@ -51,17 +51,26 @@ async function rawLogs(address: Address, from: bigint, to: bigint) {
   }
 }
 
-const cache = new Map<Address, { to: bigint; logs: Awaited<ReturnType<typeof rawLogs>> }>();
+const KIND = new Map<Address, string>([[addr.ausd, "transfers"], [addr.escrow, "escrow"], [addr.pot, "pot"], [addr.circle, "circle"]]);
 
-/** Every event of a Kin contract in the recent window, decoded, oldest first. */
+/**
+ * Logs of `address` since deploy via /api/history, plus a live RPC tail past the server's cached head, oldest first.
+ * For AUSD pass `me`: server returns only Transfers from/to `me` (the tail is unfiltered).
+ */
+export async function history(address: Address, me?: Address): Promise<Log[]> {
+  const [res, latest] = await Promise.all([
+    fetch(`/api/history?kind=${KIND.get(address)}${me ? `&address=${me}` : ""}`).then((r) => (r.ok ? r.json() : Promise.reject(new Error("history unavailable")))),
+    publicClient.getBlockNumber(),
+  ]);
+  const h = res as { logs: RpcLog[]; to: string };
+  const from = BigInt(h.to) + 1n > latest - TAIL ? BigInt(h.to) + 1n : latest - TAIL;
+  const tail = from <= latest ? await rawLogs(address, from, latest) : [];
+  return [...h.logs.map((l) => formatLog(l)), ...tail];
+}
+
+/** Every event of a Kin contract since deploy, decoded, oldest first. */
 async function events<const abi extends Abi>(address: Address, abi: abi) {
-  const latest = await publicClient.getBlockNumber();
-  const hit = cache.get(address);
-  const from = hit ? hit.to + 1n : latest > WINDOW ? latest - WINDOW : 0n;
-  const fresh = from <= latest ? await rawLogs(address, from, latest) : [];
-  const logs = [...(hit?.logs ?? []), ...fresh];
-  cache.set(address, { to: latest, logs });
-  return parseEventLogs({ abi, logs });
+  return parseEventLogs({ abi, logs: await history(address) });
 }
 
 /** Id emitted by the create call in tx `hash`. */
