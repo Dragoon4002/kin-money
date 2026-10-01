@@ -69,6 +69,14 @@
   --font-display: var(--font-serif);
 }
 
-html, body { background: var(--bg); color: var(--ink); }
+html, body { background: var(--bg); color: var(--ink); overscroll-behavior-x: none; }
 body { font-family: var(--font-jakarta), system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
 .tabular { font-variant-numeric: tabular-nums; }
+
+/* Tab page slide-in after a swipe/tab change (set by NavBar). */
+@keyframes kin-in-next { from { transform: translateX(28px); opacity: 0; } }
+@keyframes kin-in-prev { from { transform: translateX(-28px); opacity: 0; } }
+@media (prefers-reduced-motion: no-preference) {
+  html[data-navdir="next"] main { animation: kin-in-next 0.28s ease-out; }
+  html[data-navdir="prev"] main { animation: kin-in-prev 0.28s ease-out; }
+}
