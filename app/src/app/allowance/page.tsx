@@ -34,7 +34,7 @@ export default function AllowancePage() {
         <p className="text-muted">Money that grows in their balance every second. Stop it any time.</p>
         <ErrorText>{error}</ErrorText>
         {!data && !error && <Loading />}
-        {data && !data.length && <Empty icon="🌱" title="No allowances yet" sub="Start one for your kid studying abroad. They watch it grow, live." />}
+        {data && !data.length && <Empty icon="allowance" title="No allowances yet" sub="Start one for your kid studying abroad. They watch it grow, live." />}
       </Pad>
       {([["You give", giving], ["You get", getting]] as const).map(([label, list]) =>
         list.length > 0 && (

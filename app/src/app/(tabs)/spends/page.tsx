@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { NavBar } from "@/components/core/NavBar";
-import { Amount, Band, Screen } from "@/components/ui";
+import { Amount, Band, Ico, IconTile, Screen } from "@/components/ui";
 import { useRequireAccount } from "@/lib/account";
 import { loadActivity, type Item } from "@/lib/activity";
 import { categoryOf, type Category } from "@/lib/categories";
@@ -79,10 +78,10 @@ export default function Spends() {
     <>
       <Screen wide title="Spends" back="/activity">
         <div className="flex items-center justify-between px-3">
-          <button aria-label="Previous month" onClick={() => setMonth(month - 1)} className="grid size-11 place-items-center rounded-full text-2xl active:bg-surface-2">‹</button>
+          <button aria-label="Previous month" onClick={() => setMonth(month - 1)} className="grid size-11 place-items-center rounded-full active:bg-surface-2"><Ico name="chevron" size={24} className="rotate-180" /></button>
           <span suppressHydrationWarning className="font-semibold">{name}</span>
           <button aria-label="Next month" disabled={month >= monthKey(now)} onClick={() => setMonth(month + 1)}
-            className="grid size-11 place-items-center rounded-full text-2xl active:bg-surface-2 disabled:opacity-30">›</button>
+            className="grid size-11 place-items-center rounded-full active:bg-surface-2 disabled:opacity-30"><Ico name="chevron" size={24} /></button>
         </div>
 
         <div className="flex flex-col items-center gap-2 px-5 text-center">
@@ -100,7 +99,7 @@ export default function Spends() {
           <ul className="flex flex-col">
             {cats.map(({ cat, total: t }) => (
               <li key={cat.id} className="flex min-h-16 items-center gap-4 px-5 py-3">
-                <span className={`grid size-11 shrink-0 place-items-center rounded-full text-xl ${cat.bg}`} aria-hidden>{cat.emoji}</span>
+                <IconTile name={cat.icon} size={44} />
                 <span className="flex min-w-0 flex-1 flex-col gap-1.5">
                   <span className="flex justify-between gap-2">
                     <span className="font-semibold">{cat.label}</span>
@@ -108,7 +107,7 @@ export default function Spends() {
                   </span>
                   <span className="flex items-center gap-2">
                     <span className="h-2 flex-1 overflow-hidden rounded-full bg-surface-2">
-                      <span className={`block h-full rounded-full ${cat.bg}`} style={{ width: `${pct(t)}%` }} />
+                      <span className="block h-full rounded-full bg-brand" style={{ width: `${pct(t)}%` }} />
                     </span>
                     <span className="w-12 text-right text-xs text-muted tabular">{pct(t)}%</span>
                   </span>
@@ -118,7 +117,6 @@ export default function Spends() {
           </ul>
         </section>
       </Screen>
-      <NavBar />
     </>
   );
 }

@@ -3,7 +3,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import type { Address } from "viem";
 import { Loading, Status, Who, WhoAvatar, dateLabel, timeLeft, useAction, useLoad, useMe, useNow } from "@/components/programs/kit";
-import { Amount, Button, Card, Chip, ErrorText, Screen } from "@/components/ui";
+import { Amount, Button, Card, Chip, ErrorText, Ico, Screen } from "@/components/ui";
 import { KinEscrowAbi } from "@/lib/abi";
 import { addr } from "@/lib/chain";
 import { recordPayment } from "@/lib/contacts";
@@ -87,7 +87,7 @@ function Part({ e, n, many, me, iWork, onDone }: { e: Escrow; n: number; many: b
         <p className="text-sm text-muted">No reply in time — ready to pay out.</p>
       ) : (
         <div className="flex items-center justify-between text-sm">
-          <span className="text-muted">🔒 Held safely</span>
+          <span className="flex items-center gap-1.5 text-muted"><Ico name="safe" size={16} /> Held safely</span>
           <span className="font-medium tabular">Pays itself in {timeLeft(e.autoApproveAt - now)}</span>
         </div>
       )}

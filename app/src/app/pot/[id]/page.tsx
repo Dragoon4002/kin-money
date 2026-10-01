@@ -62,7 +62,7 @@ export default function PotDetail() {
     return (
       <Celebrate
         open
-        title="The pot is full! 🎉"
+        title="The pot is full!"
         amount={formatMoney(party)}
         subtitle="It's on its way to them. Everyone chipped in."
         shareText="Our family pot just filled up on Kin 🎉"

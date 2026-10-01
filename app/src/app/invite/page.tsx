@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { Kinko } from "@/components/kinko/Kinko";
-import { Button, Card, Screen } from "@/components/ui";
+import { Button, Card, Ico, Screen } from "@/components/ui";
 import { useRequireAccount } from "@/lib/account";
 import { noteInvite, useKinko } from "@/lib/kinko";
 
@@ -44,9 +44,9 @@ export default function Invite() {
           <span className="min-w-0 flex-1 truncate text-sm text-muted">{link.replace(/^https?:\/\//, "")}</span>
           <button
             onClick={() => navigator.clipboard.writeText(link).then(() => (noteInvite(), setCopied(true), setTimeout(() => setCopied(false), 2000)))}
-            className="h-11 shrink-0 rounded-full bg-surface-2 px-4 text-sm font-semibold active:scale-95"
+            className="flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-surface-2 px-4 text-sm font-semibold active:scale-95"
           >
-            {copied ? "Copied ✓" : "Copy"}
+            <Ico name={copied ? "check" : "copy"} size={16} /> {copied ? "Copied" : "Copy"}
           </button>
         </Card>
       )}
@@ -63,7 +63,7 @@ export default function Invite() {
           Invite on WhatsApp
         </a>
         <Button variant="ghost" disabled={!link} onClick={share}>
-          {copied ? "Copied ✓" : "More ways to share"}
+          <span className="inline-flex items-center gap-2"><Ico name={copied ? "check" : "share"} /> {copied ? "Copied" : "More ways to share"}</span>
         </Button>
       </div>
     </Screen>

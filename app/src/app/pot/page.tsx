@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { Address } from "viem";
 import { Empty, Loading, MoneyInput, Pad, Status, Who, WhoAvatar, useAction, useLoad, useMe } from "@/components/programs/kit";
 import { PersonPicker, type Person } from "@/components/PersonPicker";
-import { Band, Button, Chip, ErrorText, Ring, Row, Screen } from "@/components/ui";
+import { Band, Button, Chip, ErrorText, Ico, Ring, Row, Screen } from "@/components/ui";
 import { KinPotAbi } from "@/lib/abi";
 import { addr } from "@/lib/chain";
 import { formatMoney, fromLocal } from "@/lib/money";
@@ -25,7 +25,7 @@ export default function PotPage() {
         <p className="text-muted">Chip in together from anywhere. When the pot is full, it pays out by itself.</p>
         <ErrorText>{error}</ErrorText>
         {!data && !error && <Loading />}
-        {data && !data.length && <Empty icon="🏺" title="No pots yet" sub="Brothers and sisters abroad, one pot for Mum's monthly costs." />}
+        {data && !data.length && <Empty icon="pot" title="No pots yet" sub="Brothers and sisters abroad, one pot for Mum's monthly costs." />}
       </Pad>
       {!!data?.length && <Band>Your pots</Band>}
       {data?.map((p) => {
@@ -96,7 +96,7 @@ function NewPot({ me, onCancel }: { me?: Address; onCancel: () => void }) {
             aria-pressed={meToo}
             className={`flex h-11 items-center gap-2 rounded-full border px-4 text-sm font-medium ${meToo ? "border-brand bg-brand-soft text-brand" : "border-line text-muted"}`}
           >
-            {meToo ? "✓ " : ""}Me
+            {meToo && <Ico name="check" size={16} />}Me
           </button>
           {others.map((m) => (
             <span key={m} className="flex h-11 items-center gap-2 rounded-full border border-line bg-surface pl-1 pr-2">

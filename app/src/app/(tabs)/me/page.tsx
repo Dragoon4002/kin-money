@@ -2,9 +2,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useSyncExternalStore } from "react";
-import { NavBar } from "@/components/core/NavBar";
 import { Kinko } from "@/components/kinko/Kinko";
-import { Band, Button, Card, Row, Screen, Tabs } from "@/components/ui";
+import { Band, Button, Card, Ico, IconTile, Row, Screen, Tabs } from "@/components/ui";
 import { lock, signOut, useRequireAccount } from "@/lib/account";
 import { FX, getCurrency } from "@/lib/money";
 import { getTheme, setTheme, type Theme } from "@/lib/theme";
@@ -18,7 +17,11 @@ function setCurrency(c: string) {
   notify();
 }
 
-const names = new Intl.DisplayNames(undefined, { type: "currency" });
+// Static labels: Intl.DisplayNames differs between Node and browser ICU data → hydration mismatch.
+const CURRENCY_NAME: Record<string, string> = {
+  USD: "US dollar", INR: "Indian rupee", PHP: "Philippine peso", MXN: "Mexican peso",
+  NGN: "Nigerian naira", AED: "UAE dirham", GBP: "British pound", EUR: "Euro",
+};
 const THEMES = [["system", "System"], ["light", "Light"], ["dark", "Dark"]] as const;
 
 export default function Me() {
@@ -66,19 +69,18 @@ export default function Me() {
           <span className="flex-1 font-semibold">Currency</span>
           <select value={currency} onChange={(e) => setCurrency(e.target.value)}
             className="h-11 max-w-48 rounded-full border border-line bg-surface px-4 text-sm font-semibold text-ink outline-none focus:border-brand">
-            {Object.keys(FX).map((c) => <option key={c} value={c}>{names.of(c)}</option>)}
+            {Object.keys(FX).map((c) => <option key={c} value={c}>{CURRENCY_NAME[c] ?? c}</option>)}
           </select>
         </label>
         <p className="px-5 pb-3 text-xs text-muted">Your balance is kept in US dollars. We show it in the currency you pick.</p>
 
         <Band>Share</Band>
-        <Row href="/receive" icon={<Ico>▦</Ico>} title="My QR" sub="Scan to pay me" trail={<Chev />} />
-        <Row href="/invite" icon={<Ico>💌</Ico>} title="Invite & earn" sub="You both get a Kinko treat" trail={<Chev />} />
+        <Row href="/receive" icon={<IconTile name="qr" size={44} />} title="My QR" sub="Scan to pay me" trail={<Chev />} />
+        <Row href="/invite" icon={<IconTile name="invite" size={44} />} title="Invite & earn" sub="You both get a Kinko treat" trail={<Chev />} />
 
         <Band>Backup</Band>
         <p className="px-5 py-4 text-sm text-muted">
-          Your account is backed up with your phone&apos;s Face ID and password manager (iCloud Keychain or Google Password Manager).
-          On a new phone, open Kin and tap &ldquo;Already have Kin on another phone?&rdquo;.
+          {"Your account is backed up with your phone’s Face ID and password manager (iCloud Keychain or Google Password Manager). On a new phone, open Kin and tap “Already have Kin on another phone?”."}
         </p>
 
         <div className="mt-auto flex flex-col gap-2 px-5 pt-4">
@@ -96,12 +98,8 @@ export default function Me() {
           )}
         </div>
       </Screen>
-      <NavBar />
     </>
   );
 }
 
-const Ico = ({ children }: { children: string }) => (
-  <span className="grid size-10 place-items-center rounded-full bg-surface-2 text-lg" aria-hidden>{children}</span>
-);
-const Chev = () => <span className="text-2xl text-muted" aria-hidden>›</span>;
+const Chev = () => <Ico name="chevron" className="text-muted" />;

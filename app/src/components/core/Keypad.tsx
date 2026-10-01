@@ -1,4 +1,5 @@
 "use client";
+import { Ico } from "@/components/ui";
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "⌫"] as const;
 
@@ -20,7 +21,7 @@ export function Keypad({ value, onChange }: { value: string; onChange: (v: strin
         <button key={k} type="button" onClick={() => onChange(press(value, k))}
           aria-label={k === "⌫" ? "Delete" : k === "." ? "Decimal point" : k}
           className="h-16 rounded-2xl text-2xl font-semibold text-ink transition select-none active:scale-95 active:bg-surface-2">
-          {k}
+          {k === "⌫" ? <Ico name="backspace" size={26} className="mx-auto" /> : k}
         </button>
       ))}
     </div>

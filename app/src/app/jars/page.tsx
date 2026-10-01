@@ -3,7 +3,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { Address } from "viem";
 import { Empty, Loading, MoneyInput, Pad, Status, jarKey, jarMeta, setMeta, useAction, useLoad, useMe } from "@/components/programs/kit";
-import { Amount, Band, Button, Chip, ErrorText, Field, Ring, Row, Screen, inputClass } from "@/components/ui";
+import { Amount, Band, Button, Chip, ErrorText, Field, Ico, IconTile, Ring, Row, Screen, inputClass } from "@/components/ui";
+import type { IconName } from "@/lib/icons";
 import { KinPotAbi } from "@/lib/abi";
 import { addr } from "@/lib/chain";
 import { formatMoney, fromLocal } from "@/lib/money";
@@ -29,16 +30,16 @@ export default function JarsPage() {
         <ErrorText>{error}</ErrorText>
       </Pad>
       {!data && !error && <Loading />}
-      {data && !data.length && <Empty icon="🫙" title="No jars yet" sub="Saving for a bike, a trip or a phone? Give it a jar and watch it fill." />}
+      {data && !data.length && <Empty icon="jars" title="No jars yet" sub="Saving for a bike, a trip or a phone? Give it a jar and watch it fill." />}
       {!!data?.length && <Band>Your jars</Band>}
       {data?.map((p) => {
-        const { name, emoji } = jarMeta(p.id);
+        const { name, icon } = jarMeta(p.id);
         const pct = Number(p.balance) / Number(p.target);
         return (
           <Row
             key={String(p.id)}
             href={`/jars/${p.id}`}
-            icon={<span className="grid size-11 place-items-center rounded-full bg-surface-2 text-2xl">{emoji}</span>}
+            icon={<IconTile name={icon} />}
             title={name}
             sub={p.round > 0n ? <Chip tone="good">Goal reached ✓✓</Chip> : `${formatMoney(p.balance)} of ${formatMoney(p.target)}`}
             trail={
@@ -56,12 +57,14 @@ export default function JarsPage() {
   );
 }
 
-const EMOJIS = ["🫙", "🚲", "🎮", "📱", "✈️", "🎓", "👟", "🎁"];
+const GOALS: [IconName, string][] = [
+  ["jars", "Savings"], ["travel", "Travel"], ["education", "Study"], ["gifts", "Gifts"], ["rent", "Home"], ["shopping", "Shopping"], ["other", "Other"],
+];
 
 function NewJar({ me, onCancel }: { me?: Address; onCancel: () => void }) {
   const router = useRouter();
   const [name, setName] = useState("");
-  const [emoji, setEmoji] = useState(EMOJIS[0]);
+  const [icon, setIcon] = useState<IconName>("jars");
   const [goal, setGoal] = useState("");
   const { busy, status, error, run } = useAction();
   const value = Number(goal) > 0 ? fromLocal(goal) : 0n;
@@ -73,25 +76,26 @@ function NewJar({ me, onCancel }: { me?: Address; onCancel: () => void }) {
       const hash = await call(addr.pot, KinPotAbi, "create", [me, value, [me]]);
       say("Setting up your jar…");
       const id = await createdId(hash, KinPotAbi, "PotCreated");
-      setMeta(jarKey(id), { name: n, emoji });
+      setMeta(jarKey(id), { name: n, emoji: icon }); // `emoji` key kept so old jars still load
       router.push(`/jars/${id}`);
     });
   }
 
   return (
     <Screen title="New jar" action={<button onClick={onCancel} className="h-11 px-2 text-muted">Cancel</button>}>
-      <div className="grid size-24 place-items-center self-center rounded-full bg-surface-2 text-5xl">{emoji}</div>
+      <div className="self-center"><IconTile name={icon} size={96} tone="brand" /></div>
       <div className="flex flex-wrap justify-center gap-2" role="radiogroup" aria-label="Pick an icon">
-        {EMOJIS.map((e) => (
+        {GOALS.map(([k, label]) => (
           <button
-            key={e}
+            key={k}
             type="button"
             role="radio"
-            aria-checked={e === emoji}
-            onClick={() => setEmoji(e)}
-            className={`grid size-12 place-items-center rounded-full text-2xl transition active:scale-95 ${e === emoji ? "bg-ink" : "bg-surface-2"}`}
+            aria-checked={k === icon}
+            aria-label={label}
+            onClick={() => setIcon(k)}
+            className={`grid size-12 place-items-center rounded-2xl transition active:scale-95 ${k === icon ? "bg-ink text-bg" : "bg-surface-2 text-ink"}`}
           >
-            {e}
+            <Ico name={k} />
           </button>
         ))}
       </div>

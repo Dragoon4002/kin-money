@@ -4,7 +4,7 @@ import type { Address } from "viem";
 import { Choice, Empty, Loading, MoneyInput, Pad, Status, Who, WhoAvatar, dateLabel, timeLeft, useAction, useLoad, useMe, useNow } from "@/components/programs/kit";
 import { Celebrate } from "@/components/kinko/Celebrate";
 import { PersonPicker, type Person } from "@/components/PersonPicker";
-import { Band, Button, Card, Chip, Delivered, ErrorText, Field, Screen, inputClass } from "@/components/ui";
+import { Band, Button, Card, Chip, Delivered, ErrorText, Field, Ico, IconTile, Screen, inputClass } from "@/components/ui";
 import { KinEscrowAbi } from "@/lib/abi";
 import { addr } from "@/lib/chain";
 import { recordPayment } from "@/lib/contacts";
@@ -25,7 +25,7 @@ export default function GiftPage() {
     return (
       <Celebrate
         open
-        title="Your gift is open! 🎁"
+        title="Your gift is open!"
         amount={formatMoney(opened.amount)}
         subtitle="It's in your balance now."
         shareText="I just opened a gift on Kin 🎁"
@@ -42,7 +42,7 @@ export default function GiftPage() {
       <Pad className="flex flex-col gap-3">
         <ErrorText>{error}</ErrorText>
         {!data && !error && <Loading />}
-        {data && !data.length && <Empty icon="🎁" title="No gifts yet" sub="Send money that opens on their birthday, or when they graduate." />}
+        {data && !data.length && <Empty icon="gift" title="No gifts yet" sub="Send money that opens on their birthday, or when they graduate." />}
         {forMe.map((e) => <GiftCard key={String(e.id)} e={e} me={me} onOpened={() => { setOpened(e); reload(); }} onDone={reload} />)}
       </Pad>
       {rest.length > 0 && <Band>Sent or looked after by you</Band>}
@@ -74,7 +74,7 @@ function GiftCard({ e, me, onOpened, onDone }: { e: Escrow; me?: Address; onOpen
   return (
     <Card className={`relative flex flex-col gap-3 overflow-hidden ${mine && !e.settled ? "border-brand/40 bg-brand-soft" : ""}`}>
       <div className="flex items-center gap-3">
-        <span className={`text-4xl ${mine && canRelease(e, now) ? "animate-bounce" : ""}`}>{e.settled ? "💝" : locked ? "🎁" : "🎀"}</span>
+        <span className={mine && canRelease(e, now) ? "animate-bounce" : ""}><IconTile name={e.settled ? "celebrate" : locked ? "lock" : "gift"} /></span>
         <div className="min-w-0 flex-1">
           <p className="truncate font-semibold">
             {mine ? <>From <Who a={e.from} me={me} /></> : <>For <Who a={e.to} me={me} /></>}
@@ -83,7 +83,7 @@ function GiftCard({ e, me, onOpened, onDone }: { e: Escrow; me?: Address; onOpen
             {e.settled ? "Opened ✓✓" : locked ? `Opens ${dateLabel(e.unlockAt)}` : needsOk ? <>Waiting for <Who a={e.approver} me={me} you="your" />{same(e.approver, me) ? "" : "'s"} OK</> : "Ready to open"}
           </p>
         </div>
-        <p className="font-display text-2xl tabular">{mine && locked && !e.settled ? "🔒" : formatMoney(e.amount)}</p>
+        <p className="font-display text-2xl tabular">{mine && locked && !e.settled ? <span aria-label="Hidden until it opens"><Ico name="lock" size={24} /></span> : formatMoney(e.amount)}</p>
       </div>
       {!e.settled && locked && (
         <p className="text-center"><Chip>Opens in {timeLeft(e.unlockAt - now)}</Chip></p>
@@ -135,7 +135,7 @@ function NewGift({ me, onClose }: { me?: Address; onClose: () => void }) {
   if (done) {
     return (
       <Screen>
-        <Delivered title="🎁 Gift wrapped" subtitle={`@${to!.name} can open it on ${dateLabel(done)}${guard ? ` once @${guard.name} OKs it` : ""}. Until then it's held safely.`}>
+        <Delivered title="Gift wrapped" subtitle={`@${to!.name} can open it on ${dateLabel(done)}${guard ? ` once @${guard.name} OKs it` : ""}. Until then it's held safely.`}>
           <Button onClick={onClose}>Done</Button>
         </Delivered>
       </Screen>
@@ -144,7 +144,7 @@ function NewGift({ me, onClose }: { me?: Address; onClose: () => void }) {
 
   return (
     <Screen title="Send a gift" action={<button onClick={onClose} className="h-11 px-2 text-muted">Cancel</button>}>
-      <div className="flex items-center justify-center py-2 text-6xl">{to ? <WhoAvatar a={to.address} size={64} /> : "🎁"}</div>
+      <div className="flex items-center justify-center py-2">{to ? <WhoAvatar a={to.address} size={64} /> : <IconTile name="gift" size={64} tone="brand" />}</div>
       <PersonPicker label="Who is it for?" onPick={setTo} />
       <MoneyInput label="Amount" value={amount} onChange={setAmount} />
       <div className="flex flex-col gap-1.5">

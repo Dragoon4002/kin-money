@@ -45,3 +45,6 @@ Floating nav: **Home** `/home` (keypad) · **Money** `/money` · center **＋ Pa
 
 ## References
 Private screenshots in `references/` (gitignored, confidential — view for layout inspiration only; never copy assets, brand names, or personal data).
+
+## Icons
+Lucide only, via `lib/icons.ts` (`ICON` map) + `<Ico name>` / `<IconTile name>` from ui.tsx. No emoji or custom SVG for UI icons (Kinko artwork and user-typed notes excepted). Tiles: neutral `bg-surface-2 text-ink`; `tone="brand"` only for one primary item per screen. No multicolor fun-* backgrounds behind icons.

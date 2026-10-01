@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { erc20Abi, isAddressEqual, isHash, parseEventLogs, type Address, type Hex } from "viem";
 import { share } from "@/components/core/share";
 import { Kinko } from "@/components/kinko/Kinko";
-import { Amount, Band, Button, Card, Chip, Row, Screen } from "@/components/ui";
+import { Amount, Band, Button, Card, Chip, Ico, IconTile, Row, Screen } from "@/components/ui";
 import { useRequireAccount } from "@/lib/account";
 import { CATEGORIES, categoryOf, setCategory, noteOf } from "@/lib/categories";
 import { addr, explorerTx, publicClient } from "@/lib/chain";
@@ -44,12 +44,9 @@ function Copy({ text, what }: { text: string; what: string }) {
       className="grid size-11 place-items-center rounded-full text-muted active:bg-surface-2"
     >
       {done ? (
-        <span className="text-sm font-semibold text-good">✓</span>
+        <Ico name="check" className="text-good" />
       ) : (
-        <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden>
-          <rect x="8" y="8" width="12" height="12" rx="3" />
-          <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
-        </svg>
+        <Ico name="copy" />
       )}
     </button>
   );
@@ -117,10 +114,10 @@ export function Proof() {
         ) : fresh ? (
           <div className="relative">
             <Kinko mood="celebrate" size={56} />
-            <span className="absolute -bottom-1 -right-3 grid size-8 place-items-center rounded-full border-2 border-bg bg-good text-sm font-bold text-fun-ink">✓</span>
+            <span className="absolute -bottom-1 -right-3 grid size-8 place-items-center rounded-full border-2 border-bg bg-good text-fun-ink"><Ico name="check" size={16} /></span>
           </div>
         ) : (
-          <div className="grid size-16 place-items-center rounded-full bg-good text-2xl font-bold text-fun-ink">✓</div>
+          <div className="grid size-16 place-items-center rounded-full bg-good text-fun-ink"><Ico name="check" size={30} /></div>
         )}
         <div className="flex flex-col items-center gap-1">
           <span className="font-display text-3xl text-muted">{r.out ? "Paid" : "Received"}</span>
@@ -136,7 +133,7 @@ export function Proof() {
       {r.out && cat && (
         <section className="flex flex-col">
           <Row
-            icon={<span className={`grid size-11 place-items-center rounded-full text-xl ${cat.bg}`}>{cat.emoji}</span>}
+            icon={<IconTile name={cat.icon} size={44} />}
             title={cat.label}
             sub="Category"
             trail={
@@ -151,7 +148,7 @@ export function Proof() {
                 <button key={c.id} role="radio" aria-checked={cat.id === c.id}
                   onClick={() => (setCategory(hash, c.id), setCat(c), setEditing(false))}
                   className={`flex h-11 items-center gap-1.5 rounded-full px-4 text-sm font-semibold active:scale-95 ${cat.id === c.id ? "bg-ink text-bg" : "bg-surface-2 text-muted"}`}>
-                  <span aria-hidden>{c.emoji}</span> {c.label}
+                  <Ico name={c.icon} size={18} /> {c.label}
                 </button>
               ))}
             </div>

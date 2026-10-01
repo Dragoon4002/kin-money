@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { Address } from "viem";
 import { Choice, Empty, Loading, MoneyInput, Pad, Status, Who, WhoAvatar, useAction, useLoad, useMe } from "@/components/programs/kit";
 import { PersonPicker, type Person } from "@/components/PersonPicker";
-import { Band, Button, Card, Chip, ErrorText, Row, Screen } from "@/components/ui";
+import { Band, Button, Card, Chip, ErrorText, Ico, Row, Screen } from "@/components/ui";
 import { Kinko } from "@/components/kinko/Kinko";
 import { KinCircleAbi } from "@/lib/abi";
 import { addr } from "@/lib/chain";
@@ -31,7 +31,7 @@ export default function CirclePage() {
         <p className="text-muted">Friends put in the same amount each round. Each round, one person takes it all home.</p>
         <ErrorText>{error}</ErrorText>
         {!data && !error && <Loading />}
-        {data && !data.length && <Empty icon="🔄" title="No circles yet" sub="Save together like a chit fund or tanda — Kin keeps everyone's turn fair." />}
+        {data && !data.length && <Empty icon="circle" title="No circles yet" sub="Save together like a chit fund or tanda — Kin keeps everyone's turn fair." />}
       </Pad>
       {!!data?.length && <Band>Your circles</Band>}
       {data?.map((c) => {
@@ -109,8 +109,8 @@ function NewCircle({ me, onCancel }: { me?: Address; onCancel: () => void }) {
             <WhoAvatar a={m} size={32} />
             <span className="flex-1 truncate font-medium"><Who a={m} me={me} /></span>
             {value > 0n && <span className="text-xs text-muted">{formatMoney((n - 1n - BigInt(i)) * value)} deposit</span>}
-            {i > 1 && <button aria-label="Move up" onClick={() => move(i - 1, -1)} className="grid size-11 place-items-center text-muted">↑</button>}
-            {i > 0 && <button aria-label="Remove" onClick={() => setOthers(others.filter((x) => x !== m))} className="grid size-11 place-items-center text-muted">×</button>}
+            {i > 1 && <button aria-label="Move up" onClick={() => move(i - 1, -1)} className="grid size-11 place-items-center text-muted"><Ico name="chevron" className="-rotate-90" /></button>}
+            {i > 0 && <button aria-label="Remove" onClick={() => setOthers(others.filter((x) => x !== m))} className="grid size-11 place-items-center text-muted"><Ico name="close" /></button>}
           </div>
         ))}
         <div className="flex items-end gap-2">

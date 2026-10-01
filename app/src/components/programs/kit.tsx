@@ -6,7 +6,8 @@ import { humanError } from "@/lib/errors";
 import { FX, currencySymbol, getCurrency } from "@/lib/money";
 import { nameOf } from "@/lib/names";
 import { nowSec, same } from "@/lib/programs";
-import { Avatar, Field, inputClass } from "../ui";
+import { ICON, type IconName } from "@/lib/icons";
+import { Avatar, Field, IconTile, inputClass } from "../ui";
 
 // Shared bits for programmable-money screens (allowance, pot, circle, bills, invoices, gifts).
 
@@ -164,10 +165,10 @@ export function Status({ children }: { children?: ReactNode }) {
   return <p aria-live="polite" className="text-center text-sm text-muted">{children}</p>;
 }
 
-export function Empty({ icon, title, sub }: { icon: string; title: string; sub: string }) {
+export function Empty({ icon, title, sub }: { icon: IconName; title: string; sub: string }) {
   return (
     <div className="flex flex-col items-center gap-2 py-10 text-center">
-      <span className="text-5xl">{icon}</span>
+      <IconTile name={icon} size={64} />
       <p className="font-semibold">{title}</p>
       <p className="max-w-64 text-sm text-muted">{sub}</p>
     </div>
@@ -193,6 +194,9 @@ export function getMeta<T>(key: string): T | null {
 }
 export const setMeta = (key: string, v: unknown) => localStorage.setItem(key, JSON.stringify(v));
 
-export type JarMeta = { name: string; emoji: string };
+// Stored as `{name, emoji}` for old entries; `emoji` now holds an ICON key. Old emoji values fall back to "jars".
 export const jarKey = (id: bigint | string) => `kin.jar.${id}`;
-export const jarMeta = (id: bigint): JarMeta => getMeta<JarMeta>(jarKey(id)) ?? { name: "Savings jar", emoji: "🫙" };
+export function jarMeta(id: bigint): { name: string; icon: IconName } {
+  const m = getMeta<{ name?: string; emoji?: string }>(jarKey(id));
+  return { name: m?.name ?? "Savings jar", icon: m?.emoji && m.emoji in ICON ? (m.emoji as IconName) : "jars" };
+}

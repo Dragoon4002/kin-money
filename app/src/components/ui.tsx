@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { ICON, type IconName } from "@/lib/icons";
 
 // Kin UI kit. Colors ONLY via token classes (see globals.css). Mobile-first, 44px+ targets.
 
@@ -219,5 +220,26 @@ export function Delivered({ title, subtitle, children }: { title: string; subtit
       {subtitle && <p className="text-muted">{subtitle}</p>}
       <div className="mt-6 w-full">{children}</div>
     </div>
+  );
+}
+
+/** Inline Lucide icon from the Kin vocabulary (lib/icons.ts). Inherits text color. */
+export function Ico({ name, size = 20, className = "" }: { name: IconName; size?: number; className?: string }) {
+  const I = ICON[name];
+  return <I size={size} strokeWidth={1.75} aria-hidden className={className} />;
+}
+
+/**
+ * The ONE icon container for cards, rows and tiles. Uniform size/shape/color everywhere.
+ * tone "neutral" (default) for lists; "brand" only for the single primary item on a screen.
+ */
+export function IconTile({ name, size = 48, tone = "neutral" }: { name: IconName; size?: number; tone?: "neutral" | "brand" }) {
+  return (
+    <span
+      className={`grid shrink-0 place-items-center rounded-2xl ${tone === "brand" ? "bg-brand-soft text-brand" : "bg-surface-2 text-ink"}`}
+      style={{ width: size, height: size }}
+    >
+      <Ico name={name} size={Math.round(size * 0.46)} />
+    </span>
   );
 }

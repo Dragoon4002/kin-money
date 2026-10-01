@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Avatar, Button, Chip, ErrorText, Screen } from "@/components/ui";
+import { Avatar, Button, Chip, ErrorText, IconTile, Screen } from "@/components/ui";
 import { Bubble, SkeletonRows, useSignedIn } from "@/components/social/bits";
 import { listRequests, recordPayment, settleRequest, type MoneyRequest } from "@/lib/contacts";
 import { humanError } from "@/lib/errors";
@@ -82,7 +82,7 @@ export default function RequestsPage() {
 
       {lists && !lists.incoming.length && !lists.outgoing.length && (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
-          <p className="text-4xl">💬</p>
+          <IconTile name="request" size={64} />
           <p className="font-semibold">No requests yet</p>
           <p className="text-sm text-muted">When someone asks you for money, it shows up here.</p>
         </div>

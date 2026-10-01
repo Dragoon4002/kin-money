@@ -1,18 +1,20 @@
+import type { IconName } from "@/lib/icons";
+
 // Spend categories + per-payment labels (category, note) kept on this device only.
 // ponytail: localStorage per payment; move to /api/contacts graph if labels must sync across devices.
 
 export const CATEGORIES = [
-  { id: "food", label: "Food", emoji: "🍔", bg: "bg-fun-2" },
-  { id: "groceries", label: "Groceries", emoji: "🛒", bg: "bg-fun-1" },
-  { id: "bills", label: "Bills", emoji: "💡", bg: "bg-fun-5" },
-  { id: "rent", label: "Rent", emoji: "🏠", bg: "bg-fun-3" },
-  { id: "family", label: "Family", emoji: "👨‍👩‍👧", bg: "bg-fun-4" },
-  { id: "education", label: "Education", emoji: "📚", bg: "bg-fun-5" },
-  { id: "travel", label: "Travel", emoji: "✈️", bg: "bg-fun-1" },
-  { id: "shopping", label: "Shopping", emoji: "🛍️", bg: "bg-fun-4" },
-  { id: "gifts", label: "Gifts", emoji: "🎁", bg: "bg-fun-3" },
-  { id: "other", label: "Other", emoji: "✨", bg: "bg-fun-2" },
-] as const;
+  { id: "food", label: "Food", icon: "food" },
+  { id: "groceries", label: "Groceries", icon: "groceries" },
+  { id: "bills", label: "Bills", icon: "bills" },
+  { id: "rent", label: "Rent", icon: "rent" },
+  { id: "family", label: "Family", icon: "family" },
+  { id: "education", label: "Education", icon: "education" },
+  { id: "travel", label: "Travel", icon: "travel" },
+  { id: "shopping", label: "Shopping", icon: "shopping" },
+  { id: "gifts", label: "Gifts", icon: "gifts" },
+  { id: "other", label: "Other", icon: "other" },
+] as const satisfies readonly { id: string; label: string; icon: IconName }[];
 
 export type Category = (typeof CATEGORIES)[number];
 export type CategoryId = Category["id"];

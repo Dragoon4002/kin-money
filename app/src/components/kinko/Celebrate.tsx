@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { Ico } from "../ui";
 import { Kinko, type Look } from "./Kinko";
 
 // Full-screen celebration: confetti + Kinko cheering + serif headline. Reserve for real wins.
@@ -66,7 +67,7 @@ export function Celebrate({ open, title, amount, subtitle, onClose, shareText, s
 
       <div className="relative mx-auto flex h-full max-w-md flex-col px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
         <button onClick={onClose} aria-label="Close" className="-ml-1 grid size-11 place-items-center rounded-full text-xl font-bold active:scale-95" style={{ background: "var(--kinko-ink)" }}>
-          ✕
+          <Ico name="close" />
         </button>
 
         <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
@@ -93,7 +94,7 @@ export function Celebrate({ open, title, amount, subtitle, onClose, shareText, s
         </div>
 
         <button onClick={share} className="h-14 w-full rounded-full text-base font-semibold transition active:scale-[0.98]" style={{ background: "var(--kinko-ink)" }}>
-          {copied ? "Copied ✓" : "Share to friends"}
+          {copied ? <span className="inline-flex items-center gap-2"><Ico name="check" /> Copied</span> : "Share to friends"}
         </button>
       </div>
     </div>

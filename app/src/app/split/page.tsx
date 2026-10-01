@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { PersonPicker, type Person } from "@/components/PersonPicker";
 import { AmountInput, useSignedIn } from "@/components/social/bits";
-import { Avatar, Button, Card, Delivered, ErrorText, Field, Screen, inputClass } from "@/components/ui";
+import { Avatar, Button, Card, Delivered, ErrorText, Field, Ico, Screen, inputClass } from "@/components/ui";
 import { createRequest } from "@/lib/contacts";
 import { humanError } from "@/lib/errors";
 import { formatMoney, fromLocal } from "@/lib/money";
@@ -73,7 +73,7 @@ export default function SplitPage() {
                 aria-label={`Remove @${p.name}`}
                 className="flex h-11 items-center gap-2 rounded-full bg-brand-soft pl-1.5 pr-3 text-sm font-medium text-brand active:scale-95"
               >
-                <Avatar name={p.name} size={32} /> @{p.name} <span aria-hidden>✕</span>
+                <Avatar name={p.name} size={32} /> @{p.name} <Ico name="close" size={16} />
               </button>
             </li>
           ))}

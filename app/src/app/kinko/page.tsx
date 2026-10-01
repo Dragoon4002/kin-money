@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { Kinko, type Look } from "@/components/kinko/Kinko";
-import { Button, Ring, Screen, Tabs } from "@/components/ui";
+import { Button, Ico, Ring, Screen, Tabs } from "@/components/ui";
 import { useRequireAccount } from "@/lib/account";
 import { ITEMS, LEVELS, useKinko, type Item, type ItemKind } from "@/lib/kinko";
 
@@ -70,21 +70,22 @@ export default function Closet() {
                 <Kinko size={64} look={item.kind === "accessory" ? { skin: look.skin, expression: "smile", accessories: [item.id] } : apply({ ...look, accessories: [] }, item)} />
               </span>
               <span className="text-xs font-semibold">{item.label}</span>
-              {!open && <span className="absolute right-2 top-2 text-sm" aria-hidden>🔒</span>}
+              {!open && <span className="absolute right-2 top-2 text-muted"><Ico name="lock" size={16} /></span>}
             </button>
           );
         })}
       </div>
 
       {picked && !k.unlocked.has(picked.id) && (
-        <p className="rounded-2xl bg-surface-2 px-4 py-3 text-sm text-muted">
-          🔒 <span className="font-semibold text-ink">{picked.label}</span> · {picked.hint}
+        <p className="flex items-center gap-2 rounded-2xl bg-surface-2 px-4 py-3 text-sm text-muted">
+          <Ico name="lock" size={16} className="shrink-0" />
+          <span className="min-w-0"><span className="font-semibold text-ink">{picked.label}</span> · {picked.hint}</span>
         </p>
       )}
 
       <div className="sticky bottom-[max(1rem,env(safe-area-inset-bottom))] mt-auto pt-2">
         <Button variant="ink" disabled={!changed || locked.length > 0} onClick={() => (k.setLook(look), setDraft(null), setPicked(null))}>
-          {locked.length ? `Unlock ${locked[0].label} to wear` : changed ? "Wear ✨" : "Wearing ✓"}
+          {locked.length ? `Unlock ${locked[0].label} to wear` : <span className="inline-flex items-center gap-2"><Ico name={changed ? "sparkle" : "check"} /> {changed ? "Wear" : "Wearing"}</span>}
         </Button>
       </div>
     </Screen>

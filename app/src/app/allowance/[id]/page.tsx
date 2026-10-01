@@ -2,7 +2,7 @@
 import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Loading, MoneyInput, Pad, Sheet, Status, Who, WhoAvatar, dateLabel, localParts, useAction, useLoad, useMe } from "@/components/programs/kit";
-import { Band, Button, Card, Chip, ErrorText, Row, Screen } from "@/components/ui";
+import { Band, Button, Card, Chip, ErrorText, Ico, Row, Screen } from "@/components/ui";
 import { KinEscrowAbi, KinStreamAbi } from "@/lib/abi";
 import { addr } from "@/lib/chain";
 import { recordPayment } from "@/lib/contacts";
@@ -204,7 +204,7 @@ function Emergency({ s, me, reserve, asked, isPayer, onDone }: { s: Stream; me?:
     return (
       <Card className="flex flex-col gap-3">
         <div>
-          <p className="font-semibold">🛟 Emergency fund</p>
+          <p className="flex items-center gap-2 font-semibold"><Ico name="emergency" /> Emergency fund</p>
           <p className="text-sm text-muted">
             Put some aside that <Who a={s.payee} me={me} /> can ask for in a pinch. You send it with one Face ID. Unused, it comes back to you in 30 days.
           </p>
@@ -224,12 +224,12 @@ function Emergency({ s, me, reserve, asked, isPayer, onDone }: { s: Stream; me?:
       <Card className={`flex flex-col gap-3 ${asked ? "border-brand bg-brand-soft" : ""}`}>
         {asked ? (
           <>
-            <p className="text-lg font-bold">🚨 <Who a={s.payee} me={me} /> needs help</p>
+            <p className="flex items-center gap-2 text-lg font-bold"><Ico name="emergency" /> <span><Who a={s.payee} me={me} /> needs help</span></p>
             <p className="text-sm text-muted">They asked for the emergency fund.</p>
           </>
         ) : (
           <>
-            <p className="font-semibold">🛟 Emergency fund</p>
+            <p className="flex items-center gap-2 font-semibold"><Ico name="emergency" /> Emergency fund</p>
             <p className="text-sm text-muted">
               {formatMoney(reserve.amount)} held safely. <Who a={s.payee} me={me} /> can ask for it any time.
             </p>
@@ -245,7 +245,7 @@ function Emergency({ s, me, reserve, asked, isPayer, onDone }: { s: Stream; me?:
   const waiting = asked || note === "asked";
   return (
     <Card className="flex flex-col gap-3">
-      <p className="font-semibold">🛟 {formatMoney(reserve.amount)} emergency fund</p>
+      <p className="flex items-center gap-2 font-semibold"><Ico name="emergency" /> {formatMoney(reserve.amount)} emergency fund</p>
       {waiting ? (
         <p className="rounded-2xl bg-warn/10 px-4 py-3 text-sm font-medium text-warn">
           <Who a={s.payer} me={me} /> has been asked. It arrives the moment they tap send.

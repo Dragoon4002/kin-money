@@ -4,7 +4,7 @@ import type { Address } from "viem";
 import { useAccount } from "@/lib/account";
 import { recentPeople } from "@/lib/contacts";
 import { resolveName } from "@/lib/names";
-import { Avatar, inputClass } from "./ui";
+import { Avatar, Ico, inputClass } from "./ui";
 
 export type Person = { address: Address; name: string };
 
@@ -85,7 +85,7 @@ export function PersonPicker({ label = "To", onPick }: { label?: string; onPick:
           {miss && <span className="text-xs text-muted">No one on Kin with that name yet.</span>}
           {found && q && (
             <span className="flex items-center gap-3 rounded-2xl bg-good/10 px-3 py-2 text-sm font-semibold">
-              <Avatar name={found.name} size={28} /> @{found.name} <span className="ml-auto text-good">✓</span>
+              <Avatar name={found.name} size={28} /> @{found.name} <Ico name="check" className="ml-auto text-good" />
             </span>
           )}
         </label>

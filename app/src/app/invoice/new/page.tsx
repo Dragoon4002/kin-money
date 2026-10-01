@@ -5,7 +5,7 @@ import { isAddress } from "viem";
 import Link from "next/link";
 import { Loading, Status, Who, WhoAvatar, useAction, useLoad } from "@/components/programs/kit";
 import { useAccount } from "@/lib/account";
-import { Amount, Button, Card, ErrorText, Screen } from "@/components/ui";
+import { Amount, Button, Card, ErrorText, Ico, Screen } from "@/components/ui";
 import { KinEscrowAbi } from "@/lib/abi";
 import { addr } from "@/lib/chain";
 import { recordPayment } from "@/lib/contacts";
@@ -74,15 +74,16 @@ function PayInvoice() {
           {parts.map((p, i) => (
             <li key={i} className="flex h-14 items-center justify-between rounded-full border border-line bg-surface px-5">
               <span className="flex items-center gap-2">
-                {i < held.length ? <span className="text-good">✓</span> : <span className="text-muted">{i + 1}</span>} Part {i + 1}
+                {i < held.length ? <Ico name="check" size={16} className="text-good" /> : <span className="text-muted">{i + 1}</span>} Part {i + 1}
               </span>
               <span className="font-display text-xl tabular">{formatMoney(p)}</span>
             </li>
           ))}
         </ol>
       )}
-      <p className="text-sm text-muted">
-        🔒 Your money is held safely. It reaches them only when you OK the work — or automatically {days} days after you pay if you don&apos;t reply.
+      <p className="flex gap-2 text-sm text-muted">
+        <Ico name="safe" size={18} className="mt-0.5 shrink-0" />
+        Your money is held safely. It reaches them only when you OK the work — or automatically {days} days after you pay if you don&apos;t reply.
       </p>
       <ErrorText>{self ? "This is your own invoice — send the link to your client." : error}</ErrorText>
       <div className="mt-auto flex flex-col gap-2 pt-4">

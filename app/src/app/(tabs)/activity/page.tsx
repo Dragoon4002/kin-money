@@ -3,8 +3,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import type { Address } from "viem";
 import { ActivityRow } from "@/components/core/ActivityRow";
-import { NavBar } from "@/components/core/NavBar";
-import { Band, Button, ErrorText, Row, Screen, Tabs, funBg } from "@/components/ui";
+import { Band, Button, ErrorText, Ico, IconTile, Row, Screen, Tabs, funBg } from "@/components/ui";
 import { useRequireAccount } from "@/lib/account";
 import { ago, loadActivity, type Item } from "@/lib/activity";
 import { categoryOf } from "@/lib/categories";
@@ -29,11 +28,11 @@ async function pendingLinks(me: Address): Promise<Pending[]> {
 /** Bright card for a recent payment. */
 function Moment({ item }: { item: Item }) {
   const out = item.dir === "out";
-  const emoji = out ? categoryOf(item.hash).emoji : "💌";
+  const icon = out ? categoryOf(item.hash).icon : "request";
   return (
     <Link href={`/details?tx=${item.hash}`}
       className={`flex h-40 w-36 shrink-0 snap-start flex-col justify-between rounded-[28px] p-4 text-fun-ink active:scale-[0.97] transition ${funBg(item.who)}`}>
-      <span className="text-3xl" aria-hidden>{emoji}</span>
+      <Ico name={icon} size={28} />
       <span className="flex flex-col gap-1">
         <span className="font-display text-2xl leading-none tabular">{formatMoney(item.amount)}</span>
         <span className="line-clamp-2 text-sm font-semibold leading-tight">{out ? `paid to ${item.who}` : `from ${item.who}`}</span>
@@ -99,7 +98,7 @@ export default function Activity() {
             <Band>Links waiting to be collected</Band>
             {links.map((l) => (
               <Row key={l.id.toString()}
-                icon={<span className="grid size-11 place-items-center rounded-full bg-surface-2 text-xl" aria-hidden>🔗</span>}
+                icon={<IconTile name="link" size={44} />}
                 title={formatMoney(l.amount)}
                 sub={l.expired ? `Not collected · expired ${l.when}` : `You can take it back ${l.when}`}
                 trail={l.expired && (
@@ -127,7 +126,6 @@ export default function Activity() {
           )}
         </section>
       </Screen>
-      <NavBar />
     </>
   );
 }

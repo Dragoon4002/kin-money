@@ -6,7 +6,7 @@ import type { Hex } from "viem";
 import { share } from "@/components/core/share";
 import { PersonPicker, type Person } from "@/components/PersonPicker";
 import { AmountInput } from "@/components/social/bits";
-import { Avatar, Button, Delivered, ErrorText, inputClass, Screen, Tabs } from "@/components/ui";
+import { Avatar, Button, Delivered, ErrorText, Ico, inputClass, Screen, Tabs } from "@/components/ui";
 import { getAccount, isUnlocked, useRequireAccount } from "@/lib/account";
 import { getBalance } from "@/lib/activity";
 import { CATEGORIES, setCategory, setNote, type CategoryId } from "@/lib/categories";
@@ -100,8 +100,8 @@ export function SendForm() {
         <Delivered title="Your link is ready" subtitle={`${money} is held safely for 7 days. Whoever opens the link can collect it.`}>
           <div className="flex flex-col gap-2">
             <a href={`https://wa.me/?text=${encodeURIComponent(`${text} ${link.url}`)}`} target="_blank" rel="noreferrer"
-              className="grid h-14 place-items-center rounded-full bg-good font-semibold text-fun-ink active:scale-[0.98]">
-              Send on WhatsApp
+              className="flex h-14 items-center justify-center gap-2 rounded-full bg-good font-semibold text-fun-ink active:scale-[0.98]">
+              <Ico name="share" /> Send on WhatsApp
             </a>
             <Button variant="soft" onClick={async () => (await share(text, link.url)) === "copied" && setCopied(true)}>
               {copied ? "Link copied ✓" : "Share another way"}
@@ -167,7 +167,7 @@ export function SendForm() {
           {CATEGORIES.map((c) => (
             <button key={c.id} type="button" role="radio" aria-checked={cat === c.id} onClick={() => setCat(cat === c.id ? null : c.id)}
               className={`flex h-11 shrink-0 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition active:scale-95 ${cat === c.id ? "bg-ink text-bg" : "bg-surface-2 text-muted"}`}>
-              <span aria-hidden>{c.emoji}</span> {c.label}
+              <Ico name={c.icon} size={18} /> {c.label}
             </button>
           ))}
         </div>

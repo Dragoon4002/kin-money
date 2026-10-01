@@ -29,7 +29,7 @@ export default function InvoicePage() {
         <p className="text-muted">Get paid for your work. Your client&apos;s money is held safely until they OK each part.</p>
         <ErrorText>{error}</ErrorText>
         {!data && !error && <Loading />}
-        {data && !data.length && <Empty icon="🧾" title="No invoices yet" sub="Send a client a pay link. If they go quiet, you still get paid." />}
+        {data && !data.length && <Empty icon="invoice" title="No invoices yet" sub="Send a client a pay link. If they go quiet, you still get paid." />}
       </Pad>
       {groups.size > 0 && <Band>Your invoices</Band>}
       {[...groups.values()].map((list) => {

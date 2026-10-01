@@ -4,7 +4,7 @@ import type { Address } from "viem";
 import { Choice, Empty, Loading, MoneyInput, Pad, Status, Who, getMeta, setMeta, useAction, useLoad, useMe, useNow } from "@/components/programs/kit";
 import { Kinko } from "@/components/kinko/Kinko";
 import { PersonPicker, type Person } from "@/components/PersonPicker";
-import { Amount, Band, Button, Chip, Delivered, ErrorText, Field, Row, Screen, inputClass } from "@/components/ui";
+import { Amount, Band, Button, Chip, Delivered, ErrorText, Field, IconTile, Row, Screen, inputClass } from "@/components/ui";
 import { KinEscrowAbi } from "@/lib/abi";
 import { addr } from "@/lib/chain";
 import { recordPayment } from "@/lib/contacts";
@@ -64,7 +64,7 @@ export default function ChoresPage() {
         <ErrorText>{error}</ErrorText>
       </Pad>
       {!data && !error && <Loading />}
-      {data && !all.length && <Empty icon="🧹" title="No chores yet" sub="Post a chore with a reward. They tap “I did it!”, you check and pay." />}
+      {data && !all.length && <Empty icon="chores" title="No chores yet" sub="Post a chore with a reward. They tap “I did it!”, you check and pay." />}
 
       {check.length > 0 && (
         <section>
@@ -84,7 +84,7 @@ export default function ChoresPage() {
           {paid.map((e) => (
             <Row
               key={String(e.id)}
-              icon={<span className="grid size-11 place-items-center rounded-full bg-good/15 text-xl">✓</span>}
+              icon={<IconTile name="check" />}
               title={titleOf(e.id)}
               sub={same(e.to, me) ? <>From <Who a={e.from} me={me} /></> : <Who a={e.to} me={me} />}
               trail={<span className="font-display text-2xl tabular text-good">+{formatMoney(e.amount)}</span>}
@@ -132,7 +132,7 @@ function Chore({ e, me, done, onDone }: { e: Escrow; me?: Address; done: boolean
   return (
     <div>
       <Row
-        icon={<span className="grid size-11 place-items-center rounded-full bg-surface-2 text-xl">🧹</span>}
+        icon={<IconTile name="chores" />}
         title={<>{titleOf(e.id)} · <span className="font-display text-xl tabular">{formatMoney(e.amount)}</span></>}
         sub={
           busy ? status

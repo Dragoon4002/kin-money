@@ -4,7 +4,7 @@ import { useEffect, type ReactNode } from "react";
 import { zeroHash, type Address } from "viem";
 import { Loading, Pad, Status, Who, useAction, useLoad, useMe, useNow } from "@/components/programs/kit";
 import { Kinko, type Mood } from "@/components/kinko/Kinko";
-import { Amount, Band, Button, Chip, Countdown, ErrorText, Row, Screen } from "@/components/ui";
+import { Amount, Band, Button, Chip, Countdown, ErrorText, Ico, Row, Screen } from "@/components/ui";
 import { KinCircleAbi } from "@/lib/abi";
 import { addr } from "@/lib/chain";
 import { recordPayment } from "@/lib/contacts";
@@ -92,7 +92,7 @@ export default function CircleDetail() {
         ) : phase === "stalled" ? (
           <p className="text-muted">Not everyone joined in time. Deposits go back to whoever joined.</p>
         ) : (
-          <p className="font-display text-3xl">Everyone had their turn 🎉</p>
+          <p className="font-display text-3xl">Everyone had their turn</p>
         )}
       </Pad>
 
@@ -106,7 +106,7 @@ export default function CircleDetail() {
               key={m.address}
               icon={
                 <span className={`grid size-9 shrink-0 place-items-center rounded-full text-sm font-bold ${isTurn ? "bg-brand text-brand-ink" : past ? "bg-good/15 text-good" : "bg-surface-2 text-muted"}`}>
-                  {past ? "✓" : i + 1}
+                  {past ? <Ico name="check" size={16} /> : i + 1}
                 </span>
               }
               title={<Who a={m.address} me={me} />}
@@ -182,7 +182,7 @@ function Table({ c, phase, me }: { c: Circle; phase: CirclePhase; me?: Address }
               </span>
               {(ok || m.defaulted) && (
                 <span className={`absolute -bottom-0.5 -right-0.5 grid size-5 place-items-center rounded-full border-2 border-bg text-[10px] font-bold text-fun-ink ${m.defaulted ? "bg-bad" : "bg-good"}`}>
-                  {m.defaulted ? "!" : "✓"}
+                  {m.defaulted ? "!" : <Ico name="check" size={12} />}
                 </span>
               )}
             </div>

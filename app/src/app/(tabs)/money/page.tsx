@@ -1,24 +1,25 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { MeButton, NavBar } from "@/components/core/NavBar";
-import { Amount, Button, Chip, ErrorText, Screen } from "@/components/ui";
+import { MeButton } from "@/components/core/NavBar";
+import { Amount, Button, Chip, ErrorText, Ico, IconTile, Screen } from "@/components/ui";
 import { useRequireAccount } from "@/lib/account";
 import { getBalance } from "@/lib/activity";
 import { publicClient } from "@/lib/chain";
 import { humanError } from "@/lib/errors";
+import type { IconName } from "@/lib/icons";
 import { formatMoney, getCurrency } from "@/lib/money";
 import { accrued, isJar, listCircles, listEscrows, listPots, listStreams, nowSec, same } from "@/lib/programs";
 import type { Address } from "viem";
 
-type Pocket = { key: string; title: string; href: string; icon: string; tone: string; idle: string };
+type Pocket = { key: IconName; title: string; href: string; idle: string };
 
 const POCKETS: Pocket[] = [
-  { key: "allowance", title: "Live allowance", href: "/allowance", icon: "🌱", tone: "bg-fun-1", idle: "Grows every second" },
-  { key: "jars", title: "Savings jars", href: "/jars", icon: "🫙", tone: "bg-fun-2", idle: "Save toward something big" },
-  { key: "pot", title: "Family pots", href: "/pot", icon: "🏠", tone: "bg-fun-4", idle: "Chip in together" },
-  { key: "circle", title: "Circles", href: "/circle", icon: "🔄", tone: "bg-fun-3", idle: "Save as a group, take turns" },
-  { key: "chores", title: "Chores", href: "/chores", icon: "🧹", tone: "bg-fun-5", idle: "Earn for helping out" },
+  { key: "allowance", title: "Live allowance", href: "/allowance", idle: "Grows every second" },
+  { key: "jars", title: "Savings jars", href: "/jars", idle: "Save toward something big" },
+  { key: "pot", title: "Family pots", href: "/pot", idle: "Chip in together" },
+  { key: "circle", title: "Circles", href: "/circle", idle: "Save as a group, take turns" },
+  { key: "chores", title: "Chores", href: "/chores", idle: "Earn for helping out" },
 ];
 
 const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
@@ -129,7 +130,7 @@ export default function Money() {
         <div className="flex flex-col gap-3">
           {POCKETS.map((p) => (
             <Link key={p.key} href={p.href} className="flex min-h-20 items-center gap-4 rounded-[24px] border border-line bg-surface p-4 transition active:scale-[0.98]">
-              <span className={`grid size-12 shrink-0 place-items-center rounded-2xl text-2xl ${p.tone}`} aria-hidden>{p.icon}</span>
+              <IconTile name={p.key} />
               <span className="min-w-0 flex-1">
                 <span className="block font-semibold">{p.title}</span>
                 {live === null ? (
@@ -138,12 +139,11 @@ export default function Money() {
                   <span className={`block truncate text-sm ${live[p.key] ? "text-ink" : "text-muted"}`}>{live[p.key] ?? p.idle}</span>
                 )}
               </span>
-              <span className="text-2xl text-muted" aria-hidden>›</span>
+              <Ico name="chevron" className="text-muted" />
             </Link>
           ))}
         </div>
       </Screen>
-      <NavBar />
     </>
   );
 }

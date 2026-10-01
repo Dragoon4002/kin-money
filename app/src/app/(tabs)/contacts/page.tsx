@@ -1,9 +1,9 @@
 "use client";
-import { NavBar } from "@/components/core/NavBar";
 import { useEffect, useState } from "react";
 import { PersonPicker, type Person } from "@/components/PersonPicker";
 import { PersonRow, Section, SkeletonRows, useSignedIn } from "@/components/social/bits";
-import { Button, Card, ErrorText, Field, Screen, inputClass } from "@/components/ui";
+import { Button, Card, ErrorText, Field, IconTile, Screen, inputClass } from "@/components/ui";
+import { unlock, useAccount } from "@/lib/account";
 import { addContact, listContacts, type Phonebook } from "@/lib/contacts";
 import { humanError } from "@/lib/errors";
 import { formatMoney } from "@/lib/money";
@@ -12,6 +12,7 @@ const sendTo = (p: Person) => `/send?to=${encodeURIComponent(p.name)}`;
 
 export default function ContactsPage() {
   useSignedIn();
+  const { unlocked } = useAccount();
   const [book, setBook] = useState<Phonebook | null>(null);
   const [err, setErr] = useState("");
   const [adding, setAdding] = useState(false);
@@ -19,9 +20,10 @@ export default function ContactsPage() {
   const [label, setLabel] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // Loading people needs a signed request — only when unlocked, so swiping here never pops Face ID.
   useEffect(() => {
-    listContacts().then(setBook, (e) => setErr(humanError(e)));
-  }, []);
+    if (unlocked) listContacts().then(setBook, (e) => setErr(humanError(e)));
+  }, [unlocked]);
 
   async function save(p: Person, nick: string) {
     setErr("");
@@ -62,7 +64,6 @@ export default function ContactsPage() {
     <Screen
       wide
       title="People"
-      back="/home"
       action={
         !adding && (
           <button onClick={() => setAdding(true)} className="h-11 rounded-full bg-brand-soft px-4 text-sm font-semibold text-brand active:scale-95">
@@ -71,6 +72,13 @@ export default function ContactsPage() {
         )
       }
     >
+      {!unlocked && (
+        <Card className="mx-5 flex flex-col items-center gap-3 text-center">
+          <p className="font-semibold">Your people are private</p>
+          <p className="text-sm text-muted">Confirm with Face ID to see them.</p>
+          <Button onClick={() => unlock().catch((e) => setErr(humanError(e)))}>Show my people</Button>
+        </Card>
+      )}
       {adding && (
         <Card className="mx-5 flex flex-col gap-4">
           <PersonPicker label="Who?" onPick={setPerson} />
@@ -94,7 +102,7 @@ export default function ContactsPage() {
 
       {empty && !adding && (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 px-5 text-center">
-          <p className="text-4xl">👋</p>
+          <IconTile name="people" />
           <p className="font-semibold">No one here yet</p>
           <p className="text-sm text-muted">Add the people you send money to.</p>
         </div>
@@ -134,7 +142,6 @@ export default function ContactsPage() {
         </Section>
       )}
     </Screen>
-    <NavBar />
     </>
   );
 }

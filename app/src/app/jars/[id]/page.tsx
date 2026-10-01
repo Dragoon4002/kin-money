@@ -3,7 +3,7 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import { Loading, MoneyInput, Pad, Sheet, Status, jarMeta, useAction, useLoad, useMe } from "@/components/programs/kit";
 import { Celebrate } from "@/components/kinko/Celebrate";
-import { Amount, Band, Button, Chip, ErrorText, Ring, Row, Screen } from "@/components/ui";
+import { Amount, Band, Button, Chip, ErrorText, IconTile, Ring, Row, Screen } from "@/components/ui";
 import { KinPotAbi } from "@/lib/abi";
 import { addr } from "@/lib/chain";
 import { formatMoney, fromLocal } from "@/lib/money";
@@ -27,7 +27,7 @@ export default function JarDetail() {
   if (pot.beneficiary === ZERO || !isJar(pot) || !same(pot.beneficiary, me)) {
     return <Screen title="Savings jar" back="/jars"><ErrorText>We couldn&apos;t find this jar.</ErrorText></Screen>;
   }
-  const { name, emoji } = jarMeta(pot.id);
+  const { name, icon } = jarMeta(pot.id);
   const pct = pot.closed ? 0 : Number(pot.balance) / Number(pot.target);
   const left = pot.target - pot.balance;
 
@@ -70,7 +70,7 @@ export default function JarDetail() {
   }
 
   return (
-    <Screen title={`${emoji} ${name}`} back="/jars" wide>
+    <Screen title={name} back="/jars" wide>
       <Pad className="flex flex-col items-center gap-4 text-center">
         <Ring value={pct} size={220} stroke={16}>
           <span className="flex flex-col items-center">
@@ -97,7 +97,7 @@ export default function JarDetail() {
           adds.map((a, i) => (
             <Row
               key={i}
-              icon={<span className="grid size-11 place-items-center rounded-full bg-surface-2 text-xl">{emoji}</span>}
+              icon={<IconTile name={icon} />}
               title="Added to jar"
               trail={<span className="font-display text-2xl tabular text-good">+{formatMoney(a.amount)}</span>}
             />

@@ -2,10 +2,10 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Keypad } from "@/components/core/Keypad";
-import { MeButton, NavBar } from "@/components/core/NavBar";
+import { MeButton } from "@/components/core/NavBar";
 import { Kinko } from "@/components/kinko/Kinko";
 import type { Person } from "@/components/PersonPicker";
-import { Amount, Avatar, Screen } from "@/components/ui";
+import { Amount, Avatar, Ico, Screen } from "@/components/ui";
 import { useRequireAccount } from "@/lib/account";
 import { getBalance } from "@/lib/activity";
 import { recentPeople } from "@/lib/contacts";
@@ -55,13 +55,13 @@ export default function Home() {
           <button onClick={toggle} aria-expanded={show}
             className="flex min-h-11 items-center gap-2 rounded-full border border-line bg-surface px-4 text-sm font-semibold text-muted transition active:scale-95">
             {!show ? (
-              <>Check balance <span aria-hidden>⌄</span></>
+              <>Check balance <Ico name="chevron" size={16} className="rotate-90" /></>
             ) : failed ? (
               "Couldn't check. Tap to retry"
             ) : balance === null ? (
               <span className="h-5 w-24 animate-pulse rounded-full bg-surface-2" />
             ) : (
-              <><Amount value={formatMoney(balance)} size="md" className="text-2xl! text-ink" /><span aria-hidden>⌃</span></>
+              <><Amount value={formatMoney(balance)} size="md" className="text-2xl! text-ink" /><Ico name="chevron" size={16} className="-rotate-90" /></>
             )}
           </button>
         </div>
@@ -92,7 +92,6 @@ export default function Home() {
           </section>
         )}
       </Screen>
-      <NavBar />
     </>
   );
 }

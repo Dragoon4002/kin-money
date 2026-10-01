@@ -29,7 +29,7 @@ export default function EarmarkPage() {
         <p className="text-muted">Money that can only go to the school, landlord or hospital you choose.</p>
         <ErrorText>{error}</ErrorText>
         {!data && !error && <Loading />}
-        {data && !data.length && <Empty icon="🏫" title="No bills yet" sub="Send money that can only pay the fees — and let family OK it first." />}
+        {data && !data.length && <Empty icon="bill" title="No bills yet" sub="Send money that can only pay the fees — and let family OK it first." />}
         {open.map((e) => <Bill key={String(e.id)} e={e} me={me} onDone={reload} />)}
       </Pad>
       {past.length > 0 && <Band>Done</Band>}
