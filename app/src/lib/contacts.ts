@@ -1,6 +1,7 @@
 "use client";
 import type { Address, Hex } from "viem";
 import type { Person } from "@/components/PersonPicker";
+import { Trie } from "./trie";
 import { getAccount } from "./account";
 
 // Client API for the phonebook graph (/api/contacts, /api/requests).
@@ -47,6 +48,16 @@ async function api<T>(path: string, method = "GET", body?: unknown): Promise<T> 
 /** Upsert PAID edge after a confirmed payment. Fire-and-forget; never throws. */
 export async function recordPayment(to: Address, amount: bigint): Promise<void> {
   await api("/api/contacts/paid", "POST", { to, amount: amount.toString() }).catch(() => {});
+}
+
+let nameTrie: Promise<Trie> | null = null;
+/** All Kin @names as a prefix tree, fetched once per session (public list, no Face ID). */
+export function loadNameTrie(): Promise<Trie> {
+  nameTrie ??= fetch("/api/names")
+    .then((r) => r.json())
+    .then((j: { names?: string[] }) => new Trie(j.names ?? []))
+    .catch(() => ((nameTrie = null), new Trie()));
+  return nameTrie;
 }
 
 /** Put me in the phonebook so people can find me. Fire-and-forget; never throws. */

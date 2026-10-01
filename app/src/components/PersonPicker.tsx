@@ -2,8 +2,9 @@
 import { useEffect, useState } from "react";
 import type { Address } from "viem";
 import { useAccount } from "@/lib/account";
-import { recentPeople } from "@/lib/contacts";
+import { loadNameTrie, recentPeople } from "@/lib/contacts";
 import { resolveName } from "@/lib/names";
+import type { Trie } from "@/lib/trie";
 import { Avatar, Ico, inputClass } from "./ui";
 
 export type Person = { address: Address; name: string };
@@ -13,12 +14,13 @@ export type Person = { address: Address; name: string };
  * Recent/saved people as a one-tap avatar row; "New" opens the @name field.
  */
 export function PersonPicker({ label = "To", onPick }: { label?: string; onPick: (p: Person | null) => void }) {
-  const { unlocked } = useAccount();
+  const { unlocked, profile } = useAccount();
   const [q, setQ] = useState("");
   const [found, setFound] = useState<Person | null>(null);
   const [miss, setMiss] = useState(false);
   const [recents, setRecents] = useState<Person[]>([]);
   const [typing, setTyping] = useState(false);
+  const [trie, setTrie] = useState<Trie | null>(null);
 
   // Only when unlocked: loading people must never trigger Face ID on its own.
   useEffect(() => {
@@ -44,6 +46,13 @@ export function PersonPicker({ label = "To", onPick }: { label?: string; onPick:
   }
 
   const showField = typing || recents.length === 0;
+
+  // Autocomplete: prefix tree of all Kin names, loaded once when the field opens.
+  useEffect(() => {
+    if (showField) loadNameTrie().then(setTrie);
+  }, [showField]);
+  const prefix = q.trim().replace(/^@/, "").toLowerCase();
+  const suggestions = prefix && !found ? (trie?.suggest(prefix, 6) ?? []).filter((n) => n !== profile?.name && n !== prefix).slice(0, 5) : [];
 
   return (
     <div className="flex min-w-0 flex-col gap-3">
@@ -82,7 +91,22 @@ export function PersonPicker({ label = "To", onPick }: { label?: string; onPick:
         <label className="flex flex-col gap-1.5">
           <span className="sr-only">Kin name</span>
           <input className={inputClass} placeholder="@name" autoCapitalize="none" autoCorrect="off" autoFocus={typing} value={q} onChange={(e) => lookup(e.target.value)} />
-          {miss && <span className="text-xs text-muted">No one on Kin with that name yet.</span>}
+          {suggestions.length > 0 && (
+            <ul className="overflow-hidden rounded-2xl border border-line bg-surface" aria-label="Suggestions">
+              {suggestions.map((n) => (
+                <li key={n}>
+                  <button type="button" onClick={() => lookup(n)} className="flex min-h-12 w-full items-center gap-3 px-3 text-left active:bg-surface-2">
+                    <Avatar name={n} size={32} />
+                    <span className="font-semibold">
+                      <span className="text-ink">@{n.slice(0, prefix.length)}</span>
+                      <span className="text-muted">{n.slice(prefix.length)}</span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {miss && !suggestions.length && <span className="text-xs text-muted">No one on Kin with that name yet.</span>}
           {found && q && (
             <span className="flex items-center gap-3 rounded-2xl bg-good/10 px-3 py-2 text-sm font-semibold">
               <Avatar name={found.name} size={28} /> @{found.name} <Ico name="check" className="ml-auto text-good" />
