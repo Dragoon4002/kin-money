@@ -3,7 +3,7 @@ import {
   Coins, Copy, FileText, Gift, GraduationCap, HandCoins, HeartHandshake, House, Link2, ListChecks, Lock, type LucideIcon,
   Palette, PartyPopper, PiggyBank, Plane, QrCode, Receipt, RefreshCcw, Share2, Shapes, ShoppingBag, ShoppingBasket,
   Siren, Smile, Sparkles, Split, Sprout, SunMoon, Trash2, UserPlus, Users, Utensils, Wallet, LayoutGrid,
-  AlignLeft, Plus, X, Clock, ShieldCheck, Undo2, Delete,
+  AlignLeft, Plus, X, Clock, ShieldCheck, Undo2, Delete, ScanLine, Download, Flashlight,
 } from "lucide-react";
 
 /**
@@ -37,6 +37,9 @@ export const ICON = {
   close: X,
   backspace: Delete,
   qr: QrCode,
+  scan: ScanLine,
+  install: Download,
+  torch: Flashlight,
   link: Link2,
   share: Share2,
   copy: Copy,

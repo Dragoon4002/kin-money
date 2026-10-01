@@ -48,6 +48,9 @@ export default function Home() {
       <Screen>
         <header className="flex h-12 items-center gap-3">
           <p className="flex-1 truncate text-lg font-semibold">Hi{profile?.name ? `, ${profile.name}` : ""}</p>
+          <Link href="/scan" aria-label="Scan to pay" className="grid size-11 place-items-center rounded-full border border-line bg-surface-2 text-ink active:scale-95">
+            <Ico name="scan" size={22} />
+          </Link>
           <MeButton name={profile?.name} />
         </header>
 
