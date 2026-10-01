@@ -4,6 +4,7 @@ import { Kinko } from "@/components/kinko/Kinko";
 import { Button, ErrorText, Field, inputClass } from "@/components/ui";
 import { KinNamesAbi } from "@/lib/abi";
 import { setName, signUp, useAccount } from "@/lib/account";
+import { registerMe } from "@/lib/contacts";
 import { addr } from "@/lib/chain";
 import { humanError } from "@/lib/errors";
 import { formatMoney, toUnits } from "@/lib/money";
@@ -73,6 +74,7 @@ export function Onboard({ onDone, start = "name" }: { onDone: () => void; start?
     }
     setBusy(false);
     setStep("gift");
+    void registerMe(); // show up in other people's phonebook right away
     // Testnet welcome gift; failure is fine — the account works without it.
     await fetch("/api/faucet", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ address: profile.address }) }).catch(() => {});
     onDone();

@@ -49,6 +49,11 @@ export async function recordPayment(to: Address, amount: bigint): Promise<void> 
   await api("/api/contacts/paid", "POST", { to, amount: amount.toString() }).catch(() => {});
 }
 
+/** Put me in the phonebook so people can find me. Fire-and-forget; never throws. */
+export async function registerMe(): Promise<void> {
+  await api("/api/contacts/me", "POST", {}).catch(() => {});
+}
+
 export const listContacts = () => api<Phonebook>("/api/contacts");
 
 /** Recent + frequent people for pickers (recents first, then saved contacts). Never throws. */

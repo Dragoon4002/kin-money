@@ -5,6 +5,7 @@ import { Onboard } from "@/components/core/Onboard";
 import { Kinko } from "@/components/kinko/Kinko";
 import { Button, ErrorText, Screen } from "@/components/ui";
 import { setName, unlock, useAccount } from "@/lib/account";
+import { registerMe } from "@/lib/contacts";
 import { humanError } from "@/lib/errors";
 import { captureRef } from "@/lib/kinko";
 import { nameOf } from "@/lib/names";
@@ -35,6 +36,7 @@ export default function Welcome() {
     setErr("");
     try {
       const p = await unlock();
+      void registerMe(); // backfills accounts created before phonebook registration existed
       if (!p.name) {
         const n = await nameOf(p.address).catch(() => "");
         if (n) setName(n);
