@@ -1,16 +1,16 @@
 "use client";
 import { isAddressEqual, parseEventLogs, type Address, type Hex } from "viem";
-import { KinCircleAbi, KinEscrowAbi, KinMandateAbi, KinPotAbi, KinStreamAbi } from "./abi";
+import { KinCircleAbi, KinEscrowAbi, KinGiftLinkAbi, KinMandateAbi, KinPotAbi, KinStreamAbi } from "./abi";
 import { addr, publicClient } from "./chain";
 import { nameOf } from "./names";
-import { getEscrow, getPot, getStream, isJar, type EscrowKind } from "./programs";
+import { getEscrow, getPot, getStream, isJar, ZERO, type EscrowKind } from "./programs";
 
 // Money moving in/out of a Kin contract (escrow, allowance, pot, circle, AutoPay) is a transfer to a
 // contract address, which has no @name. This turns it into what the payment was *for*, read from the
 // contract's own event in the same transaction: "Chore for @b", "Allowance from @mum", "Savings jar"…
 
 const KIN = (a: Address) =>
-  [addr.escrow, addr.stream, addr.pot, addr.circle, addr.mandate].some((k) => isAddressEqual(k, a));
+  [addr.escrow, addr.stream, addr.pot, addr.circle, addr.mandate, addr.giftlink].some((k) => isAddressEqual(k, a));
 export const isKinContract = KIN;
 
 const names = new Map<string, Promise<string>>();
@@ -55,6 +55,7 @@ function fallback(other: Address): string {
   if (isAddressEqual(other, addr.pot)) return "Family pot";
   if (isAddressEqual(other, addr.circle)) return "Savings circle";
   if (isAddressEqual(other, addr.mandate)) return "AutoPay";
+  if (isAddressEqual(other, addr.giftlink)) return "Gift link";
   return "Kin";
 }
 
@@ -113,6 +114,16 @@ async function read(hash: Hex, other: Address, dir: "in" | "out", me: Address): 
     const m = await publicClient.readContract({ address: addr.mandate, abi: KinMandateAbi, functionName: "mandates", args: [id] });
     const [payer] = m;
     return isAddressEqual(payer, me) ? "AutoPay refund" : `AutoPay from ${await at(payer)}`;
+  }
+
+  if (isAddressEqual(other, addr.giftlink)) {
+    const ev = parseEventLogs({ abi: KinGiftLinkAbi, logs: mine });
+    if (ev.some((e) => e.eventName === "Refunded")) return "Gift returned";
+    const id = ev[0]?.args.id as bigint | undefined;
+    if (id === undefined) return fallback(other);
+    const [from, , , , recipient] = await publicClient.readContract({ address: addr.giftlink, abi: KinGiftLinkAbi, functionName: "gifts", args: [id] });
+    if (dir === "in") return `Gift from ${await at(from)}`;
+    return recipient === ZERO ? "Gift link" : `Gift link for ${await at(recipient)}`;
   }
 
   return fallback(other);

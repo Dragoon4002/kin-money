@@ -6,7 +6,7 @@ import { GAS_CAP, allow, clientIp, once, submit } from "@/lib/server/relayer";
 const ausdAbi = parseAbi([
   "function transferWithAuthorization(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce,bytes signature)",
 ]);
-const KIN = new Set([addr.names, addr.escrow, addr.stream, addr.pot, addr.circle, addr.mandate].map((a) => a.toLowerCase()));
+const KIN = new Set([addr.names, addr.escrow, addr.stream, addr.pot, addr.circle, addr.mandate, addr.giftlink].map((a) => a.toLowerCase()));
 const MAX_DEADLINE_S = 3600;
 
 const bad = (error: string, status = 400) => Response.json({ error }, { status });
