@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { PayQr } from "@/components/core/PayQr";
 import { share } from "@/components/core/share";
-import { Kinko } from "@/components/kinko/Kinko";
+import { MyKinko } from "@/components/kinko/PersonKinko";
 import { Button, Card, Field, Screen, inputClass } from "@/components/ui";
 import { useRequireAccount } from "@/lib/account";
 import { formatMoney, fromLocal } from "@/lib/money";
@@ -36,7 +36,7 @@ export default function Receive() {
       ) : (
         <>
           <section className="relative mt-8 flex flex-col items-center rounded-[32px] border border-line bg-surface px-6 pb-6 pt-14 text-center">
-            <div className="absolute -top-10"><Kinko size={80} mood="happy" /></div>
+            <div className="absolute -top-10"><MyKinko size={80} mood="happy" /></div>
             <p className="font-display text-4xl">@{handle}</p>
             <p className="mt-1 text-sm text-muted">{units ? `Scan to pay ${formatMoney(units)}` : "Scan with any phone camera to pay me"}</p>
             <div className="mt-5 w-full max-w-72 overflow-hidden rounded-3xl p-1">

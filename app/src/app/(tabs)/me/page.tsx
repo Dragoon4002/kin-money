@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useSyncExternalStore } from "react";
-import { Kinko } from "@/components/kinko/Kinko";
+import { MyKinko } from "@/components/kinko/PersonKinko";
 import { Band, Button, Card, ErrorText, Ico, IconTile, Row, Screen, Tabs, inputClass } from "@/components/ui";
 import { lock, signOut, useRequireAccount } from "@/lib/account";
 import { saveMyPhone } from "@/lib/contacts";
@@ -65,7 +65,7 @@ export default function Me() {
     <>
       <Screen wide title="Me" back="/home">
         <section className="flex flex-col items-center gap-3 px-5 pb-4 text-center">
-          <Kinko size={140} mood="happy" />
+          <MyKinko size={140} mood="happy" />
           {handle ? (
             <button onClick={copy} className="flex min-h-11 items-center gap-2 rounded-full px-4 font-display text-4xl active:bg-surface-2">
               @{handle}

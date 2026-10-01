@@ -2,7 +2,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Onboard } from "@/components/core/Onboard";
-import { Kinko } from "@/components/kinko/Kinko";
+import { MyKinko } from "@/components/kinko/PersonKinko";
 import { Landing } from "@/components/landing/Landing";
 import { Button, ErrorText, Screen } from "@/components/ui";
 import { setName, unlock, useAccount } from "@/lib/account";
@@ -71,7 +71,7 @@ export default function Welcome() {
         <div className="flex flex-1 flex-col justify-center gap-5">
           <div className="relative w-fit">
             <div aria-hidden className="absolute inset-0 scale-150 rounded-full bg-brand/20 blur-3xl" />
-            <div className="relative"><Kinko size={120} mood={profile ? "calm" : "happy"} /></div>
+            <div className="relative"><MyKinko size={120} mood={profile ? "calm" : "happy"} /></div>
           </div>
           {ready && profile ? (
             <>

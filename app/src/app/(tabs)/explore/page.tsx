@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { MeButton } from "@/components/core/NavBar";
-import { Kinko } from "@/components/kinko/Kinko";
+import { MyKinko } from "@/components/kinko/PersonKinko";
 import { IconTile, Screen } from "@/components/ui";
 import { useRequireAccount } from "@/lib/account";
 import type { IconName } from "@/lib/icons";
@@ -38,7 +38,7 @@ export default function Explore() {
           {TILES.map(([title, sub, href, icon, wide]) => (
             <Link key={href} href={href}
               className={`flex gap-3 rounded-[24px] border border-line bg-surface p-4 transition active:scale-[0.97] ${wide ? "col-span-2 min-h-24 flex-row items-center" : "min-h-32 flex-col justify-between"}`}>
-              {icon === "kinko" ? <Kinko size={48} /> : <IconTile name={icon} tone={href === "/earmark" ? "brand" : "neutral"} />}
+              {icon === "kinko" ? <MyKinko size={48} /> : <IconTile name={icon} tone={href === "/earmark" ? "brand" : "neutral"} />}
               <span className="min-w-0 flex-1">
                 <span className="block font-semibold">{title}</span>
                 <span className="block text-xs text-muted">{sub}</span>

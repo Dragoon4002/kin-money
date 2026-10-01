@@ -3,7 +3,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { erc20Abi, isAddressEqual, isHash, parseEventLogs, type Address, type Hex } from "viem";
 import { share } from "@/components/core/share";
-import { Kinko } from "@/components/kinko/Kinko";
+import { MyKinko } from "@/components/kinko/PersonKinko";
 import { Amount, Band, Button, Card, Chip, Ico, IconTile, Row, Screen } from "@/components/ui";
 import { useRequireAccount } from "@/lib/account";
 import { CATEGORIES, categoryOf, setCategory, noteOf } from "@/lib/categories";
@@ -117,7 +117,7 @@ export function Proof() {
           </>
         ) : fresh ? (
           <div className="relative">
-            <Kinko mood="celebrate" size={56} />
+            <MyKinko mood="celebrate" size={56} />
             <span className="absolute -bottom-1 -right-3 grid size-8 place-items-center rounded-full border-2 border-bg bg-good text-fun-ink"><Ico name="check" size={16} /></span>
           </div>
         ) : (

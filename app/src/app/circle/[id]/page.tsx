@@ -3,7 +3,8 @@ import { useParams } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 import { zeroHash, type Address } from "viem";
 import { Loading, Pad, Status, Who, useAction, useLoad, useMe, useNow } from "@/components/programs/kit";
-import { Kinko, type Mood } from "@/components/kinko/Kinko";
+import type { Mood } from "@/components/kinko/Kinko";
+import { AddressKinko } from "@/components/kinko/PersonKinko";
 import { Amount, Band, Button, Chip, Countdown, ErrorText, Ico, Row, Screen } from "@/components/ui";
 import { KinCircleAbi } from "@/lib/abi";
 import { addr } from "@/lib/chain";
@@ -178,7 +179,7 @@ function Table({ c, phase, me }: { c: Circle; phase: CirclePhase; me?: Address }
             <div className="relative">
               {isTurn && <span aria-hidden className="absolute -inset-3 animate-pulse rounded-full bg-brand/30 blur-md" />}
               <span className={`relative block rounded-full ${isTurn ? "ring-2 ring-brand ring-offset-2 ring-offset-bg" : ""}`}>
-                <Kinko size={size} mood={mood} />
+                <AddressKinko address={m.address} size={size} mood={mood} />
               </span>
               {(ok || m.defaulted) && (
                 <span className={`absolute -bottom-0.5 -right-0.5 grid size-5 place-items-center rounded-full border-2 border-bg text-[10px] font-bold text-fun-ink ${m.defaulted ? "bg-bad" : "bg-good"}`}>
