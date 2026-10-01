@@ -1,0 +1,56 @@
+import { isAddress, isHex, parseAbi, type Address, type Hex } from "viem";
+import { KinForwarderAbi } from "@/lib/abi";
+import { addr } from "@/lib/chain";
+import { GAS_CAP, allow, clientIp, once, submit } from "@/lib/server/relayer";
+
+const ausdAbi = parseAbi([
+  "function transferWithAuthorization(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce,bytes signature)",
+]);
+const KIN = new Set([addr.names, addr.escrow, addr.stream, addr.pot, addr.circle].map((a) => a.toLowerCase()));
+const MAX_DEADLINE_S = 3600;
+
+const bad = (error: string, status = 400) => Response.json({ error }, { status });
+const uint = (v: unknown) => (typeof v === "string" || typeof v === "number") && /^\d{1,78}$/.test(String(v));
+
+export async function POST(req: Request) {
+  const body = await req.json().catch(() => null);
+  const ip = clientIp(req);
+  if (!allow(`ip:${ip}`, 30)) return bad("slow down", 429);
+  const now = Math.floor(Date.now() / 1000);
+  try {
+    if (body?.kind === "3009") {
+      const { auth: a, signature } = body;
+      if (![a?.from, a?.to].every((x) => isAddress(x)) || !isHex(a.nonce) || !isHex(signature)) return bad("invalid");
+      if (![a.value, a.validAfter, a.validBefore].every(uint)) return bad("invalid");
+      if (!allow(`from:${a.from.toLowerCase()}`, 10)) return bad("slow down", 429);
+      if (!once(`3009:${a.from.toLowerCase()}:${a.nonce}`)) return bad("duplicate", 409);
+      const hash = await submit(
+        {
+          address: addr.ausd, abi: ausdAbi, functionName: "transferWithAuthorization",
+          args: [a.from as Address, a.to as Address, BigInt(a.value), BigInt(a.validAfter), BigInt(a.validBefore), a.nonce as Hex, signature as Hex],
+        },
+        200_000n,
+      );
+      return Response.json({ hash });
+    }
+    if (body?.kind === "2771") {
+      const r = body.request;
+      if (!isAddress(r?.from) || !isAddress(r?.to) || !KIN.has(r.to.toLowerCase())) return bad("target not allowed");
+      if (!isHex(r.data) || !isHex(r.signature) || !uint(r.gas) || !uint(r.deadline) || BigInt(r.value ?? 0) !== 0n) return bad("invalid");
+      // Forwarder requires outer gas ≥ inner gas × 64/63, and Monad bills the limit: cap the signed gas.
+      if (BigInt(r.gas) > (GAS_CAP * 63n) / 80n) return bad("too expensive");
+      if (Number(r.deadline) > now + MAX_DEADLINE_S) return bad("invalid");
+      if (!allow(`from:${r.from.toLowerCase()}`, 10)) return bad("slow down", 429);
+      if (!once(`2771:${r.signature.toLowerCase()}`)) return bad("duplicate", 409);
+      const hash = await submit({
+        address: addr.forwarder, abi: KinForwarderAbi, functionName: "execute",
+        args: [{ from: r.from, to: r.to, value: 0n, gas: BigInt(r.gas), deadline: Number(r.deadline), data: r.data, signature: r.signature }],
+      });
+      return Response.json({ hash });
+    }
+    return bad("unknown kind");
+  } catch (e) {
+    console.error("relay failed", (e as Error).message?.slice(0, 300));
+    return Response.json({ error: "rejected" }, { status: 422 });
+  }
+}

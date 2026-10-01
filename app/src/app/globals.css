@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+/*
+ * Kin design tokens. ALL colors live here — components use token classes only
+ * (bg-surface, text-ink, bg-brand…). Change the palette by editing this block.
+ * light-dark(<light>, <dark>) follows `color-scheme`: system by default,
+ * forced via <html data-theme="light|dark"> (set by Settings → Appearance).
+ */
+:root {
+  color-scheme: light dark;
+
+  /* surfaces */
+  --bg: light-dark(#faf7f3, #0d0c0b);
+  --surface: light-dark(#ffffff, #171513);
+  --surface-2: light-dark(#f3eee8, #201d1a);
+  --line: light-dark(#e9e2d9, #2b2723);
+  --ink: light-dark(#1b1815, #f6f1ea);
+  --muted: light-dark(#776e66, #9a9088);
+
+  /* brand (terracotta) */
+  --brand: light-dark(#e2573b, #ec6a4f);
+  --brand-ink: #ffffff;
+  --brand-soft: color-mix(in oklab, var(--brand) 14%, transparent);
+
+  /* status */
+  --good: light-dark(#1f9d6b, #3cc28a);
+  --bad: light-dark(#d64545, #f06a6a);
+  --warn: light-dark(#c9851a, #f0b445);
+
+  /* playful palette — Moments cards, Kinko, celebrations */
+  --fun-1: #22b573; /* green */
+  --fun-2: #f2b830; /* yellow */
+  --fun-3: #6c4ee0; /* purple */
+  --fun-4: #ec5a7c; /* pink */
+  --fun-5: #3b8cf0; /* blue */
+  --fun-ink: #ffffff;
+
+  /* Kinko */
+  --kinko-body: #9d8cf6;
+  --kinko-shade: #7e6be6;
+  --kinko-ink: #1b1530;
+  --kinko-cheek: #ff9bb3;
+}
+
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-brand: var(--brand);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-soft: var(--brand-soft);
+  --color-good: var(--good);
+  --color-bad: var(--bad);
+  --color-warn: var(--warn);
+  --color-fun-1: var(--fun-1);
+  --color-fun-2: var(--fun-2);
+  --color-fun-3: var(--fun-3);
+  --color-fun-4: var(--fun-4);
+  --color-fun-5: var(--fun-5);
+  --color-fun-ink: var(--fun-ink);
+  --color-kinko: var(--kinko-body);
+  --font-sans: var(--font-jakarta);
+  --font-display: var(--font-serif);
+}
+
+html, body { background: var(--bg); color: var(--ink); }
+body { font-family: var(--font-jakarta), system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
+.tabular { font-variant-numeric: tabular-nums; }
