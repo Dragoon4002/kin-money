@@ -4,8 +4,8 @@ import { monadTestnet } from "viem/chains";
 
 // Full log history for Kin contracts + AUSD Transfers since deploy, served by /api/history.
 // No relative imports and no "server-only" so scripts/check-history.mts can run it under plain node.
-// HyperSync (https://10143.hypersync.xyz) needs an Envio API token (401 without one) — swap scan() for a
-// single HyperSync query if ENVIO_API_TOKEN ever exists.
+// With ENVIO_API_TOKEN, history comes from Envio HyperSync (whole range in one paged query); without it,
+// or if HyperSync fails, it falls back to chunked eth_getLogs.
 // Chunked eth_getLogs (public RPCs cap 100 blocks). Scanned logs + the covered block range are PERSISTED in
 // Neo4j (HistLog / HistCursor), so every serverless instance starts from the full history instead of
 // rescanning from zero: a cold instance loads them, then only scans new blocks since the saved cursor.
@@ -121,8 +121,86 @@ async function batch(ranges: [bigint, bigint][]): Promise<RpcLog[]> {
 /** Load the persisted history once per instance (fast DB read). Await before answering. */
 export const warm = () => (loading ??= load());
 
+// ---------- Envio HyperSync ----------
+const HYPERSYNC = "https://10143.hypersync.xyz";
+type HsLog = { block_number: number; log_index: number; transaction_index: number; transaction_hash: Hex; address: Hex; data: Hex; topic0?: Hex | null; topic1?: Hex | null; topic2?: Hex | null; topic3?: Hex | null };
+type HsPage = { data?: { logs?: HsLog[]; blocks?: { number: number; timestamp: string | number }[] }[]; next_block: number; archive_height: number };
+
+/** HyperSync log → the same RpcLog shape eth_getLogs returns (so storage and consumers are unchanged). */
+export function toRpcLog(l: HsLog, ts?: string | number): RpcLog {
+  return {
+    address: l.address.toLowerCase() as Hex,
+    topics: [l.topic0, l.topic1, l.topic2, l.topic3].filter((t): t is Hex => !!t) as RpcLog["topics"],
+    data: l.data,
+    blockHash: null,
+    blockNumber: numberToHex(l.block_number),
+    transactionHash: l.transaction_hash,
+    transactionIndex: numberToHex(l.transaction_index),
+    logIndex: numberToHex(l.log_index),
+    removed: false,
+    ...(ts !== undefined ? { blockTimestamp: numberToHex(BigInt(ts)) } : {}),
+  } as RpcLog;
+}
+
+/** All Kin logs + AUSD Transfers in [from, to) via HyperSync (paged). Returns logs and the next block. */
+async function hypersync(from: bigint, to?: bigint): Promise<{ logs: RpcLog[]; next: bigint }> {
+  const token = process.env.ENVIO_API_TOKEN!;
+  const c = contracts();
+  const kin = Object.entries(c).filter(([k, a]) => k !== "transfers" && a).map(([, a]) => a);
+  const out: RpcLog[] = [];
+  let next = from;
+  for (let page = 0; page < 50; page++) {
+    const body = {
+      from_block: Number(next),
+      ...(to !== undefined ? { to_block: Number(to) } : {}),
+      logs: [{ address: [c.transfers], topics: [[TRANSFER]] }, { address: kin }],
+      field_selection: {
+        log: ["block_number", "log_index", "transaction_index", "transaction_hash", "address", "data", "topic0", "topic1", "topic2", "topic3"],
+        block: ["number", "timestamp"],
+      },
+    };
+    const res = await fetch(`${HYPERSYNC}/query`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
+    if (!res.ok) throw new Error(`hypersync ${res.status}`);
+    const j = (await res.json()) as HsPage;
+    const times = new Map(j.data?.flatMap((d) => d.blocks ?? []).map((b) => [b.number, b.timestamp]));
+    out.push(...(j.data?.flatMap((d) => d.logs ?? []) ?? []).map((l) => toRpcLog(l, times.get(l.block_number))));
+    next = BigInt(j.next_block);
+    if (to !== undefined ? next >= to : next > BigInt(j.archive_height)) break;
+  }
+  return { logs: out.sort(byPos), next };
+}
+
+/** HyperSync path: backfill to deploy and catch up to head in ≤2 queries. False → caller uses RPC scan. */
+async function scanHypersync(fresh: RpcLog[]): Promise<boolean> {
+  if (!process.env.ENVIO_API_TOKEN) return false;
+  try {
+    if (hi < 0n) {
+      const { logs: got, next } = await hypersync(DEPLOY);
+      logs = got;
+      fresh.push(...got);
+      [lo, hi] = [DEPLOY, next - 1n];
+      return true;
+    }
+    if (lo > DEPLOY) {
+      const { logs: got } = await hypersync(DEPLOY, lo);
+      logs = [...got, ...logs];
+      fresh.push(...got);
+      lo = DEPLOY;
+    }
+    const { logs: got, next } = await hypersync(hi + 1n);
+    logs = [...logs, ...got];
+    fresh.push(...got);
+    if (next - 1n > hi) hi = next - 1n;
+    return true;
+  } catch {
+    return false; // ponytail: HyperSync down → RPC scan below keeps history working.
+  }
+}
+
 async function scan() {
   await warm();
+  const viaEnvio: RpcLog[] = [];
+  if (await scanHypersync(viaEnvio)) return save(viaEnvio);
   const deadline = Date.now() + BUDGET_MS;
   const latest = await clients[0].getBlockNumber().catch(() => clients[1].getBlockNumber());
   if (hi < 0n) [lo, hi] = [latest + 1n, latest];

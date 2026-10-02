@@ -10,6 +10,12 @@ Face ID sign-up. No app store, no seed phrase, no fees. Built on Monad with Agor
 - Run a savings circle with relatives in other countries — payouts enforced automatically
 - Pool a family pot, earmark money for a school or hospital, invoice clients with milestone escrow
 
+## Built with
+- **Monad** — sub-second, low-cost settlement; all money logic in verified contracts
+- **Agora AUSD** — the dollar users hold and send (gasless via EIP-3009)
+- **Mera** — passkey accounts (Face ID), same account on web and Android
+- **Envio HyperSync** — full activity history, notifications and receipts indexed from every Kin contract + AUSD transfers in one query (~2.5s for the whole chain history; `app/src/lib/server/history.ts`)
+
 ## Repo
 | Path | What |
 |---|---|
