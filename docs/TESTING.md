@@ -48,7 +48,7 @@ Every money action ends with a receipt → **Details → Proof of payment** (exp
 | Test | Steps | Expect |
 |---|---|---|
 | Autocomplete | Any `@name` field → type 2 letters | Up to 5 suggestions with Kinko avatars |
-| Contacts | People → + Add → `@b`, label "Mum" (or phone 🌿) | Shows in Your people; recents/suggestions fill after payments |
+| Contacts | People → + Add → `@b`, label "Mum" (no avatar row; already-saved people not suggested) | Shows in Your people; recents/suggestions fill after payments |
 | Kinko | Me → Customize Kinko → change skin/face; locked items show how to unlock | Your avatar updates everywhere; others see it after reload |
 | Unlocks | Collect an allowance / fill a jar / pay a circle on time / get a chore paid | Headphones / crown / cap / bow unlock; Kin Score rises |
 | Invite | Me → Invite & earn → share | Friend opens `/?ref=` → both get the party hat |

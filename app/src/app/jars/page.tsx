@@ -8,7 +8,7 @@ import type { IconName } from "@/lib/icons";
 import { KinPotAbi } from "@/lib/abi";
 import { addr } from "@/lib/chain";
 import { formatMoney, fromLocal } from "@/lib/money";
-import { createdId, isJar, listPots } from "@/lib/programs";
+import { createdId, isJar, listPots, ZERO } from "@/lib/programs";
 import { call } from "@/lib/tx";
 
 // Savings jars: a KinPot where I'm the only member and the beneficiary. When the jar hits its goal,
@@ -73,7 +73,7 @@ function NewJar({ me, onCancel }: { me?: Address; onCancel: () => void }) {
   async function create() {
     if (!me || !n || !value) return;
     await run(async (say) => {
-      const hash = await call(addr.pot, KinPotAbi, "create", [me, value, [me]]);
+      const hash = await call(addr.pot, KinPotAbi, "create", [[me], false, value, [me], ZERO]);
       say("Setting up your jar…");
       const id = await createdId(hash, KinPotAbi, "PotCreated");
       setMeta(jarKey(id), { name: n, emoji: icon }); // `emoji` key kept so old jars still load

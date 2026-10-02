@@ -116,7 +116,9 @@ export function Proof() {
 
   const money = formatMoney(r.amount);
   const other = r.out ? r.to : r.from;
-  const when = r.at.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  // r only exists after mount (loaded in an effect), so local-time formatting can't mismatch hydration.
+  const offset = new Intl.DateTimeFormat(undefined, { timeZoneName: "shortOffset" }).formatToParts(r.at).find((p) => p.type === "timeZoneName")?.value;
+  const when = `${r.at.toLocaleDateString(undefined, { dateStyle: "long" })}, ${r.at.toLocaleTimeString(undefined, { timeStyle: "short" })}${offset ? ` (${offset})` : ""}`;
   const secs = ms > 0 ? (ms / 1000).toFixed(1) : null;
 
   async function shareReceipt() {
@@ -144,12 +146,21 @@ export function Proof() {
           <span className="font-display text-3xl text-muted">{r.out ? "Paid" : "Received"}</span>
           <Amount value={money} />
         </div>
-        <p className="font-semibold">{r.out ? `to ${other}` : `from ${other}`}</p>
-        <p className="text-sm text-muted">{when}</p>
         {r.ok && fresh && secs && <Chip tone="good">Delivered in {secs}s ✓✓</Chip>}
         {r.ok && !fresh && <Chip tone="good">Delivered ✓✓</Chip>}
         {note && <Chip>“{note}”</Chip>}
       </section>
+
+      <Card className="mx-5 mb-4 flex flex-col gap-1">
+        <span className="text-sm text-muted">{r.out ? "Paid to" : "Received from"}</span>
+        <span className="break-words font-display text-3xl">{other}</span>
+        {other.startsWith("@") && (
+          <span className="flex items-center gap-1.5 text-sm text-muted">
+            <Ico name="safe" size={16} className="text-good" /> Kin name: {other}
+          </span>
+        )}
+        <span className="mt-2 text-sm text-muted">{when}</span>
+      </Card>
 
       {r.out && cat && (
         <section className="flex flex-col">
@@ -182,7 +193,6 @@ export function Proof() {
         <Row title={`To: ${r.to}`} sub={r.out ? "On Kin" : "You"} trail={r.to.startsWith("@") && <Copy text={r.to} what="name" />} />
         <Row title={`From: ${r.from}`} sub={r.out ? "You" : "On Kin"} trail={r.from.startsWith("@") && <Copy text={r.from} what="name" />} />
         <Row title="Payment ID" sub={paymentId(hash)} trail={<Copy text={paymentId(hash)} what="payment ID" />} />
-        <Row title="Date" sub={when} />
       </section>
 
       <div className="flex flex-col gap-2 px-5">

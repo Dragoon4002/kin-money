@@ -4,6 +4,7 @@ import type { Person } from "@/components/PersonPicker";
 import { DEFAULT_LOOK, type Look } from "@/components/kinko/Kinko";
 import { Trie } from "./trie";
 import { getAccount } from "./account";
+import { HANDLE_RE } from "./names";
 
 // Client API for the phonebook graph (/api/contacts, /api/requests).
 // Auth: EIP-191 over `Kin contacts <address> <ts>`, cached 4 min (server accepts 5).
@@ -89,10 +90,17 @@ export async function publishLook(look: Look): Promise<void> {
   await api("/api/contacts/me", "POST", { look }).catch(() => {});
 }
 
-/** Put me in the phonebook so people can find me. Fire-and-forget; never throws. */
+/**
+ * Put me in the phonebook so people can find me. Fire-and-forget; never throws.
+ * Also tells the server whose invite link I came from (`kin.ref`); server keeps only the first.
+ */
 export async function registerMe(look?: Look): Promise<void> {
-  await api("/api/contacts/me", "POST", look ? { look } : {}).catch(() => {});
+  const ref = localStorage.getItem("kin.ref") ?? "";
+  await api("/api/contacts/me", "POST", { look, ref: HANDLE_RE.test(ref) ? ref : undefined }).catch(() => {});
 }
+
+export type Invites = { invited: { name: string; at: number }[]; invitedBy: string | null };
+export const listInvites = () => api<Invites>("/api/invites");
 
 export const listContacts = () => api<Phonebook>("/api/contacts");
 
@@ -109,12 +117,6 @@ export async function recentPeople(): Promise<Person[]> {
 
 /** Save someone with a nickname ("Mum"). */
 export const addContact = (p: Person, label = "") => api<{ ok: true }>("/api/contacts", "POST", { address: p.address, label });
-
-/** Save someone by phone (E.164). Server hashes it; 404 = no one on Kin with that number. */
-export const addContactByPhone = (phone: string, label = "") => api<{ ok: true }>("/api/contacts", "POST", { phone, label });
-
-/** Let people find me by my phone number (stored only as a hash). */
-export const saveMyPhone = (myPhone: string) => api<{ ok: true }>("/api/contacts", "POST", { myPhone });
 
 /** Ask `to` for `amount` base units, optionally "pay by" `due` (unix ms). */
 export const createRequest = (to: Address, amount: bigint, note: string, due: number | null = null) =>

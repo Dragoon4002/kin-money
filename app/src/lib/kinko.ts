@@ -2,8 +2,8 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { Address } from "viem";
 import { DEFAULT_LOOK, type Look } from "@/components/kinko/Kinko";
-import { useAccount } from "./account";
-import { publishLook, publishedLook, subscribeDirectory } from "./contacts";
+import { isUnlocked as sessionOpen, useAccount } from "./account";
+import { listInvites, publishLook, publishedLook, subscribeDirectory } from "./contacts";
 import { HANDLE_RE } from "./names";
 import { listCircles, listEscrows, listPots, listStreams, same } from "./programs";
 
@@ -43,10 +43,10 @@ export const ITEMS: Item[] = [
 
 // ---------- referrals ----------
 
-/** Store `?ref=<handle>` from the URL (first one wins). Call once on `/`. */
+/** Store `?ref=<handle>` from the URL (first one wins; not for people already on Kin). Call once on `/`. Sent to the server by registerMe. */
 export function captureRef() {
   const ref = new URLSearchParams(location.search).get("ref")?.toLowerCase();
-  if (ref && HANDLE_RE.test(ref) && !localStorage.getItem("kin.ref")) localStorage.setItem("kin.ref", ref);
+  if (ref && HANDLE_RE.test(ref) && !localStorage.getItem("kin.ref") && !localStorage.getItem("kin.account")) localStorage.setItem("kin.ref", ref);
 }
 
 /** Count an invite the user sent (unlocks the party hat for them). */
@@ -63,12 +63,16 @@ const cache = new Map<string, { at: number; p: Promise<Set<Ach>> }>();
 async function load(me: Address): Promise<Set<Ach>> {
   const got = new Set<Ach>(["joined"]);
   if (localStorage.getItem("kin.ref") || Number(localStorage.getItem("kin.invited") ?? 0) > 0) got.add("invite");
+  // Server knows invites made from other phones. Only ask when already unlocked — never prompt Face ID for this.
+  const invites = !got.has("invite") && sessionOpen() ? listInvites().catch(() => null) : null;
   const [streams, pots, circles, escrows] = await Promise.allSettled([listStreams(me), listPots(me), listCircles(me), listEscrows(me)]);
+  const inv = await invites;
+  if (inv && (inv.invited.length > 0 || inv.invitedBy)) got.add("invite");
   if (streams.status === "fulfilled") {
     if (streams.value.some((s) => same(s.payee, me) && s.withdrawn > 0n)) got.add("allowance");
     if (streams.value.some((s) => same(s.payer, me))) got.add("gave");
   }
-  if (pots.status === "fulfilled" && pots.value.some((p) => same(p.beneficiary, me) && p.round > 0n)) got.add("jar");
+  if (pots.status === "fulfilled" && pots.value.some((p) => p.beneficiaries.some((b) => same(b, me)) && p.round > 0n)) got.add("jar");
   if (circles.status === "fulfilled" && circles.value.some((c) => c.members.some((m) => same(m.address, me) && m.paidRound > 0 && !m.defaulted))) got.add("circle");
   if (escrows.status === "fulfilled") {
     const es = escrows.value.escrows;

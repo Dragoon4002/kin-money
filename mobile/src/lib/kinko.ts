@@ -4,7 +4,8 @@ import type { Address } from "viem";
 import { DEFAULT_LOOK, type Look } from "@/components/Kinko";
 import { KinCircleAbi, KinEscrowAbi, KinPotAbi, KinStreamAbi } from "./abi";
 import { addr, publicClient } from "./config";
-import { publishLook } from "./contacts";
+import { isUnlocked as sessionOpen } from "./account";
+import { listInvites, publishLook } from "./contacts";
 
 // Kinko closet + Kin Score — port of app/src/lib/kinko.ts. Unlocks come from real onchain history,
 // plus invites (SecureStore `kin.ref` / `kin.invited`). Own look in SecureStore `kin.kinko.<address>`.
@@ -63,7 +64,7 @@ async function scan<R>(address: Address, abi: Abi, fn: string, arg?: Address): P
 }
 
 type StreamRow = readonly [Address, number, number, Address, bigint, bigint]; // payer,start,end,payee,amount,withdrawn
-type PotRow = readonly [Address, bigint, bigint, bigint, boolean]; // beneficiary,target,balance,round,closed
+type PotRow = readonly [bigint, bigint, bigint, boolean, boolean]; // target,balance,round,closed,toAll
 type MemberRow = readonly [boolean, boolean, boolean, unknown, number]; // member,joined,defaulted,_,paidRound
 type EscrowRow = readonly [Address, number, number, boolean, boolean, Address, number, Address, bigint]; // from,unlockAt,expiresAt,approved,settled,to,autoApproveAt,approver,amount
 
@@ -78,17 +79,30 @@ const stored = (k: string) => {
 async function load(me: Address): Promise<Set<Ach>> {
   const got = new Set<Ach>(["joined"]);
   if (stored("kin.ref") || Number(stored("kin.invited") ?? 0) > 0) got.add("invite");
+  // Server knows invites made from other phones. Only ask when already unlocked — never prompt biometrics for this.
+  const invites = !got.has("invite") && sessionOpen() ? listInvites().catch(() => null) : null;
   const [streams, pots, circles, escrows] = await Promise.allSettled([
     scan<StreamRow>(addr.stream, KinStreamAbi, "streams"),
     scan<PotRow>(addr.pot, KinPotAbi, "pots"),
     scan<MemberRow>(addr.circle, KinCircleAbi, "memberInfo", me),
     scan<EscrowRow>(addr.escrow, KinEscrowAbi, "escrows"),
   ]);
+  const inv = await invites;
+  if (inv && (inv.invited.length > 0 || inv.invitedBy)) got.add("invite");
   if (streams.status === "fulfilled") {
     if (streams.value.some((s) => same(s[3], me) && s[5] > 0n)) got.add("allowance");
     if (streams.value.some((s) => same(s[0], me))) got.add("gave");
   }
-  if (pots.status === "fulfilled" && pots.value.some((p) => same(p[0], me) && p[3] > 0n)) got.add("jar");
+  if (pots.status === "fulfilled") {
+    // Paid-out pots (round > 0): did any pay me? Recipients come from beneficiariesOf (handles "everyone").
+    const count = (await publicClient.readContract({ address: addr.pot, abi: KinPotAbi, functionName: "count" })) as bigint; // scan() is newest first: row i = pot id (count - i)
+    const paid = pots.value.map((p, i) => [count - BigInt(i), p[2]] as const).filter(([, round]) => round > 0n);
+    const lists = paid.length
+      ? ((await publicClient.multicall({ contracts: paid.map(([id]) => ({ address: addr.pot, abi: KinPotAbi, functionName: "beneficiariesOf", args: [id] }) as const), allowFailure: true }))
+          .map((x) => (x.status === "success" ? (x.result as readonly Address[]) : [])))
+      : [];
+    if (lists.some((l) => l.some((b) => same(b, me)))) got.add("jar");
+  }
   if (circles.status === "fulfilled" && circles.value.some((m) => m[0] && m[4] > 0 && !m[2])) got.add("circle");
   if (escrows.status === "fulfilled") {
     for (const [from, unlockAt, , approved, settled, to, autoApproveAt] of escrows.value) {

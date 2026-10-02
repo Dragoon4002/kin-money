@@ -1,13 +1,15 @@
 "use client";
 import { useParams } from "next/navigation";
 import { useState } from "react";
-import { Loading, MoneyInput, Pad, Sheet, Status, Who, WhoAvatar, useAction, useLoad, useMe } from "@/components/programs/kit";
+import { Loading, MoneyInput, Pad, PotFor, Sheet, Status, Who, WhoAvatar, useAction, useLoad, useMe } from "@/components/programs/kit";
+import { share } from "@/components/core/share";
 import { Celebrate } from "@/components/kinko/Celebrate";
-import { Amount, Band, Button, Chip, ErrorText, Ring, Row, Screen } from "@/components/ui";
+import { Amount, Band, Button, Chip, ErrorText, Ico, Ring, Row, Screen } from "@/components/ui";
 import { KinPotAbi } from "@/lib/abi";
 import { addr } from "@/lib/chain";
 import { recordPayment } from "@/lib/contacts";
 import { formatMoney, fromLocal } from "@/lib/money";
+import { createPotInvite, disablePotInvite, inviteKeyOf, savedLink } from "@/lib/potLinks";
 import { getPot, potPayouts, same, txEvents, ZERO } from "@/lib/programs";
 import { call } from "@/lib/tx";
 
@@ -15,19 +17,22 @@ export default function PotDetail() {
   const { id } = useParams<{ id: string }>();
   const me = useMe();
   const { data, error, reload } = useLoad(async () => {
-    const [pot, payouts] = await Promise.all([getPot(BigInt(id)), potPayouts(BigInt(id))]);
-    return { pot, payouts };
-  }, id);
+    const [pot, payouts, myKey] = await Promise.all([getPot(BigInt(id)), potPayouts(BigInt(id)), me ? inviteKeyOf(BigInt(id), me) : ZERO]);
+    return { pot, payouts, myKey };
+  }, me && id);
   const [amount, setAmount] = useState("");
-  const [sheet, setSheet] = useState<"" | "chip" | "close">("");
+  const [sheet, setSheet] = useState<"" | "chip" | "close" | "invite">("");
+  const [link, setLink] = useState("");
+  const [copied, setCopied] = useState(false);
   const [party, setParty] = useState(0n);
   const { busy, status, error: actionError, run } = useAction();
 
   if (!data) return <Screen title="Family pot" back="/pot">{error ? <ErrorText>{error}</ErrorText> : <Loading />}</Screen>;
-  const { pot, payouts } = data;
-  if (pot.beneficiary === ZERO) return <Screen title="Family pot" back="/pot"><ErrorText>We couldn&apos;t find this pot.</ErrorText></Screen>;
+  const { pot, payouts, myKey } = data;
+  if (!pot.target) return <Screen title="Family pot" back="/pot"><ErrorText>We couldn&apos;t find this pot.</ErrorText></Screen>;
   const iMember = pot.members.some((m) => same(m, me));
-  const iGet = same(pot.beneficiary, me);
+  const iGet = pot.beneficiaries.some((b) => same(b, me));
+  const split = pot.beneficiaries.length;
   const pct = Number(pot.balance) / Number(pot.target);
   const left = pot.target - pot.balance;
 
@@ -39,7 +44,7 @@ export default function PotDetail() {
       say("Adding it to the pot…");
       const paid = (await txEvents(hash, KinPotAbi)).find((l) => l.eventName === "PotPaid");
       const payout = paid ? (paid.args as { amount: bigint }).amount : 0n;
-      if (payout) void recordPayment(pot.beneficiary, payout);
+      if (payout && split === 1) void recordPayment(pot.beneficiaries[0], payout);
       return { payout };
     });
     if (ok) {
@@ -58,6 +63,30 @@ export default function PotDetail() {
     }
   }
 
+  async function openInvite() {
+    setCopied(false);
+    setSheet("invite");
+    const saved = savedLink(pot.id, me!, myKey);
+    if (saved) return setLink(saved);
+    setLink("");
+    const url = await run(async (say) => (say("Making your link…"), createPotInvite(pot.id, me!)));
+    if (url) {
+      setLink(url);
+      reload();
+    }
+  }
+
+  async function turnOff() {
+    const ok = await run(async () => (await disablePotInvite(pot.id, me!), true));
+    if (ok) {
+      setLink("");
+      setSheet("");
+      reload();
+    }
+  }
+
+  const inviteText = "Join our family pot on Kin — we chip in together and it pays out by itself. Tap to join:";
+
   if (party) {
     return (
       <Celebrate
@@ -75,7 +104,7 @@ export default function PotDetail() {
     <Screen title="Family pot" back="/pot" wide>
       <Pad className="flex flex-col items-center gap-4 text-center">
         <span className="flex items-center gap-2 text-sm text-muted">
-          <WhoAvatar a={pot.beneficiary} size={28} /> For <Who a={pot.beneficiary} me={me} you="you" />
+          {!pot.toAll && <WhoAvatar a={pot.beneficiaries[0]} size={28} />} For <PotFor p={pot} me={me} />
         </span>
         <Ring value={pot.closed ? 0 : pct} size={220} stroke={16}>
           <span className="flex flex-col items-center">
@@ -90,7 +119,9 @@ export default function PotDetail() {
         {pot.closed ? (
           <Chip>This pot is closed</Chip>
         ) : (
-          <p className="text-sm text-muted">{formatMoney(left)} to go — then it pays out by itself.</p>
+          <p className="text-sm text-muted">
+            {formatMoney(left)} to go — then it pays out by itself{split > 1 ? `, split between ${split} people` : ""}.
+          </p>
         )}
         {payouts.length > 0 && (
           <Chip tone="good">Paid out {payouts.length}× · {formatMoney(payouts.reduce((a, p) => a + p.amount, 0n))} ✓✓</Chip>
@@ -115,8 +146,11 @@ export default function PotDetail() {
       <Pad className="mt-auto flex flex-col gap-2 pt-4">
         <ErrorText>{!sheet && actionError}</ErrorText>
         {!pot.closed && iMember && <Button onClick={() => { setAmount(""); setSheet("chip"); }}>Chip in</Button>}
+        {!pot.closed && iMember && pot.members.length < 20 && (
+          <Button variant="soft" onClick={openInvite}><Ico name="share" /> Invite family</Button>
+        )}
         {!pot.closed && iGet && pot.balance > 0n && (
-          <Button variant={iMember ? "ghost" : "primary"} onClick={() => setSheet("close")}>Take what&apos;s there now</Button>
+          <Button variant={iMember ? "ghost" : "primary"} onClick={() => setSheet("close")}>{split > 1 ? "Pay out what's there now" : "Take what's there now"}</Button>
         )}
       </Pad>
 
@@ -127,12 +161,32 @@ export default function PotDetail() {
         <Status>{busy && status}</Status>
         <Button onClick={chipIn} busy={busy} disabled={!Number(amount)}>Add to pot</Button>
       </Sheet>
-      <Sheet open={sheet === "close"} onClose={() => !busy && setSheet("")}>
-        <h2 className="font-display text-3xl">Take {formatMoney(pot.balance)} now?</h2>
-        <p className="text-muted">The pot closes after this. Family can start a new one any time.</p>
+      <Sheet open={sheet === "invite"} onClose={() => !busy && setSheet("")}>
+        <h2 className="font-display text-3xl">Invite family</h2>
+        <p className="text-muted">Anyone with your link can join the pot and chip in, up to 20 people. You can turn your link off any time.</p>
         <ErrorText>{actionError}</ErrorText>
         <Status>{busy && status}</Status>
-        <Button onClick={closePot} busy={busy}>Take it and close</Button>
+        {link && (
+          <>
+            <a href={`https://wa.me/?text=${encodeURIComponent(`${inviteText} ${link}`)}`} target="_blank" rel="noreferrer"
+              className="flex h-14 items-center justify-center gap-2 rounded-full bg-good font-semibold text-fun-ink active:scale-[0.98]">
+              <Ico name="share" /> Send on WhatsApp
+            </a>
+            <Button variant="soft" onClick={async () => (await share(inviteText, link)) === "copied" && setCopied(true)}>
+              {copied ? "Link copied ✓" : "Share another way"}
+            </Button>
+          </>
+        )}
+        {(link || myKey !== ZERO) && <Button variant="ghost" onClick={turnOff} busy={busy}>Turn off my link</Button>}
+      </Sheet>
+      <Sheet open={sheet === "close"} onClose={() => !busy && setSheet("")}>
+        <h2 className="font-display text-3xl">{split > 1 ? "Pay out" : "Take"} {formatMoney(pot.balance)} now?</h2>
+        <p className="text-muted">
+          {split > 1 ? `It's split between ${split} people and the pot closes.` : "The pot closes after this."} Family can start a new one any time.
+        </p>
+        <ErrorText>{actionError}</ErrorText>
+        <Status>{busy && status}</Status>
+        <Button onClick={closePot} busy={busy}>{split > 1 ? "Pay out and close" : "Take it and close"}</Button>
       </Sheet>
     </Screen>
   );

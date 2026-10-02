@@ -92,7 +92,10 @@ async function read(hash: Hex, other: Address, dir: "in" | "out", me: Address): 
     if (id === undefined) return fallback(other);
     const p = await getPot(id);
     if (isJar(p)) return dir === "out" ? "Savings jar" : ev.some((e) => e.eventName === "PotPaid") ? "Savings goal reached" : "From your savings jar";
-    return dir === "out" ? `Family pot for ${await at(p.beneficiary)}` : "Family pot payout";
+    if (dir === "in") return "Family pot payout";
+    if (p.toAll) return "Family pot for everyone";
+    const extra = p.beneficiaries.length > 1 ? ` +${p.beneficiaries.length - 1}` : "";
+    return `Family pot for ${await at(p.beneficiaries[0])}${extra}`;
   }
 
   if (isAddressEqual(other, addr.circle)) {

@@ -1,5 +1,4 @@
-import type { Address } from "viem";
-import { addrOf, bad, phoneHash, q, route, UPSERT_ME, UPSERT_THEM, verifiedName } from "@/lib/server/graph";
+import { addrOf, bad, q, route, UPSERT_ME, UPSERT_THEM, verifiedName } from "@/lib/server/graph";
 
 const EMPTY = { contacts: [], recents: [], suggested: [] };
 
@@ -32,35 +31,23 @@ export function GET(req: Request) {
 }
 
 /**
- * Save a contact: {address, label} or {phone, label}. Optional {myPhone} registers my own number.
- * Names are read onchain; client-sent names are ignored. Phones are stored only as HMAC.
+ * Save a contact: {address, label}. Names are read onchain; client-sent names are ignored.
+ * ponytail: phone lookup removed (SMS verification not free); existing Person.phoneHash props are inert.
  */
 export function POST(req: Request) {
   return route(req, { ok: true }, async (me, b) => {
     const label = typeof b.label === "string" ? b.label.trim().slice(0, 40) : "";
-    const myPhone = b.myPhone === undefined ? null : phoneHash(b.myPhone);
-    if (b.myPhone !== undefined && !myPhone) return bad("phone");
+    const them = addrOf(b.address);
+    if (!them || them === me) return bad();
 
-    let them: Address | null = addrOf(b.address);
-    if (!them && b.phone !== undefined) {
-      const h = phoneHash(b.phone);
-      if (!h) return bad("phone");
-      const [hit] = await q<{ address: Address }>(`MATCH (p:Person {phoneHash: $h}) RETURN p.address AS address LIMIT 1`, { h });
-      if (!hit) return bad("not found", 404);
-      them = hit.address;
-    }
-    if (them === me) return bad();
-    if (!them && !myPhone) return bad();
-
-    const [meName, themName] = await Promise.all([verifiedName(me), them ? verifiedName(them) : null]);
+    const [meName, themName] = await Promise.all([verifiedName(me), verifiedName(them)]);
     await q(
       `${UPSERT_ME}
-       SET me.phoneHash = coalesce($myPhone, me.phoneHash)
-       ${them ? `WITH me
+       WITH me
        ${UPSERT_THEM}
        MERGE (me)-[k:KNOWS]->(p) ON CREATE SET k.since = timestamp()
-       SET k.label = $label` : ""}`,
-      { me, meName, myPhone, them, themName, label },
+       SET k.label = $label`,
+      { me, meName, them, themName, label },
     );
     return { ok: true };
   });

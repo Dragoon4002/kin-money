@@ -1,14 +1,21 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Kinko } from "@/components/kinko/Kinko";
-import { Button, Card, Ico, Screen } from "@/components/ui";
+import { Avatar, Button, Card, Ico, Row, Screen } from "@/components/ui";
 import { useRequireAccount } from "@/lib/account";
+import { ago } from "@/lib/activity";
+import { listInvites, type Invites } from "@/lib/contacts";
 import { noteInvite, useKinko } from "@/lib/kinko";
 
 export default function Invite() {
-  const { profile } = useRequireAccount();
+  const { profile, unlocked } = useRequireAccount();
   const { look } = useKinko(profile?.address);
   const [copied, setCopied] = useState(false);
+  const [invites, setInvites] = useState<Invites | null>(null);
+
+  useEffect(() => {
+    if (unlocked) listInvites().then(setInvites, () => {});
+  }, [unlocked]);
 
   const handle = profile?.name;
   const link = typeof window === "undefined" || !handle ? "" : `${location.origin}/?ref=${encodeURIComponent(handle)}`;
@@ -37,6 +44,12 @@ export default function Invite() {
         <p className="mt-2 max-w-72 text-muted">Share your link with a friend.<br />You both unlock a party hat for Kinko.</p>
       </div>
 
+      {invites?.invitedBy && (
+        <p className="flex items-center justify-center gap-2 text-center text-sm text-muted">
+          <Avatar name={invites.invitedBy} size={24} /> You joined with @{invites.invitedBy}&apos;s invite
+        </p>
+      )}
+
       {profile && !handle && <p className="text-center text-sm text-muted">Pick your @name first to get your link.</p>}
 
       {link && (
@@ -49,6 +62,21 @@ export default function Invite() {
             <Ico name={copied ? "check" : "copy"} size={16} /> {copied ? "Copied" : "Copy"}
           </button>
         </Card>
+      )}
+
+      {invites && (
+        <section>
+          <h3 className="mb-2 px-1 text-sm font-semibold text-muted">People who joined with your link</h3>
+          <div className="overflow-hidden rounded-[28px] border border-line bg-surface">
+            {invites.invited.length ? (
+              invites.invited.map((p) => (
+                <Row key={p.name} icon={<Avatar name={p.name} />} title={`@${p.name}`} trail={<span className="shrink-0 text-sm text-muted">{ago(p.at)}</span>} />
+              ))
+            ) : (
+              <p className="px-5 py-4 text-sm text-muted">No one yet. Friends who join with your link show up here.</p>
+            )}
+          </div>
+        </section>
       )}
 
       <div className="mt-auto flex flex-col gap-3">

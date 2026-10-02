@@ -12,8 +12,14 @@ export type Person = { address: Address; name: string };
 /**
  * Pick a recipient. Contract: calls onPick with a resolved Person, or null when cleared.
  * Recent/saved people as a one-tap avatar row; "New" opens the @name field.
+ * `recents={false}` skips the row (field only); `exclude` hides those names from autocomplete.
  */
-export function PersonPicker({ label = "To", onPick }: { label?: string; onPick: (p: Person | null) => void }) {
+export function PersonPicker({ label = "To", onPick, recents: showRecents = true, exclude }: {
+  label?: string;
+  onPick: (p: Person | null) => void;
+  recents?: boolean;
+  exclude?: Set<string>;
+}) {
   const { unlocked, profile } = useAccount();
   const [q, setQ] = useState("");
   const [found, setFound] = useState<Person | null>(null);
@@ -24,8 +30,8 @@ export function PersonPicker({ label = "To", onPick }: { label?: string; onPick:
 
   // Only when unlocked: loading people must never trigger Face ID on its own.
   useEffect(() => {
-    if (unlocked) recentPeople().then(setRecents);
-  }, [unlocked]);
+    if (unlocked && showRecents) recentPeople().then(setRecents);
+  }, [unlocked, showRecents]);
 
   function pick(p: Person) {
     setMiss(false);
@@ -52,7 +58,7 @@ export function PersonPicker({ label = "To", onPick }: { label?: string; onPick:
     if (showField) loadNameTrie().then(setTrie);
   }, [showField]);
   const prefix = q.trim().replace(/^@/, "").toLowerCase();
-  const suggestions = prefix && !found ? (trie?.suggest(prefix, 6) ?? []).filter((n) => n !== profile?.name && n !== prefix).slice(0, 5) : [];
+  const suggestions = prefix && !found ? (trie?.suggest(prefix, 6) ?? []).filter((n) => n !== profile?.name && n !== prefix && !exclude?.has(n)).slice(0, 5) : [];
 
   return (
     <div className="flex min-w-0 flex-col gap-3">
@@ -90,7 +96,7 @@ export function PersonPicker({ label = "To", onPick }: { label?: string; onPick:
       {showField && (
         <label className="flex flex-col gap-1.5">
           <span className="sr-only">Kin name</span>
-          <input className={inputClass} placeholder="@name" autoCapitalize="none" autoCorrect="off" autoFocus={typing} value={q} onChange={(e) => lookup(e.target.value)} />
+          <input className={inputClass} placeholder="@name" autoCapitalize="none" autoCorrect="off" autoFocus={typing || !showRecents} value={q} onChange={(e) => lookup(e.target.value)} />
           {suggestions.length > 0 && (
             <ul className="overflow-hidden rounded-2xl border border-line bg-surface" aria-label="Suggestions">
               {suggestions.map((n) => (

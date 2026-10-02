@@ -52,7 +52,7 @@ lib/
 
 ## Graph model (Neo4j)
 ```
-(:Person {address, name, phoneHash, createdAt})
+(:Person {address, name, createdAt}   // legacy phoneHash props inert (phone lookup removed))
 (:Person)-[:KNOWS {label, since}]->(:Person)          // saved contact ("Mum", "Ravi")
 (:Person)-[:PAID {count, total, last}]->(:Person)       // upserted after each confirmed payment
 (:Person)-[:REQUESTED {id, amount, note, status, at}]->(:Person)   // request-as-message (#18)

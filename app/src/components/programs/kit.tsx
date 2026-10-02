@@ -85,6 +85,12 @@ export function WhoAvatar({ a, size = 40 }: { a?: Address; size?: number }) {
   return <Avatar name={n || "?"} size={size} />;
 }
 
+/** Who a family pot pays: "everyone" or "@a, @b" (you → `you`). */
+export function PotFor({ p, me, you = "you" }: { p: { toAll: boolean; beneficiaries: Address[] }; me?: Address; you?: string }) {
+  if (p.toAll) return <>everyone</>;
+  return <>{p.beneficiaries.map((b, i) => <span key={b}>{i ? ", " : ""}<Who a={b} me={me} you={you} /></span>)}</>;
+}
+
 /** Local money from a float of base units — for live, sub-cent displays. */
 export function localParts(units: number, currency = getCurrency()) {
   const local = (units / 1e6) * (FX[currency] ?? 1);

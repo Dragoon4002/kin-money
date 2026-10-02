@@ -1,5 +1,4 @@
 import "server-only";
-import { createHmac } from "node:crypto";
 import neo4j, { type Driver } from "neo4j-driver";
 import { getAddress, isAddress, isHex, verifyMessage, type Address } from "viem";
 import { nameOf } from "../names";
@@ -7,7 +6,7 @@ import { nameOf } from "../names";
 // Phonebook graph (docs/ARCHITECTURE.md → Graph model). Optional: with no NEO4J_* env,
 // every route answers empty/ok so the app still works.
 
-const { NEO4J_URI, NEO4J_PASSWORD, PHONE_HASH_SECRET } = process.env;
+const { NEO4J_URI, NEO4J_PASSWORD } = process.env;
 const NEO4J_USER = process.env.NEO4J_USER ?? process.env.NEO4J_USERNAME; // Aura's credentials file uses NEO4J_USERNAME
 
 export const graphEnabled = () => Boolean(NEO4J_URI && NEO4J_USER && NEO4J_PASSWORD);
@@ -37,14 +36,6 @@ SET p.name = coalesce($themName, p.name)`;
 /** Onchain @name for an address (never trust client-supplied names), or null. */
 export async function verifiedName(a: Address): Promise<string | null> {
   return (await nameOf(a).catch(() => "")) || null;
-}
-
-/** Phone numbers are only ever stored as HMAC-SHA256(secret, E.164). */
-export function phoneHash(phone: unknown): string | null {
-  if (typeof phone !== "string" || !PHONE_HASH_SECRET) return null;
-  const e164 = phone.replace(/[\s()-]/g, "");
-  if (!/^\+[1-9]\d{6,14}$/.test(e164)) return null;
-  return createHmac("sha256", PHONE_HASH_SECRET).update(e164).digest("hex");
 }
 
 /** Caller address from `x-kin-*` headers (EIP-191 over `Kin contacts <address> <ts>`, ±300s), or null. */

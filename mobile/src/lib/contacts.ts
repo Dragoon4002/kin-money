@@ -1,3 +1,4 @@
+import * as SecureStore from "expo-secure-store";
 import type { Address } from "viem";
 import type { Look } from "@/components/Kinko";
 import { getAccount, getProfile } from "./account";
@@ -36,10 +37,17 @@ export async function recordPayment(to: Address, amount: bigint): Promise<void> 
   await api("/api/contacts/paid", "POST", { to, amount: amount.toString() }).catch(() => {});
 }
 
-/** Put me in the phonebook so people can find me. Fire-and-forget; never throws. */
+/** Put me in the phonebook so people can find me; also sends whose invite I came from (SecureStore `kin.ref`, server keeps the first). Never throws. */
 export async function registerMe(): Promise<void> {
-  await api("/api/contacts/me", "POST", {}).catch(() => {});
+  let ref: string | null = null;
+  try {
+    ref = SecureStore.getItem("kin.ref");
+  } catch {}
+  await api("/api/contacts/me", "POST", { ref: ref && /^[a-z0-9_]{3,20}$/.test(ref) ? ref : undefined }).catch(() => {});
 }
+
+export type Invites = { invited: { name: string; at: number }[]; invitedBy: string | null };
+export const listInvites = () => api<Invites>("/api/invites");
 
 /** Publish my Kinko look so others see my character. Fire-and-forget; never throws. */
 export async function publishLook(look: Look): Promise<void> {

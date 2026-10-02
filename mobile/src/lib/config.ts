@@ -15,6 +15,6 @@ export const addr = {
   names: "0x1cA367edbCf73A357Fe60651cFE6af27cfCA8476",
   escrow: "0x2F2e58b1B33B30756fa0653672B4ba10cF93a55e",
   stream: "0xaF989d7acE5a015875Fb5f28b22a091D441e41DB",
-  pot: "0x58ab4Da1575758be9d4Fe53bdB79fabe8F4C2caD",
-  circle: "0x37eC9DB78376CE7104eD5e0bD91dcfa96B9D6150",
+  pot: "0xd039f1D113ACd4E89d1f52Ca792D8F54F177a8bA",
+  circle: "0x0b467a32E1A38b999134da4941caD136390c9B41",
 } as const satisfies Record<string, Address>;

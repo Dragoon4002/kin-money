@@ -1,16 +1,19 @@
 "use client";
 import { useParams } from "next/navigation";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { zeroHash, type Address } from "viem";
-import { Loading, Pad, Status, Who, useAction, useLoad, useMe, useNow } from "@/components/programs/kit";
+import { Loading, Pad, Sheet, Status, Who, useAction, useLoad, useMe, useNow } from "@/components/programs/kit";
+import { share } from "@/components/core/share";
 import type { Mood } from "@/components/kinko/Kinko";
 import { AddressKinko } from "@/components/kinko/PersonKinko";
+import { Kinko } from "@/components/kinko/Kinko";
 import { Amount, Band, Button, Chip, Countdown, ErrorText, Ico, Row, Screen } from "@/components/ui";
 import { KinCircleAbi } from "@/lib/abi";
 import { addr } from "@/lib/chain";
+import { createCircleInvite, disableCircleInvite, readInviteKey, savedCircleLink } from "@/lib/circleLinks";
 import { recordPayment } from "@/lib/contacts";
 import { formatMoney } from "@/lib/money";
-import { canSettle, circleHistory, circlePhase, getCircle, same, type Circle, type CircleMember, type CirclePhase } from "@/lib/programs";
+import { canSettle, circleHistory, circlePhase, getCircle, same, ZERO, type Circle, type CircleMember, type CirclePhase } from "@/lib/programs";
 import { call } from "@/lib/tx";
 
 export default function CircleDetail() {
@@ -18,10 +21,13 @@ export default function CircleDetail() {
   const me = useMe();
   const now = useNow();
   const { data, error, reload } = useLoad(async () => {
-    const [c, history] = await Promise.all([getCircle(BigInt(id)), circleHistory(BigInt(id))]);
-    return { c, history };
-  }, id);
+    const [c, history, myKey] = await Promise.all([getCircle(BigInt(id)), circleHistory(BigInt(id)), me ? readInviteKey(BigInt(id), me) : ZERO]);
+    return { c, history, myKey };
+  }, `${id}.${me ?? ""}`);
   const { busy, status, error: actionError, run } = useAction();
+  const [inviting, setInviting] = useState(false);
+  const [link, setLink] = useState("");
+  const [copied, setCopied] = useState(false);
 
   // Others join and pay from their phones — keep this screen current.
   useEffect(() => {
@@ -30,11 +36,12 @@ export default function CircleDetail() {
   }, [reload]);
 
   if (!data) return <Screen title="Savings circle" back="/circle">{error ? <ErrorText>{error}</ErrorText> : <Loading />}</Screen>;
-  const { c, history } = data;
+  const { c, history, myKey } = data;
   if (!c.members.length) return <Screen title="Savings circle" back="/circle"><ErrorText>We couldn&apos;t find this circle.</ErrorText></Screen>;
 
-  const n = c.members.length;
+  const n = c.seats;
   const phase = circlePhase(c, now);
+  const open = n - c.members.length;
   const mine = c.members.find((m) => same(m.address, me));
   const pot = c.contribution * BigInt(n);
   const turn = c.members[c.round];
@@ -57,6 +64,29 @@ export default function CircleDetail() {
   const pay = () => act(() => call(addr.circle, KinCircleAbi, "pay", [c.id], { fund: c.contribution }));
   const settle = () => act(() => call(addr.circle, KinCircleAbi, "settle", [c.id]), () => void recordPayment(turn.address, c.pot));
   const leave = () => act(() => call(addr.circle, KinCircleAbi, "leave", [c.id]));
+
+  async function openInvite() {
+    if (!me) return;
+    setCopied(false);
+    setInviting(true);
+    const saved = savedCircleLink(c.id, me, myKey);
+    if (saved) return setLink(saved);
+    setLink("");
+    const url = await run(async (say) => (say("Making your link…"), createCircleInvite(c.id, me)));
+    if (url) {
+      setLink(url);
+      reload();
+    }
+  }
+  async function turnOff() {
+    const ok = await run(async () => (await disableCircleInvite(c.id, me!), true));
+    if (ok) {
+      setLink("");
+      setInviting(false);
+      reload();
+    }
+  }
+  const inviteText = `Join my savings circle on Kin — ${formatMoney(c.contribution)} each round, and everyone takes home ${formatMoney(pot)} once. Tap to join:`;
 
   let primary: ReactNode = null;
   if (mine && phase === "gathering" && !mine.joined) {
@@ -116,6 +146,14 @@ export default function CircleDetail() {
             />
           );
         })}
+        {phase === "gathering" && Array.from({ length: open }, (_, k) => c.members.length + k).map((i) => (
+          <Row
+            key={`open${i}`}
+            icon={<span className="grid size-9 shrink-0 place-items-center rounded-full border border-dashed border-line text-sm font-bold text-muted">{i + 1}</span>}
+            title={<span className="text-muted">Open spot</span>}
+            sub={`Turn ${i + 1} · whoever joins next`}
+          />
+        ))}
       </section>
 
       {phase === "gathering" && (
@@ -134,17 +172,41 @@ export default function CircleDetail() {
       )}
 
       <Pad className="mt-auto flex flex-col gap-2 pt-4">
+        <ErrorText>{!inviting && actionError}</ErrorText>
+        <Status>{!inviting && busy && status}</Status>
+        {primary}
+        {mine && phase === "gathering" && open > 0 && (
+          <Button variant="soft" onClick={openInvite}><Ico name="share" /> Invite to circle</Button>
+        )}
+      </Pad>
+
+      <Sheet open={inviting} onClose={() => !busy && setInviting(false)}>
+        <h2 className="font-display text-3xl">Invite to circle</h2>
+        <p className="text-muted">
+          {open} {open === 1 ? "spot is" : "spots are"} open. Whoever opens your link first takes the next turn. You can turn it off any time.
+        </p>
         <ErrorText>{actionError}</ErrorText>
         <Status>{busy && status}</Status>
-        {primary}
-      </Pad>
+        {link && (
+          <>
+            <a href={`https://wa.me/?text=${encodeURIComponent(`${inviteText} ${link}`)}`} target="_blank" rel="noreferrer"
+              className="flex h-14 items-center justify-center gap-2 rounded-full bg-good font-semibold text-fun-ink active:scale-[0.98]">
+              <Ico name="share" /> Send on WhatsApp
+            </a>
+            <Button variant="soft" onClick={async () => (await share(inviteText, link)) === "copied" && setCopied(true)}>
+              {copied ? "Link copied ✓" : "Share another way"}
+            </Button>
+          </>
+        )}
+        {(link || myKey !== ZERO) && <Button variant="ghost" onClick={turnOff} busy={busy}>Turn off my link</Button>}
+      </Sheet>
     </Screen>
   );
 }
 
 /** The circle table: everyone's Kinko seated around the pot, spotlight on whose turn it is. */
 function Table({ c, phase, me }: { c: Circle; phase: CirclePhase; me?: Address }) {
-  const n = c.members.length;
+  const n = c.seats;
   const size = n <= 6 ? 60 : n <= 10 ? 46 : 34;
   const turn = c.members[c.round];
   const pot = c.contribution * BigInt(n);
@@ -190,6 +252,18 @@ function Table({ c, phase, me }: { c: Circle; phase: CirclePhase; me?: Address }
             {n <= 8 && (
               <span className="mt-1 max-w-20 truncate text-[11px] font-semibold"><Who a={m.address} me={me} /></span>
             )}
+          </div>
+        );
+      })}
+      {phase === "gathering" && Array.from({ length: n - c.members.length }, (_, k) => c.members.length + k).map((i) => {
+        const a = (i / n) * 2 * Math.PI - Math.PI / 2;
+        return (
+          <div key={`open${i}`} aria-label="Open spot" className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center"
+            style={{ left: `${50 + 41 * Math.cos(a)}%`, top: `${50 + 41 * Math.sin(a)}%` }}>
+            <span className="relative block rounded-full border-2 border-dashed border-line opacity-60" style={{ width: size, height: size }}>
+              <span className="absolute inset-0 grid place-items-center opacity-40 grayscale"><Kinko size={size - 8} mood="calm" /></span>
+            </span>
+            {n <= 8 && <span className="mt-1 text-[11px] font-semibold text-muted">Open</span>}
           </div>
         );
       })}

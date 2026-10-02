@@ -171,33 +171,40 @@ export function canRelease(e: Escrow, t = nowSec()): boolean {
 
 // ---------- Family pot (KinPot) ----------
 
-export type Pot = { id: bigint; beneficiary: Address; target: bigint; balance: bigint; round: bigint; closed: boolean; members: Address[]; creator: Address };
+/** `beneficiaries` = who gets paid now (every current member when `toAll`). Unknown pot → target 0. */
+export type Pot = { id: bigint; beneficiaries: Address[]; toAll: boolean; target: bigint; balance: bigint; round: bigint; closed: boolean; members: Address[]; creator: Address };
 
 export async function getPot(id: bigint): Promise<Pot & { mine: Map<Address, bigint> }> {
-  const [[beneficiary, target, balance, round, closed], members] = await Promise.all([
+  const [[target, balance, round, closed, toAll], members, beneficiaries] = await Promise.all([
     publicClient.readContract({ address: addr.pot, abi: KinPotAbi, functionName: "pots", args: [id] }),
     publicClient.readContract({ address: addr.pot, abi: KinPotAbi, functionName: "membersOf", args: [id] }),
+    publicClient.readContract({ address: addr.pot, abi: KinPotAbi, functionName: "beneficiariesOf", args: [id] }),
   ]);
   const amounts = await Promise.all(members.map((m) => publicClient.readContract({ address: addr.pot, abi: KinPotAbi, functionName: "contributed", args: [id, round, m] })));
-  return { id, beneficiary, target, balance, round, closed, members: [...members], creator: ZERO, mine: new Map(members.map((m, i) => [m, amounts[i]])) };
+  return { id, beneficiaries: [...beneficiaries], toAll, target, balance, round, closed, members: [...members], creator: ZERO, mine: new Map(members.map((m, i) => [m, amounts[i]])) };
 }
 
 export async function listPots(me: Address): Promise<Pot[]> {
-  type Row = readonly [Address, bigint, bigint, bigint, boolean];
+  type Row = readonly [bigint, bigint, bigint, boolean, boolean];
   const rows = await scan<Row>(addr.pot, KinPotAbi, "pots", () => true);
-  const members = await publicClient.multicall({
-    contracts: rows.map(([id]) => ({ address: addr.pot, abi: KinPotAbi, functionName: "membersOf", args: [id] }) as const),
+  const lists = await publicClient.multicall({
+    contracts: rows.flatMap(([id]) => [
+      { address: addr.pot, abi: KinPotAbi, functionName: "membersOf", args: [id] } as const,
+      { address: addr.pot, abi: KinPotAbi, functionName: "beneficiariesOf", args: [id] } as const,
+    ]),
     allowFailure: false,
   });
-  return rows.flatMap(([id, [beneficiary, target, balance, round, closed]], i) =>
-    same(beneficiary, me) || members[i].some((m) => same(m, me))
-      ? [{ id, beneficiary, target, balance, round, closed, members: [...members[i]], creator: ZERO }]
-      : [],
-  );
+  return rows.flatMap(([id, [target, balance, round, closed, toAll]], i) => {
+    const members = [...lists[2 * i]], beneficiaries = [...lists[2 * i + 1]];
+    return [...members, ...beneficiaries].some((m) => same(m, me))
+      ? [{ id, beneficiaries, toAll, target, balance, round, closed, members, creator: ZERO }]
+      : [];
+  });
 }
 
-/** Savings jar = a pot I save into for myself (only member is the beneficiary). Not a family pot. */
-export const isJar = (p: Pick<Pot, "beneficiary" | "members">) => p.members.length === 1 && same(p.members[0], p.beneficiary);
+/** Savings jar = a pot I save into for myself (sole member = sole beneficiary, fixed list). Not a family pot. */
+export const isJar = (p: Pick<Pot, "beneficiaries" | "members" | "toAll">) =>
+  !p.toAll && p.members.length === 1 && p.beneficiaries.length === 1 && same(p.members[0], p.beneficiaries[0]);
 
 /** Recent adds to pot `id`, newest first (jar entries). */
 export async function potAdds(id: bigint) {
@@ -215,10 +222,12 @@ export type CircleMember = { address: Address; joined: boolean; defaulted: boole
 export type Circle = {
   id: bigint; contribution: bigint; roundLength: number; roundStart: number; round: number;
   joined: number; paidCount: number; pot: bigint; joinBy: number; members: CircleMember[];
+  /** Total people; seats - members.length are still open for invite links (until it starts). */
+  seats: number;
 };
 
 export async function getCircle(id: bigint): Promise<Circle> {
-  const [[contribution, roundLength, roundStart, round, joined, paidCount, pot, , joinBy], addrs] = await Promise.all([
+  const [[contribution, roundLength, roundStart, round, joined, paidCount, pot, , joinBy, seats], addrs] = await Promise.all([
     publicClient.readContract({ address: addr.circle, abi: KinCircleAbi, functionName: "circles", args: [id] }),
     publicClient.readContract({ address: addr.circle, abi: KinCircleAbi, functionName: "membersOf", args: [id] }),
   ]);
@@ -230,7 +239,7 @@ export async function getCircle(id: bigint): Promise<Circle> {
     const [, joined, defaulted, , paidRound, deposit] = infos[i];
     return { address, joined, defaulted, paidRound, deposit, depositFor: deposits[i] };
   });
-  return { id, contribution, roundLength, roundStart, round, joined, paidCount, pot, joinBy, members };
+  return { id, contribution, roundLength, roundStart, round, joined, paidCount, pot, joinBy, members, seats };
 }
 
 export type CirclePhase = "gathering" | "stalled" | "running" | "done";

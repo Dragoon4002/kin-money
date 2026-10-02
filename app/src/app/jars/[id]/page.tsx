@@ -8,7 +8,7 @@ import { KinPotAbi } from "@/lib/abi";
 import { addr } from "@/lib/chain";
 import { savedLook } from "@/lib/kinko";
 import { formatMoney, fromLocal } from "@/lib/money";
-import { getPot, isJar, potAdds, same, txEvents, ZERO } from "@/lib/programs";
+import { getPot, isJar, potAdds, same, txEvents } from "@/lib/programs";
 import { call } from "@/lib/tx";
 
 export default function JarDetail() {
@@ -25,7 +25,7 @@ export default function JarDetail() {
 
   if (!data) return <Screen title="Savings jar" back="/jars">{error ? <ErrorText>{error}</ErrorText> : <Loading />}</Screen>;
   const { pot, adds } = data;
-  if (pot.beneficiary === ZERO || !isJar(pot) || !same(pot.beneficiary, me)) {
+  if (!pot.target || !isJar(pot) || !same(pot.beneficiaries[0], me)) {
     return <Screen title="Savings jar" back="/jars"><ErrorText>We couldn&apos;t find this jar.</ErrorText></Screen>;
   }
   const { name, icon } = jarMeta(pot.id);
