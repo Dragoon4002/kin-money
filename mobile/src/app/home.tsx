@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { Bell, ChevronDown, ChevronUp, Menu, QrCode, ScanLine } from "lucide-react-native";
+import { Bell, ChevronDown, ChevronUp, Menu, MessageCircle, QrCode, ScanLine } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { Avatar, Button, IconButton, Keypad, Screen, Serif, Text } from "@/components/ui";
@@ -8,13 +8,14 @@ import { useAccount } from "@/lib/account";
 import { getBalance } from "@/lib/activity";
 import { API_BASE } from "@/lib/config";
 import { recentPeople, type Person } from "@/lib/contacts";
+import { useUnread } from "@/lib/live";
 import { currencySymbol, formatMoney } from "@/lib/money";
 import { useNotificationTaps, usePush } from "@/lib/push";
 import { useTheme } from "@/theme";
 
 export default function Home() {
   const t = useTheme();
-  const { profile, unlocked } = useAccount();
+  const { profile, unlocked, canRead } = useAccount();
   const me = profile?.address;
   const [amount, setAmount] = useState("");
   const [show, setShow] = useState(false);
@@ -22,6 +23,7 @@ export default function Home() {
   const [failed, setFailed] = useState(false);
   const [people, setPeople] = useState<Person[]>([]);
   const push = usePush(unlocked);
+  const unread = useUnread();
   useNotificationTaps();
 
   function toggle() {
@@ -32,15 +34,15 @@ export default function Home() {
     if (me) getBalance(me).then(setBalance).catch(() => setFailed(true));
   }
 
-  // Contacts need a signed request — only ask when already unlocked so Home never pops Face ID.
+  // People need a read session (or unlocked) — Home never pops Face ID.
   useEffect(() => {
-    if (!unlocked) return;
+    if (!canRead) return;
     let live = true;
     recentPeople().then((p) => live && setPeople(p));
     return () => {
       live = false;
     };
-  }, [unlocked]);
+  }, [canRead]);
 
   const hasAmount = Number(amount) > 0;
   const shown = `${currencySymbol()}${amount || "0"}`;
@@ -49,14 +51,17 @@ export default function Home() {
 
   return (
     <Screen>
-      <View style={{ height: 56, flexDirection: "row", alignItems: "center", gap: 10 }}>
-        <Text numberOfLines={1} style={{ flex: 1, color: t.ink, fontSize: 18, fontWeight: "700" }}>Hi{profile?.name ? ` @${profile.name}` : ""}</Text>
+      {/* ponytail: greeting text dropped — 6 header buttons leave no room on a 360dp phone; the avatar is "me". */}
+      <View style={{ height: 56, flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <Pressable onPress={() => router.push("/closet")} accessibilityLabel={profile?.name ? `My Kinko, @${profile.name}` : "My Kinko"} accessibilityRole="button" hitSlop={4}>
+          <Avatar name={profile?.name} size={44} />
+        </Pressable>
+        <View style={{ flex: 1 }} />
+        <IconButton icon={MessageCircle} label="Messages" badge={unread.messages} onPress={() => router.push("/messages")} />
+        <IconButton icon={Bell} label="Notifications" badge={unread.inbox} onPress={() => router.push("/inbox")} />
         <IconButton icon={ScanLine} label="Scan to pay" onPress={() => router.push("/scan")} />
         <IconButton icon={QrCode} label="My QR" onPress={() => router.push("/receive")} />
         <IconButton icon={Menu} label="More" onPress={() => router.push("/more")} />
-        <Pressable onPress={() => router.push("/closet")} accessibilityLabel="My Kinko" accessibilityRole="button" hitSlop={4}>
-          <Avatar name={profile?.name} size={44} />
-        </Pressable>
       </View>
 
       {push.ask && (

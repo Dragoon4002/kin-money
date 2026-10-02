@@ -60,15 +60,17 @@ export function usePush(unlocked: boolean) {
   return { ask: state === "ask", allow, dismiss: () => setState("no") };
 }
 
-const NATIVE = ["/activity", "/home", "/send"];
+const NATIVE = ["/activity", "/home", "/send", "/inbox", "/messages"];
 
-/** Open a notification's `data.url`: native screen if we have one, else the web app in a Custom Tab. */
-function open(url: unknown) {
+/** Open a Kin url (notification `data.url`, inbox item): native screen if we have one, else the web app in a Custom Tab. */
+export function openPath(url: unknown) {
   if (typeof url !== "string" || !url) return;
   // ponytail: string parse, RN's URL polyfill is partial. Only our own pages; anything else is ignored.
   const path = url.startsWith(API_BASE + "/") ? url.slice(API_BASE.length) : url.startsWith("/") && !url.startsWith("//") ? url : null;
   if (!path) return;
-  if (NATIVE.includes(path.split("?")[0])) router.push(path as Href);
+  const chat = path.split("?")[0].match(/^\/messages\/([^/]+)$/);
+  if (chat) router.push({ pathname: "/chat", params: { with: decodeURIComponent(chat[1]) } });
+  else if (NATIVE.includes(path.split("?")[0])) router.push(path as Href);
   else void WebBrowser.openBrowserAsync(API_BASE + path);
 }
 
@@ -76,7 +78,7 @@ const seen = new Set<string>();
 function handle(r: Notifications.NotificationResponse | null | undefined) {
   if (!r || seen.has(r.notification.request.identifier)) return;
   seen.add(r.notification.request.identifier);
-  open(r.notification.request.content.data?.url);
+  openPath(r.notification.request.content.data?.url);
 }
 
 /** Route notification taps (incl. the one that cold-started the app). Mount once on a screen inside the navigator. */

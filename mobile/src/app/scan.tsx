@@ -3,10 +3,11 @@ import { router, type Href } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { Flashlight } from "lucide-react-native";
 import { useRef, useState } from "react";
+import type { Address } from "viem";
 import { Pressable, Vibration, View } from "react-native";
 import { Button, ErrorText, Screen, Text } from "@/components/ui";
 import { API_BASE } from "@/lib/config";
-import { kinTarget } from "@/lib/scan";
+import { kinTarget, parseWalletUri } from "@/lib/scan";
 import { useTheme } from "@/theme";
 
 /** Scan & pay: camera QR → native Pay screen (or claim/invoice/chores on web). */
@@ -19,6 +20,9 @@ export default function Scan() {
 
   async function handle(text: string) {
     if (done.current) return;
+    const wallet = parseWalletUri(text);
+    if (wallet === "other") return setErr("That code can't be paid from Kin.");
+    if (wallet) return payAccount(wallet.to, wallet.units);
     const path = kinTarget(text, API_BASE);
     if (!path) return setErr("That's not a Kin code. Ask them to open My QR in Kin.");
     done.current = true;
@@ -26,6 +30,13 @@ export default function Scan() {
     if (path.startsWith("/send")) return router.replace(path as Href);
     await WebBrowser.openBrowserAsync(API_BASE + path);
     router.back();
+  }
+
+  // Code from another app: pay that account directly (Pay shows its Kin name if it has one).
+  function payAccount(to: Address, units: bigint | null) {
+    done.current = true;
+    Vibration.vibrate(30);
+    router.replace(`/send?to=${to}${units ? `&amt=${units}` : ""}` as Href);
   }
 
   return (

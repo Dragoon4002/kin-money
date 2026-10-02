@@ -1,17 +1,20 @@
 import * as SecureStore from "expo-secure-store";
 import type { Address } from "viem";
 import type { Look } from "@/components/Kinko";
-import { getAccount, getProfile } from "./account";
+import { dropReadToken, getAccount, getProfile, readToken } from "./account";
 import { API_BASE } from "./config";
 
 // Client API for the phonebook graph (/api/contacts). Same auth as web:
-// EIP-191 over `Kin contacts <address> <ts>`, cached 4 min (server accepts 5).
+// read-session Bearer token when we have one (no Face ID); else EIP-191 over
+// `Kin contacts <address> <ts>`, cached 4 min (server accepts 5).
 
 export type Person = { address: Address; name: string };
 
 let cached: { address: string; at: number; headers: Record<string, string> } | null = null;
 
 async function authHeaders(): Promise<Record<string, string>> {
+  const token = readToken();
+  if (token) return { authorization: `Bearer ${token}` };
   if (cached && cached.address === getProfile()?.address && Date.now() - cached.at < 240_000) return cached.headers;
   const account = await getAccount();
   const ts = String(Math.floor(Date.now() / 1000));
@@ -27,7 +30,10 @@ export async function api<T>(path: string, method = "GET", body?: unknown): Prom
     headers: { "content-type": "application/json", ...(await authHeaders()) },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
-  if (res.status === 401) cached = null;
+  if (res.status === 401) {
+    cached = null;
+    if (readToken()) dropReadToken();
+  }
   if (!res.ok) throw new Error(`network: contacts ${res.status}`);
   return res.json() as Promise<T>;
 }

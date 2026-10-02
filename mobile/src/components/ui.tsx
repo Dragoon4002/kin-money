@@ -72,13 +72,18 @@ export function ErrorText({ children }: { children?: string }) {
   );
 }
 
-/** Round icon button with a neutral tile. */
-export function IconButton({ icon: Icon, label, onPress }: { icon: LucideIcon; label: string; onPress: () => void }) {
+/** Round icon button with a neutral tile; `badge` > 0 shows an unread count. */
+export function IconButton({ icon: Icon, label, onPress, badge = 0 }: { icon: LucideIcon; label: string; onPress: () => void; badge?: number }) {
   const t = useTheme();
   return (
-    <Pressable onPress={onPress} accessibilityLabel={label} accessibilityRole="button"
+    <Pressable onPress={onPress} accessibilityLabel={badge > 0 ? `${label}, ${badge} new` : label} accessibilityRole="button"
       style={({ pressed }) => ({ width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: t.surface2, borderWidth: 1, borderColor: t.line, transform: [{ scale: pressed ? 0.95 : 1 }] })}>
       <Icon color={t.ink} size={22} />
+      {badge > 0 && (
+        <View style={{ position: "absolute", top: -4, right: -4, minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 5, alignItems: "center", justifyContent: "center", backgroundColor: t.brand, borderWidth: 2, borderColor: t.bg }}>
+          <Text style={{ color: t.brandInk, fontSize: 11, fontWeight: "700" }}>{badge > 9 ? "9+" : badge}</Text>
+        </View>
+      )}
     </Pressable>
   );
 }

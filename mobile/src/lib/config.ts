@@ -4,6 +4,8 @@ import { monadTestnet } from "viem/chains";
 // Same rpId as the PWA → same passkey → same account on web and phone.
 export const RP_ID = "kin-money.vercel.app";
 export const API_BASE = "https://kin-money.vercel.app";
+// Realtime (public key, same as web NEXT_PUBLIC_PUSHER_*).
+export const PUSHER = { key: "33b8e385c82424d3cc1e", cluster: "ap2" } as const;
 
 export const chain = monadTestnet;
 export const publicClient = createPublicClient({ chain, transport: http("https://testnet-rpc.monad.xyz") });

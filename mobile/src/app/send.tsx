@@ -2,13 +2,14 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, KeyboardAvoidingView, Pressable, ScrollView, View } from "react-native";
 import { Avatar, Button, ErrorText, Label, Screen, Serif, Text, TextInput, useInputStyle } from "@/components/ui";
-import { getAccount, getProfile, isUnlocked } from "@/lib/account";
+import { getAccount, getProfile, isUnlocked, readToken } from "@/lib/account";
 import { getBalance } from "@/lib/activity";
 import { CATEGORIES, setCategory, type CategoryId } from "@/lib/categories";
 import { recentPeople, recordPayment, type Person } from "@/lib/contacts";
 import { humanError } from "@/lib/errors";
 import { currencySymbol, formatMoney, fromLocal, getCurrency } from "@/lib/money";
-import { HANDLE_RE, loadDirectory, resolveName } from "@/lib/names";
+import { isAddress, type Address } from "viem";
+import { HANDLE_RE, loadDirectory, nameOf, resolveName } from "@/lib/names";
 import { parseAmt, unitsToLocal } from "@/lib/payLink";
 import { shareCard } from "@/lib/shareCard";
 import { sendDollars } from "@/lib/tx";
@@ -43,6 +44,13 @@ export default function Send() {
   const seq = useRef(0);
 
   const [finding, setFinding] = useState(() => HANDLE_RE.test(to));
+  // `?to=0x…` (scanned from another wallet's code): pay the account directly; show its Kin name if it has one.
+  const [rawTo] = useState(() => (isAddress(one(params.to)) ? (one(params.to) as Address) : null));
+  useEffect(() => {
+    if (!rawTo) return;
+    nameOf(rawTo).catch(() => "").then((n) => setPerson({ address: rawTo, name: n }));
+  }, [rawTo]);
+  const label = (n?: string) => (n ? `@${n}` : "this account");
 
   function lookup(h: string) {
     const n = ++seq.current;
@@ -73,7 +81,7 @@ export default function Send() {
   }, []);
 
   useEffect(() => {
-    if (!isUnlocked()) return; // never pop Face ID just to show suggestions
+    if (!isUnlocked() && !readToken()) return; // never pop Face ID just to show suggestions
     let live = true;
     recentPeople().then((p) => live && setPeople(p));
     return () => {
@@ -92,7 +100,7 @@ export default function Send() {
     try {
       const account = await getAccount();
       if ((await getBalance(account.address)) < units) throw new Error("insufficient balance");
-      setStatus(`Sending to @${person.name}…`);
+      setStatus(`Sending to ${label(person.name)}…`);
       const t0 = Date.now();
       const hash = await sendDollars(person.address, units);
       if (category) setCategory(hash, category).catch(() => {});
@@ -112,11 +120,11 @@ export default function Send() {
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12 }}>
           <Text style={{ color: t.good, fontSize: 20, fontWeight: "700" }}>Delivered ✓✓ in {(done.ms / 1000).toFixed(1)}s</Text>
           <Serif size={64}>{formatMoney(done.units, currency)}</Serif>
-          <Text style={{ color: t.muted }}>to @{done.name}{note.trim() ? ` · “${note.trim()}”` : ""}</Text>
+          <Text style={{ color: t.muted }}>to {label(done.name)}{note.trim() ? ` · “${note.trim()}”` : ""}</Text>
         </View>
         <View style={{ gap: 8 }}>
           <Button title="Share card" variant="soft"
-            onPress={() => shareCard({ kind: "sent", amount: done.units, to: done.name, from: getProfile()?.name, secs: done.ms < 60_000 ? (done.ms / 1000).toFixed(1) : undefined },
+            onPress={() => shareCard({ kind: "sent", amount: done.units, to: done.name || undefined, from: getProfile()?.name, secs: done.ms < 60_000 ? (done.ms / 1000).toFixed(1) : undefined },
               `Sent ${formatMoney(done.units, currency)} with Kin. Delivered ✓✓`)} />
           <Button title="Done" onPress={() => (router.canGoBack() ? router.back() : router.replace("/home"))} />
         </View>
@@ -139,7 +147,7 @@ export default function Send() {
 
   const me = getProfile()?.name;
   const suggestions = to && !person ? (trie?.suggest(to, 6) ?? []).filter((n) => n !== me && n !== to).slice(0, 5) : [];
-  const hint = !to ? "" : finding ? `Finding @${to}…` : person ? `@${person.name} ✓` : HANDLE_RE.test(to) ? "No one on Kin with that name yet." : "";
+  const hint = !to ? "" : finding ? `Finding @${to}…` : person ? `${label(person.name)} ✓` : HANDLE_RE.test(to) ? "No one on Kin with that name yet." : "";
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
