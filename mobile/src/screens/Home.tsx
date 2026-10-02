@@ -1,16 +1,16 @@
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { Bell, ChevronDown, ChevronUp, Menu, MessageCircle, QrCode, ScanLine } from "lucide-react-native";
+import { Bell, ChevronDown, ChevronUp, MessageCircle, ScanLine } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
-import { Avatar, Button, IconButton, Keypad, Screen, Serif, Text } from "@/components/ui";
+import { Avatar, Button, IconButton, Keypad, MeButton, Screen, Serif, TabHeader, Text } from "@/components/ui";
 import { useAccount } from "@/lib/account";
 import { getBalance } from "@/lib/activity";
 import { API_BASE } from "@/lib/config";
 import { recentPeople, type Person } from "@/lib/contacts";
 import { useUnread } from "@/lib/live";
 import { currencySymbol, formatMoney } from "@/lib/money";
-import { useNotificationTaps, usePush } from "@/lib/push";
+import { usePush } from "@/lib/push";
 import { useTheme } from "@/theme";
 
 export default function Home() {
@@ -24,7 +24,6 @@ export default function Home() {
   const [people, setPeople] = useState<Person[]>([]);
   const push = usePush(unlocked);
   const unread = useUnread();
-  useNotificationTaps();
 
   function toggle() {
     if (show && !failed) return setShow(false);
@@ -50,19 +49,13 @@ export default function Home() {
   const send = (to?: string) => router.push({ pathname: "/send", params: { ...(hasAmount && { amount }), ...(to && { to }) } });
 
   return (
-    <Screen>
-      {/* ponytail: greeting text dropped — 6 header buttons leave no room on a 360dp phone; the avatar is "me". */}
-      <View style={{ height: 56, flexDirection: "row", alignItems: "center", gap: 8 }}>
-        <Pressable onPress={() => router.push("/closet")} accessibilityLabel={profile?.name ? `My Kinko, @${profile.name}` : "My Kinko"} accessibilityRole="button" hitSlop={4}>
-          <Avatar name={profile?.name} size={44} />
-        </Pressable>
-        <View style={{ flex: 1 }} />
+    <Screen tab>
+      <TabHeader title={`Hi${profile?.name ? `, ${profile.name}` : ""}`}>
         <IconButton icon={MessageCircle} label="Messages" badge={unread.messages} onPress={() => router.push("/messages")} />
         <IconButton icon={Bell} label="Notifications" badge={unread.inbox} onPress={() => router.push("/inbox")} />
         <IconButton icon={ScanLine} label="Scan to pay" onPress={() => router.push("/scan")} />
-        <IconButton icon={QrCode} label="My QR" onPress={() => router.push("/receive")} />
-        <IconButton icon={Menu} label="More" onPress={() => router.push("/more")} />
-      </View>
+        <MeButton name={profile?.name} />
+      </TabHeader>
 
       {push.ask && (
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 20, borderWidth: 1, borderColor: t.line, backgroundColor: t.surface, padding: 12 }}>
@@ -110,14 +103,17 @@ export default function Home() {
       </View>
 
       {people.length > 0 && (
+        <View style={{ marginTop: 8, gap: 8 }}>
+        <Text style={{ color: t.muted, fontSize: 12, fontWeight: "600", letterSpacing: 1.5, textTransform: "uppercase" }}>People</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 16 }}>
           {people.map((p) => (
-            <Pressable key={p.address} onPress={() => send(p.name)} style={{ width: 64, alignItems: "center", gap: 6 }}>
+            <Pressable key={p.address} onPress={() => send(p.name)} accessibilityRole="button" style={{ width: 64, alignItems: "center", gap: 6 }}>
               <Avatar name={p.name} size={52} />
               <Text numberOfLines={1} style={{ color: t.muted, fontSize: 12 }}>{p.name}</Text>
             </Pressable>
           ))}
         </ScrollView>
+        </View>
       )}
     </Screen>
   );

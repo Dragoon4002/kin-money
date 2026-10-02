@@ -1,9 +1,6 @@
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import {
-  AlignLeft, Bell, Briefcase, Fingerprint, ChartPie, ChevronRight, Gift, House, ListChecks, Lock, type LucideIcon, MessageCircle, PiggyBank, Receipt,
-  RefreshCcw, Smile, Split, Sprout, SunMoon, Trash2, UserPlus, Users,
-} from "lucide-react-native";
+import { Bell, ChevronRight, Fingerprint, Lock, type LucideIcon, MessageCircle, QrCode, Smile, SunMoon, Trash2 } from "lucide-react-native";
 import { useState } from "react";
 import { Alert, Pressable, View } from "react-native";
 import { Screen, Text } from "@/components/ui";
@@ -12,22 +9,7 @@ import { API_BASE } from "@/lib/config";
 import { formatMoney } from "@/lib/money";
 import { useTheme } from "@/theme";
 
-// Native core covers send/scan/QR/activity; everything else opens the web app in a Custom Tab.
-const WEB: [string, string, LucideIcon][] = [
-  ["Allowance", "/allowance", Sprout],
-  ["Savings jars", "/jars", PiggyBank],
-  ["Family pots", "/pot", House],
-  ["Circles", "/circle", RefreshCcw],
-  ["Chores", "/chores", ListChecks],
-  ["Pay a bill", "/earmark", Receipt],
-  ["Invoice", "/invoice", Briefcase],
-  ["Gifts", "/gift", Gift],
-  ["Split a bill", "/split", Split],
-  ["Invite & earn", "/invite", UserPlus],
-  ["This month's spends", "/spends", ChartPie],
-  ["People", "/contacts", Users],
-  ["Me & settings", "/me", SunMoon],
-];
+// "Me": avatar menu (web MeButton → /me). Features live on the Money/Explore tabs; web-only settings open in a Custom Tab.
 
 function Row({ icon: Icon, label, onPress, danger }: { icon: LucideIcon; label: string; onPress: () => void; danger?: boolean }) {
   const t = useTheme();
@@ -76,15 +58,12 @@ export default function More() {
   }
 
   return (
-    <Screen title={profile?.name ? `@${profile.name}` : "More"} back scroll>
-      <Row icon={AlignLeft} label="Activity" onPress={() => router.push("/activity")} />
+    <Screen title={profile?.name ? `@${profile.name}` : "Me"} back scroll>
+      <Row icon={QrCode} label="My QR" onPress={() => router.push("/receive")} />
       <Row icon={MessageCircle} label="Messages" onPress={() => router.push("/messages")} />
       <Row icon={Bell} label="Notifications" onPress={() => router.push("/inbox")} />
       <Row icon={Smile} label="Kinko" onPress={() => router.push("/closet")} />
-      <Band>More on Kin</Band>
-      {WEB.map(([label, path, icon]) => (
-        <Row key={path} icon={icon} label={label} onPress={() => void WebBrowser.openBrowserAsync(API_BASE + path)} />
-      ))}
+      <Row icon={SunMoon} label="Currency, looks & more" onPress={() => void WebBrowser.openBrowserAsync(API_BASE + "/me")} />
       <Band>Safety</Band>
       <Row icon={Fingerprint} label={`When I pay: ${payLabel}`} onPress={choosePay} />
       <Row icon={Lock} label="Lock" onPress={() => (lock(), router.back())} />

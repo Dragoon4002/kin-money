@@ -1,7 +1,7 @@
 import * as SecureStore from "expo-secure-store";
 import type { Address } from "viem";
 import type { Look } from "@/components/Kinko";
-import { dropReadToken, getAccount, getProfile, readToken } from "./account";
+import { dropReadToken, getAccount, getProfile, readToken, ensureReadSession } from "./account";
 import { API_BASE } from "./config";
 
 // Client API for the phonebook graph (/api/contacts). Same auth as web:
@@ -15,6 +15,7 @@ let cached: { address: string; at: number; headers: Record<string, string> } | n
 async function authHeaders(): Promise<Record<string, string>> {
   const token = readToken();
   if (token) return { authorization: `Bearer ${token}` };
+  void ensureReadSession(); // no token yet (or it failed earlier): fetch one now so later reads skip Face ID
   if (cached && cached.address === getProfile()?.address && Date.now() - cached.at < 240_000) return cached.headers;
   const account = await getAccount();
   const ts = String(Math.floor(Date.now() / 1000));
@@ -70,3 +71,15 @@ export async function recentPeople(): Promise<Person[]> {
     .slice(0, 8)
     .map(({ address, name }) => ({ address, name }));
 }
+
+// ---------- phonebook (People tab), same shapes as web lib/contacts.ts ----------
+
+export type Contact = Person & { label: string };
+export type Recent = Person & { count: number; total: string; last: number };
+export type Suggestion = Person & { mutual: number };
+export type Phonebook = { contacts: Contact[]; recents: Recent[]; suggested: Suggestion[] };
+
+export const listContacts = () => api<Phonebook>("/api/contacts");
+
+/** Save someone with a nickname ("Mum"). */
+export const addContact = (p: Person, label = "") => api<{ ok: true }>("/api/contacts", "POST", { address: p.address, label });

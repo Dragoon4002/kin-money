@@ -126,7 +126,7 @@ export default function Send() {
           <Button title="Share card" variant="soft"
             onPress={() => shareCard({ kind: "sent", amount: done.units, to: done.name || undefined, from: getProfile()?.name, secs: done.ms < 60_000 ? (done.ms / 1000).toFixed(1) : undefined },
               `Sent ${formatMoney(done.units, currency)} with Kin. Delivered ✓✓`)} />
-          <Button title="Done" onPress={() => (router.canGoBack() ? router.back() : router.replace("/home"))} />
+          <Button title="Done" onPress={() => (router.canGoBack() ? router.back() : router.replace("/tabs"))} />
         </View>
       </Screen>
     );

@@ -3,15 +3,13 @@ import * as Sharing from "expo-sharing";
 import { Platform, Share } from "react-native";
 import { API_BASE } from "./config";
 import { getCurrency } from "./money";
+import { query } from "./query";
 
 export type CardParams = { kind: "sent" | "received" | "goal" | "gift" | "settled"; amount?: bigint; to?: string; from?: string; secs?: string; title?: string };
 
 /** Public image URL for a share card (web app/api/card). */
 export function cardUrl({ amount, ...p }: CardParams) {
-  const q = new URLSearchParams({ cur: getCurrency() });
-  for (const [k, v] of Object.entries(p)) if (v) q.set(k, v);
-  if (amount !== undefined) q.set("amount", amount.toString());
-  return `${API_BASE}/api/card?${q}`;
+  return `${API_BASE}/api/card?${query({ cur: getCurrency(), ...p, amount: amount?.toString() })}`;
 }
 
 /** Share the card PNG itself (WhatsApp, Instagram…); falls back to the link if download/sharing fails. */

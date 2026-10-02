@@ -16,7 +16,7 @@ type Step = "welcome" | "name" | "handle" | "gift";
 type Check = "idle" | "checking" | "free" | "taken";
 
 const suggest = (name: string) => name.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 20);
-const home = () => router.replace("/home");
+const home = () => router.replace("/tabs");
 
 /** Welcome → first name → Face ID → @handle → welcome money. Or "Already have Kin?" → unlock. */
 export default function Onboard() {

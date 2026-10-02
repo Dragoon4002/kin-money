@@ -1,5 +1,8 @@
-import { erc20Abi, isAddressEqual, parseAbiItem, type Address, type Hex } from "viem";
-import { addr, publicClient } from "./config";
+import * as SecureStore from "expo-secure-store";
+import { erc20Abi, formatLog, isAddressEqual, parseAbiItem, parseEventLogs, type Address, type Hex, type Log, type RpcLog } from "viem";
+import { CATEGORIES } from "./categories";
+import { API_BASE, addr, publicClient } from "./config";
+import { describe, isKinContract } from "./counterparty";
 import { nameOf } from "./names";
 
 // Activity feed straight from AUSD Transfer logs (same as web lib/activity.ts).
@@ -96,4 +99,66 @@ async function scan(me: Address): Promise<Item[]> {
   }
 
   return Promise.all(items.map(async (i) => ({ ...i, who: await who(i.other, i.dir), when: ago(i.time) })));
+}
+
+// ---------- full feed (Activity tab): server history since deploy + live tail, web-style labels ----------
+
+const TAIL = 300n;
+const feedLast = new Map<string, Item[]>();
+const feedInflight = new Map<string, Promise<Item[]>>();
+
+/** Faucet that funds the sign-up welcome gift (same as web). */
+const FAUCET = "0xd236c18D274E54FAccC3dd9DDA4b27965a73ee6C";
+
+function feedWho(other: Address, dir: Raw["dir"], hash: Hex, me: Address): Promise<string> {
+  if (isKinContract(other)) return describe(hash, other, dir, me);
+  if (isAddressEqual(other, FAUCET)) return Promise.resolve("Welcome money");
+  return who(other, dir);
+}
+
+/** Like loadActivity but full history via /api/history (falls back to the recent-block scan). Safe to poll. */
+export function loadFeed(me: Address): Promise<Item[]> {
+  const k = me.toLowerCase();
+  if (!feedInflight.has(k)) feedInflight.set(k, feedScan(me).finally(() => feedInflight.delete(k)));
+  return feedInflight.get(k)!;
+}
+
+async function feedScan(me: Address): Promise<Item[]> {
+  const k = me.toLowerCase();
+  try {
+    const [res, latest] = await Promise.all([
+      fetch(`${API_BASE}/api/history?kind=transfers&address=${me}`).then((r) => (r.ok ? (r.json() as Promise<{ logs: RpcLog[]; to: string }>) : Promise.reject(new Error("history unavailable")))),
+      publicClient.getBlockNumber(),
+    ]);
+    const from = BigInt(res.to) + 1n > latest - TAIL ? BigInt(res.to) + 1n : latest - TAIL;
+    const tail: Log[] = [];
+    for (let b = from; b <= latest; b += CHUNK) {
+      tail.push(...(await publicClient.getLogs({ address: addr.ausd, fromBlock: b, toBlock: b + CHUNK - 1n < latest ? b + CHUNK - 1n : latest })));
+    }
+    const seen = new Set<string>();
+    const found = parseEventLogs({ abi: erc20Abi, eventName: "Transfer", logs: [...res.logs.map((l) => formatLog(l)), ...tail] }).flatMap((log) => {
+      const { from: f, to, value } = log.args;
+      const out = isAddressEqual(f, me);
+      const id = `${log.transactionHash}:${log.logIndex}`;
+      if ((!out && !isAddressEqual(to, me)) || seen.has(id)) return [];
+      seen.add(id);
+      const time = log.blockTimestamp ? Number(log.blockTimestamp) * 1000 : Date.now();
+      return [{ hash: log.transactionHash, logIndex: log.logIndex, dir: out ? "out" : "in", other: out ? to : f, amount: value, time } as Raw];
+    });
+    const items = await Promise.all(found.reverse().slice(0, KEEP).map(async (i) => ({ ...i, who: await feedWho(i.other, i.dir, i.hash, me), when: ago(i.time) })));
+    feedLast.set(k, items);
+    return items;
+  } catch {
+    // ponytail: server history down or offline — last good list, else the recent-block scan.
+    return feedLast.get(k) ?? loadActivity(me);
+  }
+}
+
+/** Category the user picked for payment `hash` on this phone (null = none). */
+export function categoryOf(hash: string) {
+  let id: string | null = null;
+  try {
+    id = SecureStore.getItem(`kin.cat.${hash.toLowerCase()}`);
+  } catch {}
+  return CATEGORIES.find((c) => c.id === id) ?? null;
 }

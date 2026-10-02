@@ -1,4 +1,5 @@
-import { CameraView, useCameraPermissions } from "expo-camera";
+import { CameraView, scanFromURLAsync, useCameraPermissions } from "expo-camera";
+import * as ImagePicker from "expo-image-picker";
 import { router, type Href } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { Flashlight } from "lucide-react-native";
@@ -32,6 +33,16 @@ export default function Scan() {
     router.back();
   }
 
+  // Pick a screenshot/photo of a QR (no camera permission needed for the photo library on Android 13+).
+  async function fromPhoto() {
+    setErr("");
+    const pick = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 1 });
+    if (pick.canceled || !pick.assets[0]) return;
+    const found = await scanFromURLAsync(pick.assets[0].uri, ["qr"]).catch(() => []);
+    if (!found[0]) return setErr("Couldn't find a Kin code in that photo. Try again closer.");
+    await handle(found[0].data);
+  }
+
   // Code from another app: pay that account directly (Pay shows its Kin name if it has one).
   function payAccount(to: Address, units: bigint | null) {
     done.current = true;
@@ -62,6 +73,9 @@ export default function Scan() {
       </View>
       <Text style={{ color: t.muted, textAlign: "center" }}>Point at someone&apos;s Kin QR. Their name and amount fill in for you.</Text>
       <ErrorText>{err}</ErrorText>
+      <View style={{ marginTop: "auto" }}>
+        <Button title="Scan from a photo" variant="ghost" onPress={() => void fromPhoto()} />
+      </View>
     </Screen>
   );
 }

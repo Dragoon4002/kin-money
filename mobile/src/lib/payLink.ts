@@ -1,15 +1,13 @@
 import { API_BASE, addr, chain } from "./config";
 import { FX, getCurrency, toDollars } from "./money";
+import { query } from "./query";
 
 /**
  * "Pay me" link — also what My QR and request links encode.
  * Amount travels in dollar base units (`amt`, 6 decimals) so a link made in ₹ reads right on a $ phone.
  */
 export function payLink(handle: string, units?: bigint, note?: string): string {
-  const q = new URLSearchParams({ to: handle });
-  if (units && units > 0n) q.set("amt", units.toString());
-  if (note) q.set("note", note.slice(0, 80));
-  return `${API_BASE}/send?${q}`;
+  return `${API_BASE}/send?${query({ to: handle, amt: units && units > 0n ? units.toString() : undefined, note: note?.slice(0, 80) })}`;
 }
 
 /** Valid `amt` param → base units, else null. */

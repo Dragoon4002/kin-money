@@ -19,16 +19,17 @@ function sans(style: StyleProp<TextStyle>): StyleProp<TextStyle> {
 export const Text = (p: TextProps) => <RNText {...p} style={sans(p.style)} />;
 export const TextInput = (p: TextInputProps) => <RNTextInput {...p} style={sans(p.style)} />;
 
-/** Full-screen page: safe area, optional back + title header. */
-export function Screen({ title, back, scroll, children }: { title?: string; back?: boolean; scroll?: boolean; children: ReactNode }) {
+/** Full-screen page: safe area, optional back + title header. `tab`: a tab page (the tabs shell owns the safe area). */
+export function Screen({ title, back, scroll, tab, children }: { title?: string; back?: boolean; scroll?: boolean; tab?: boolean; children: ReactNode }) {
   const t = useTheme();
+  const Wrap = tab ? View : SafeAreaView;
   const body = { flexGrow: 1, gap: 16, paddingHorizontal: 20, paddingBottom: 20 } as const;
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: t.bg }}>
+    <Wrap style={{ flex: 1, backgroundColor: t.bg }}>
       {(title || back) && (
         <View style={{ height: 56, flexDirection: "row", alignItems: "center", paddingHorizontal: 8, gap: 4 }}>
           {back && (
-            <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace("/home"))} accessibilityLabel="Back" hitSlop={8}
+            <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace("/tabs"))} accessibilityLabel="Back" hitSlop={8}
               style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}>
               <ChevronLeft color={t.ink} size={26} />
             </Pressable>
@@ -41,7 +42,7 @@ export function Screen({ title, back, scroll, children }: { title?: string; back
       ) : (
         <View style={[body, { flex: 1 }]}>{children}</View>
       )}
-    </SafeAreaView>
+    </Wrap>
   );
 }
 
@@ -97,6 +98,47 @@ export function Avatar({ name, size = 44 }: { name?: string; size?: number }) {
     <View accessibilityLabel={h ? `@${h}` : undefined}
       style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: t.surface2, borderWidth: 1, borderColor: t.line, overflow: "hidden" }}>
       <Kinko look={look} size={size} avatar />
+    </View>
+  );
+}
+
+/** Rounded square icon tile (web IconTile). */
+export function IconTile({ icon: Icon, size = 48, brand }: { icon: LucideIcon; size?: number; brand?: boolean }) {
+  const t = useTheme();
+  return (
+    <View style={{ width: size, height: size, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: brand ? t.brandSoft : t.surface2 }}>
+      <Icon color={brand ? t.brand : t.ink} size={Math.round(size * 0.46)} />
+    </View>
+  );
+}
+
+/** Small pill label (web Chip). */
+export function Chip({ children, good }: { children: ReactNode; good?: boolean }) {
+  const t = useTheme();
+  return (
+    <View style={{ alignSelf: "flex-start", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, backgroundColor: good ? `${t.good}26` : t.surface2 }}>
+      <Text style={{ color: good ? t.good : t.muted, fontSize: 12, fontWeight: "600" }}>{children}</Text>
+    </View>
+  );
+}
+
+/** Header avatar → Me (settings), like web MeButton. */
+export function MeButton({ name }: { name?: string }) {
+  return (
+    <Pressable onPress={() => router.push("/more")} accessibilityLabel="Me and settings" accessibilityRole="button" hitSlop={4}
+      style={({ pressed }) => ({ width: 44, height: 44, alignItems: "center", justifyContent: "center", transform: [{ scale: pressed ? 0.95 : 1 }] })}>
+      <Avatar name={name} size={40} />
+    </Pressable>
+  );
+}
+
+/** Tab page header: big bold title + optional right side (web `header h-12`). */
+export function TabHeader({ title, children }: { title: ReactNode; children?: ReactNode }) {
+  const t = useTheme();
+  return (
+    <View style={{ height: 48, marginTop: 16, flexDirection: "row", alignItems: "center", gap: 8 }}>
+      <View style={{ flex: 1 }}>{typeof title === "string" ? <Text numberOfLines={1} style={{ color: t.ink, fontSize: 20, fontWeight: "700" }}>{title}</Text> : title}</View>
+      {children}
     </View>
   );
 }

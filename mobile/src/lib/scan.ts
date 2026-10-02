@@ -10,15 +10,13 @@ export function kinTarget(text: string, origin: string): string | null {
   const t = text.trim();
   const bare = t.replace(/^@/, "").toLowerCase();
   if (HANDLE_RE.test(bare) && !t.includes("/")) return `/send?to=${bare}`;
-  try {
-    // ponytail: RN's URL never throws on junk; the origin/host check rejects it instead.
-    const u = new URL(t);
-    if (u.origin !== origin && u.hostname !== "kin-money.vercel.app") return null;
-    if (!KIN_PATHS.includes(u.pathname)) return null;
-    return u.pathname + u.search + u.hash;
-  } catch {
-    return null;
-  }
+  // Hermes' URL lacks origin/hostname/pathname (they throw), so split the link by hand.
+  const m = t.match(/^(https?):\/\/([^/?#]+)(\/[^?#]*)?(\?[^#]*)?(#.*)?$/i);
+  if (!m) return null;
+  const [, scheme, host, path = "/", search = "", hash = ""] = m;
+  if (`${scheme.toLowerCase()}://${host.toLowerCase()}` !== origin.toLowerCase() && host.toLowerCase() !== "kin-money.vercel.app") return null;
+  if (!KIN_PATHS.includes(path)) return null;
+  return path + search + hash;
 }
 
 // ---------- codes from other wallets (EIP-681). Mirrors app/src/lib/walletUri.ts — keep in sync. ----------
