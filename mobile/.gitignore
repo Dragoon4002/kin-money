@@ -47,3 +47,6 @@ credentials/
 credentials.json
 *.jks
 *.keystore
+
+# Firebase config (EAS uploads it via file env var / local build)
+google-services.json
