@@ -3,7 +3,7 @@ import type { Address, Hex } from "viem";
 import type { Person } from "@/components/PersonPicker";
 import { DEFAULT_LOOK, type Look } from "@/components/kinko/Kinko";
 import { Trie } from "./trie";
-import { dropReadToken, getAccount, readToken } from "./account";
+import { dropReadToken, getAccount, readToken, ensureReadSession } from "./account";
 import { HANDLE_RE } from "./names";
 
 // Client API for the phonebook graph (/api/contacts, /api/requests).
@@ -30,6 +30,7 @@ const savedAddress = () => {
 async function authHeaders(): Promise<Record<string, string>> {
   const token = readToken();
   if (token) return { authorization: `Bearer ${token}` };
+  void ensureReadSession(); // no token yet (or it failed earlier): fetch one now so later reads skip Face ID
   if (cached && cached.address === savedAddress() && Date.now() - cached.at < 240_000) return cached.headers;
   const account = await getAccount();
   const ts = String(Math.floor(Date.now() / 1000));

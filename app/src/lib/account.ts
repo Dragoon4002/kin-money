@@ -87,7 +87,7 @@ export async function signUp(displayName: string): Promise<Profile> {
   const profile = { credentialId: c.credentialId, address };
   save(profile);
   emit({ profile, unlocked: true, ready: true, canRead: true });
-  void startReadSession();
+  void ensureReadSession();
   return profile;
 }
 
@@ -99,7 +99,7 @@ export async function unlock(): Promise<Profile> {
   const profile: Profile = known?.address === address ? known : { credentialId: r.credentialId, address };
   save(profile);
   emit({ profile, unlocked: true, ready: true, canRead: true });
-  void startReadSession();
+  void ensureReadSession();
   return profile;
 }
 
@@ -134,7 +134,7 @@ export async function getAccount(): Promise<LocalAccount> {
   return account!;
 }
 
-// --- Read session: one signature after Face ID buys 30 days of browsing People/requests without it.
+// --- Read session: one signature after Face ID buys 180 days (renewed on each unlock) of browsing without it.
 
 /** Saved read token for `address` if unexpired (server re-checks the HMAC). */
 function tokenFor(address: string | undefined): string | null {
@@ -149,6 +149,10 @@ export function dropReadToken() {
   localStorage.removeItem(TOKEN);
   emit({ ...state, canRead: state.unlocked });
 }
+
+let sessionTry: Promise<void> | null = null;
+/** Get a read token if we're unlocked and don't have a fresh one (retried by every signed request until it sticks). */
+export const ensureReadSession = () => (sessionTry ??= startReadSession().finally(() => (sessionTry = null)));
 
 async function startReadSession() {
   const t = readToken();

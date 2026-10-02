@@ -4,7 +4,7 @@ import { getAddress, isAddress, type Address } from "viem";
 // Read-session token: `<address>.<exp>.<hmac>` (HMAC-SHA256, SESSION_SECRET). Lets the app read
 // People/requests without Face ID. Not a key — it can't move money (writes still need a signature).
 
-export const SESSION_DAYS = 30;
+export const SESSION_DAYS = 180; // renewed silently on every unlock → effectively one Face ID per device
 const mac = (body: string, secret: string) => createHmac("sha256", secret).update(body).digest("base64url");
 
 export function signToken(address: Address, exp: number, secret: string): string {
