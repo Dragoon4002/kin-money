@@ -1,4 +1,5 @@
 import type { Address } from "viem";
+import type { Look } from "@/components/Kinko";
 import { getAccount, getProfile } from "./account";
 import { API_BASE } from "./config";
 
@@ -19,7 +20,7 @@ async function authHeaders(): Promise<Record<string, string>> {
   return headers;
 }
 
-async function api<T>(path: string, method = "GET", body?: unknown): Promise<T> {
+export async function api<T>(path: string, method = "GET", body?: unknown): Promise<T> {
   const res = await fetch(API_BASE + path, {
     method,
     headers: { "content-type": "application/json", ...(await authHeaders()) },
@@ -38,6 +39,11 @@ export async function recordPayment(to: Address, amount: bigint): Promise<void> 
 /** Put me in the phonebook so people can find me. Fire-and-forget; never throws. */
 export async function registerMe(): Promise<void> {
   await api("/api/contacts/me", "POST", {}).catch(() => {});
+}
+
+/** Publish my Kinko look so others see my character. Fire-and-forget; never throws. */
+export async function publishLook(look: Look): Promise<void> {
+  await api("/api/contacts/me", "POST", { look }).catch(() => {});
 }
 
 /** Recent + frequent people (recents first, then saved contacts). Never throws. */

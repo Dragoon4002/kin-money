@@ -2,8 +2,14 @@ import { randomUUID } from "node:crypto";
 import { erc20Abi, isAddressEqual, isHash, parseEventLogs, type Address, type Hex } from "viem";
 import { addr, publicClient } from "@/lib/chain";
 import { CATEGORIES } from "@/lib/categories";
+import { formatMoney } from "@/lib/money";
+import { REMIND_GAP, validDue } from "@/lib/reminders";
 import { addrOf, bad, q, route, UPSERT_THEM, validAmount, verifiedName } from "@/lib/server/graph";
-import { loadTrip, MAX_MEMBERS } from "../data";
+import { notify } from "@/lib/server/push";
+import { shares } from "@/lib/split";
+import { loadTrip, MAX_MEMBERS, planOf } from "../data";
+
+const usd = (units: bigint) => formatMoney(units, "USD");
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -13,13 +19,14 @@ export async function GET(req: Request, { params }: Ctx) {
   return route(req, null, async (me) => (await loadTrip(id, me)) ?? bad("not found", 404));
 }
 
-/** {action: "expense" | "addMember" | "settle", ...}. Members only. */
+/** {action: "expense" | "addMember" | "settle" | "remind" | "settleBy", ...}. Members only. */
 export async function POST(req: Request, { params }: Ctx) {
   const { id } = await params;
   return route(req, { ok: true }, async (me, b) => {
     const trip = await loadTrip(id, me);
     if (!trip) return bad("not found", 404);
     const isMember = (a: Address | null): a is Address => !!a && trip.members.some((m) => m.address === a);
+    const nameOf = (a: Address) => `@${trip.members.find((m) => m.address === a)?.name || "someone"}`;
 
     if (b.action === "expense") {
       const payer = addrOf(b.payer);
@@ -35,6 +42,12 @@ export async function POST(req: Request, { params }: Ctx) {
          WITH e UNWIND $participants AS a
          MATCH (p:Person {address: a}) CREATE (e)-[:SHARE]->(p)`,
         { id, eid, payer, amount: b.amount, note, category, me, participants },
+      );
+      const what = `${nameOf(me)} added ${note || CATEGORIES.find((c) => c.id === category)!.label} ${usd(BigInt(b.amount))}`;
+      await Promise.all(
+        [...shares(BigInt(b.amount), participants)]
+          .filter(([a]) => a !== me)
+          .map(([a, share]) => notify(a, { title: trip.name, body: `${what} — your share ${usd(share)}`, url: `/trips/${id}`, tag: `trip-${id}` })),
       );
       return { id: eid };
     }
@@ -69,6 +82,28 @@ export async function POST(req: Request, { params }: Ctx) {
          CREATE (s)-[:OF]->(t), (s)-[:FROM]->(f), (s)-[:TO]->(to)`,
         { id, me, to, hash, amount: b.amount },
       );
+      return { ok: true };
+    }
+    if (b.action === "remind") {
+      // Only someone the debtor owes in the settle-up plan may nudge them, once per 12h.
+      const from = addrOf(b.from);
+      const owed = planOf(trip).find((t) => t.from === from && t.to === me);
+      if (!from || !owed) return bad("not found", 404);
+      const [r] = await q<{ ok: boolean }>(
+        `MERGE (r:Reminder {trip: $id, from: $from, to: $me}) ON CREATE SET r.at = 0
+         WITH r, r.at <= $cutoff AS ok
+         FOREACH (_ IN CASE WHEN ok THEN [1] ELSE [] END | SET r.at = timestamp())
+         RETURN ok`,
+        { id, from, me, cutoff: Date.now() - REMIND_GAP },
+      );
+      if (!r?.ok) return bad("too soon", 429);
+      await notify(from, { title: `Reminder: you owe ${nameOf(me)} ${usd(owed.amount)} for ${trip.name}`, body: "Tap to settle up.", url: `/trips/${id}`, tag: `trip-${id}` });
+      return { ok: true };
+    }
+
+    if (b.action === "settleBy") {
+      if (b.at !== null && !validDue(b.at)) return bad();
+      await q(`MATCH (t:Trip {id: $id}) SET t.settleBy = $at, t.nudgedAt = null`, { id, at: b.at });
       return { ok: true };
     }
     return bad();

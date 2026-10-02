@@ -1,8 +1,10 @@
 import { useSyncExternalStore } from "react";
 import type { Address } from "viem";
 import { DEFAULT_LOOK, lookForName, type Look } from "@/components/Kinko";
+import { useAccount } from "./account";
 import { KinNamesAbi } from "./abi";
 import { API_BASE, addr, publicClient } from "./config";
+import { savedLook, subscribeLooks } from "./kinko";
 import { Trie } from "./trie";
 
 const ZERO = "0x0000000000000000000000000000000000000000";
@@ -51,9 +53,11 @@ export const subscribeDirectory = (l: () => void) => {
   return () => { dirListeners.delete(l); };
 };
 
-/** Look to show for @name: published look, else the stable default (same as web).
- *  ponytail: no closet on mobile yet, so no own-look override; read it here once mobile stores one. */
+/** Look to show for @name: mine from this phone, others' published look, else the stable default (same as web). */
 export function useAvatarLook(name = ""): Look {
+  const { profile } = useAccount();
+  const own = !!name && name === profile?.name;
+  const mine = useSyncExternalStore(subscribeLooks, () => (own ? savedLook(profile?.address) : undefined));
   const theirs = useSyncExternalStore(subscribeDirectory, () => dirLooks.get(name));
-  return theirs ?? lookForName(name);
+  return mine ?? theirs ?? lookForName(name);
 }

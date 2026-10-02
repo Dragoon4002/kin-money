@@ -3,9 +3,10 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Avatar, Button, Chip, ErrorText, IconTile, Screen } from "@/components/ui";
 import { Bubble, SkeletonRows, useSignedIn } from "@/components/social/bits";
-import { listRequests, recordPayment, settleRequest, type MoneyRequest } from "@/lib/contacts";
+import { listRequests, recordPayment, remindRequest, settleRequest, type MoneyRequest } from "@/lib/contacts";
 import { humanError } from "@/lib/errors";
 import { formatMoney } from "@/lib/money";
+import { canRemind, dueLabel } from "@/lib/reminders";
 import { sendDollars } from "@/lib/tx";
 
 type Lists = { incoming: MoneyRequest[]; outgoing: MoneyRequest[] };
@@ -19,6 +20,16 @@ function ago(at: number) {
 
 const STATUS = { open: "Waiting", paid: "Paid ✓✓", declined: "Declined" } as const;
 
+/** Open requests with a date first, soonest (overdue) on top; the rest keep newest-first. */
+const byDue = (a: MoneyRequest, b: MoneyRequest) => rank(a) - rank(b);
+const rank = (r: MoneyRequest) => (r.status === "open" && r.due ? r.due : Number.MAX_SAFE_INTEGER);
+
+function DueChip({ r }: { r: MoneyRequest }) {
+  if (r.status !== "open" || !r.due) return null;
+  const label = dueLabel(r.due);
+  return <Chip tone={label === "Overdue" ? "bad" : "warn"}>{label}</Chip>;
+}
+
 /** #24 Collect: pay or decline what people asked you for; track what you asked. */
 export default function RequestsPage() {
   useSignedIn();
@@ -30,6 +41,19 @@ export default function RequestsPage() {
   useEffect(() => {
     listRequests().then(setLists, (e) => setErr(humanError(e)));
   }, []);
+
+  async function remind(r: MoneyRequest) {
+    setErr("");
+    const set = (remindedAt: number | null) => setLists((l) => l && { ...l, outgoing: l.outgoing.map((x) => (x.id === r.id ? { ...x, remindedAt } : x)) });
+    set(Date.now());
+    try {
+      await remindRequest(r.id);
+    } catch (e) {
+      if (String(e).includes("429")) return; // already reminded recently — keep the "Reminded" state
+      set(r.remindedAt);
+      setErr(humanError(e));
+    }
+  }
 
   const mark = (id: string, status: MoneyRequest["status"]) =>
     setLists((l) => l && { ...l, incoming: l.incoming.map((r) => (r.id === id ? { ...r, status } : r)) });
@@ -64,7 +88,7 @@ export default function RequestsPage() {
     }
   }
 
-  const open = lists?.incoming.filter((r) => r.status === "open") ?? [];
+  const open = lists?.incoming.filter((r) => r.status === "open").sort(byDue) ?? [];
   const done = lists?.incoming.filter((r) => r.status !== "open") ?? [];
 
   return (
@@ -93,6 +117,7 @@ export default function RequestsPage() {
           <p className="flex items-center gap-2 text-sm text-muted">
             <Avatar name={r.from.name} size={24} />
             <span className="font-semibold text-ink">@{r.from.name || "someone"}</span> · {ago(r.at)}
+            <span className="ml-auto"><DueChip r={r} /></span>
           </p>
           <Bubble amount={formatMoney(BigInt(r.amount))} note={r.note} />
           {r.status === "open" ? (
@@ -120,13 +145,21 @@ export default function RequestsPage() {
       {!!lists?.outgoing.length && (
         <section className="mt-4 flex flex-col gap-4">
           <h2 className="text-xs font-semibold uppercase tracking-widest text-muted">You asked</h2>
-          {lists.outgoing.map((r) => (
+          {[...lists.outgoing].sort(byDue).map((r) => (
             <div key={r.id} className="flex flex-col gap-1">
               <Bubble mine amount={formatMoney(BigInt(r.amount))} note={r.note} />
-              <p className="text-right text-sm text-muted">
-                @{r.to.name || "someone"} · {ago(r.at)} ·{" "}
-                <Chip tone={r.status === "paid" ? "good" : r.status === "declined" ? "muted" : "warn"}>{STATUS[r.status]}</Chip>
+              <p className="flex flex-wrap items-center justify-end gap-1.5 text-right text-sm text-muted">
+                @{r.to.name || "someone"} · {ago(r.at)} <DueChip r={r} />
+                {!(r.status === "open" && r.due) && <Chip tone={r.status === "paid" ? "good" : r.status === "declined" ? "muted" : "warn"}>{STATUS[r.status]}</Chip>}
               </p>
+              {r.status === "open" &&
+                (canRemind(r.remindedAt) ? (
+                  <button onClick={() => remind(r)} className="h-11 self-end rounded-full bg-brand-soft px-5 text-sm font-semibold text-brand active:scale-95">
+                    Remind @{r.to.name || "them"}
+                  </button>
+                ) : (
+                  <span className="self-end"><Chip tone="muted">Reminded ✓</Chip></span>
+                ))}
             </div>
           ))}
         </section>

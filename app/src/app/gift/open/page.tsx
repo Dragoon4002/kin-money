@@ -11,6 +11,7 @@ import { getAccount, useAccount } from "@/lib/account";
 import { addContact, registerMe } from "@/lib/contacts";
 import { bindGift, isBound, openGift, parseGiftLink, readGiftLink, type GiftLink } from "@/lib/giftLinks";
 import { humanError } from "@/lib/errors";
+import { savedLook } from "@/lib/kinko";
 import { formatMoney } from "@/lib/money";
 import { nameOf } from "@/lib/names";
 import { same } from "@/lib/programs";
@@ -107,7 +108,8 @@ export default function OpenGiftLink() {
   if (phase === "opened" && info) {
     return (
       <Celebrate open title="Your gift is open!" amount={money} subtitle={`From ${from}. It's in your balance now.`}
-        shareText="I just opened a gift on Kin 🎁" onClose={() => router.push("/home")} />
+        shareText="I just opened a gift on Kin 🎁" onClose={() => router.push("/home")}
+        card={{ kind: "gift", amount: info.amount, from: info.sender || undefined, look: me && savedLook(me) }} />
     );
   }
 

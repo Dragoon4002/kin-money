@@ -10,6 +10,7 @@ import { humanError } from "@/lib/errors";
 import { currencySymbol, formatMoney, fromLocal, getCurrency } from "@/lib/money";
 import { HANDLE_RE, loadDirectory, resolveName } from "@/lib/names";
 import { parseAmt, unitsToLocal } from "@/lib/payLink";
+import { shareCard } from "@/lib/shareCard";
 import { sendDollars } from "@/lib/tx";
 import type { Trie } from "@/lib/trie";
 import { useTheme } from "@/theme";
@@ -113,7 +114,12 @@ export default function Send() {
           <Serif size={64}>{formatMoney(done.units, currency)}</Serif>
           <Text style={{ color: t.muted }}>to @{done.name}{note.trim() ? ` · “${note.trim()}”` : ""}</Text>
         </View>
-        <Button title="Done" onPress={() => (router.canGoBack() ? router.back() : router.replace("/home"))} />
+        <View style={{ gap: 8 }}>
+          <Button title="Share card" variant="soft"
+            onPress={() => shareCard({ kind: "sent", amount: done.units, to: done.name, from: getProfile()?.name, secs: done.ms < 60_000 ? (done.ms / 1000).toFixed(1) : undefined },
+              `Sent ${formatMoney(done.units, currency)} with Kin. Delivered ✓✓`)} />
+          <Button title="Done" onPress={() => (router.canGoBack() ? router.back() : router.replace("/home"))} />
+        </View>
       </Screen>
     );
   }

@@ -80,11 +80,21 @@ async function save(fresh: RpcLog[]) {
       await d.executeQuery("CREATE CONSTRAINT hist_log_key IF NOT EXISTS FOR (l:HistLog) REQUIRE l.key IS UNIQUE");
       constrained = true;
     }
-    if (fresh.length)
-      await d.executeQuery(
-        "UNWIND $rows AS r MERGE (l:HistLog {key: r.key}) ON CREATE SET l.json = r.json, l.address = r.address, l.block = r.block",
+    if (fresh.length) {
+      // `notified` = this query's timestamp() only on the node it just created, so exactly one instance
+      // (the one that first indexed the log) sends its notification; re-saves and other instances don't.
+      const res = await d.executeQuery(
+        `UNWIND $rows AS r MERGE (l:HistLog {key: r.key})
+         ON CREATE SET l.json = r.json, l.address = r.address, l.block = r.block, l.notified = timestamp()
+         WITH r, l WHERE l.notified = timestamp() RETURN r.key AS key`,
         { rows: fresh.map((l) => ({ key: keyOf(l), json: JSON.stringify(l), address: l.address.toLowerCase(), block: Number(l.blockNumber) })) },
       );
+      const created = new Set(res.records.map((r) => r.get("key") as string));
+      // ponytail: ~10 min of Monad blocks (~0.4s each) so history backfills don't spam old events.
+      const recent = fresh.filter((l) => created.has(keyOf(l)) && BigInt(l.blockNumber!) + 1_500n >= hi);
+      // Extensionless dynamic import: resolves under Next; under plain-node scripts it just fails quietly.
+      if (recent.length) await import("./push").then((m) => m.notifyLogs(recent, contracts())).catch(() => {});
+    }
     await d.executeQuery(
       `MERGE (c:HistCursor {id: 'v1'}) ON CREATE SET c.lo = $lo, c.hi = $hi
        SET c.lo = CASE WHEN toInteger(c.lo) <= toInteger($lo) THEN c.lo ELSE $lo END,

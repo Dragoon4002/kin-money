@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { MyKinko } from "@/components/kinko/PersonKinko";
 import { Band, Button, Card, ErrorText, Ico, IconTile, Row, Screen, Tabs, inputClass } from "@/components/ui";
 import { lock, signOut, useRequireAccount } from "@/lib/account";
@@ -9,6 +9,7 @@ import { saveMyPhone } from "@/lib/contacts";
 import { humanError } from "@/lib/errors";
 import { FX, getCurrency } from "@/lib/money";
 import { setPrivate, usePrivate } from "@/lib/privacy";
+import { disablePush, enablePush, iosNeedsInstall, pushState, type PushState } from "@/lib/push";
 import { getTheme, setTheme, type Theme } from "@/lib/theme";
 
 // Tiny local stores so currency/theme changes re-render without React state copies.
@@ -41,6 +42,28 @@ export default function Me() {
   const e164 = phone.replace(/[\s()-]/g, "");
   const phoneOk = /^\+[1-9]\d{6,14}$/.test(e164);
   const handle = profile?.name;
+  // null = still checking; "ios" = iPhone in the browser (push needs the home-screen app).
+  const [push, setPush] = useState<PushState | "ios" | null>(null);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushErr, setPushErr] = useState(false);
+  useEffect(() => {
+    pushState().then((s) => setPush(s === "unsupported" && iosNeedsInstall() ? "ios" : s)).catch(() => setPush("unsupported"));
+  }, []);
+
+  async function togglePush(on: boolean) {
+    const before = push;
+    setPush(on ? "on" : "off"); // optimistic
+    setPushBusy(true);
+    setPushErr(false);
+    try {
+      if (on) setPush(await enablePush());
+      else await disablePush();
+    } catch {
+      setPush(before);
+      setPushErr(true);
+    }
+    setPushBusy(false);
+  }
 
   async function copy() {
     if (!handle) return;
@@ -92,6 +115,22 @@ export default function Me() {
             <span className="block text-sm text-muted">Your balance shows as •••• — tap it to peek</span>
           </span>
           <input type="checkbox" role="switch" className="size-6 accent-brand" checked={hidden} onChange={(e) => setPrivate(e.target.checked)} />
+        </label>
+
+        <Band>Notifications</Band>
+        <label className="flex min-h-16 items-center gap-4 px-5">
+          <span className="flex-1">
+            <span className="block font-semibold">Notifications</span>
+            <span className="block text-sm text-muted">
+              {pushErr ? "Couldn’t turn on alerts. Try again."
+                : push === "ios" ? "Add Kin to your home screen first"
+                : push === "unsupported" ? "This browser can’t show alerts from Kin"
+                : push === "denied" ? "Allow notifications for Kin in your phone settings"
+                : "Money in, chores done, gifts opened"}
+            </span>
+          </span>
+          <input type="checkbox" role="switch" aria-label="Notifications" className="size-6 accent-brand" checked={push === "on"}
+            disabled={pushBusy || (push !== "on" && push !== "off")} onChange={(e) => togglePush(e.target.checked)} />
         </label>
 
         <Band>Show my money in</Band>

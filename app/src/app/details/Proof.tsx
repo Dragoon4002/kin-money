@@ -8,7 +8,9 @@ import { Amount, Band, Button, Card, Chip, Ico, IconTile, Row, Screen } from "@/
 import { useRequireAccount } from "@/lib/account";
 import { CATEGORIES, categoryOf, setCategory, noteOf } from "@/lib/categories";
 import { addr, explorerTx, publicClient } from "@/lib/chain";
+import { savedLook } from "@/lib/kinko";
 import { formatMoney } from "@/lib/money";
+import { shareCard, warmCard, type CardParams } from "@/lib/shareCard";
 import { describe, isKinContract } from "@/lib/counterparty";
 import { nameOf } from "@/lib/names";
 
@@ -71,11 +73,26 @@ export function Proof() {
   const [cat, setCat] = useState(() => (hash ? categoryOf(hash) : null));
   const [editing, setEditing] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [cardCopied, setCardCopied] = useState(false);
   const note = hash ? noteOf(hash) : "";
 
   useEffect(() => {
     if (hash) load(hash, me).then(setR).catch(() => setFailed(true));
   }, [hash, me]);
+
+  // Share card: only the amount + @names, never the receipt number or account.
+  const at = (s: string) => (s.startsWith("@") ? s.slice(1) : undefined);
+  const card: CardParams | null = !r?.ok ? null : r.out
+    ? { kind: "sent", amount: r.amount, to: at(r.to), from: profile?.name, secs: fresh && ms > 0 && ms < 60_000 ? (ms / 1000).toFixed(1) : undefined, look: me && savedLook(me) }
+    : { kind: "received", amount: r.amount, from: at(r.from), look: me && savedLook(me) };
+  useEffect(() => {
+    if (card) warmCard(card); // memoized by URL; ready before the tap so the share sheet opens
+  });
+
+  // Nudge the server so the other person's notification goes out now (fire-and-forget).
+  useEffect(() => {
+    if (fresh) fetch("/api/push/tick").catch(() => {});
+  }, [fresh]);
 
   if (!hash || failed) {
     return (
@@ -168,8 +185,13 @@ export function Proof() {
         <Row title="Date" sub={when} />
       </section>
 
-      <div className="px-5">
+      <div className="flex flex-col gap-2 px-5">
         <Button variant="ink" onClick={shareReceipt}>{copied ? "Receipt copied ✓" : "Share receipt"}</Button>
+        {card && (
+          <Button variant="ghost" onClick={async () => (await shareCard(card, `${r.out ? "Sent" : "Got"} ${money} with Kin. Delivered ✓✓`)) === "copied" && setCardCopied(true)}>
+            {cardCopied ? "Link copied ✓" : "Share card"}
+          </Button>
+        )}
       </div>
 
       <section className="flex flex-col">

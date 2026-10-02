@@ -6,6 +6,7 @@ import { Celebrate } from "@/components/kinko/Celebrate";
 import { Amount, Band, Button, Chip, ErrorText, IconTile, Ring, Row, Screen } from "@/components/ui";
 import { KinPotAbi } from "@/lib/abi";
 import { addr } from "@/lib/chain";
+import { savedLook } from "@/lib/kinko";
 import { formatMoney, fromLocal } from "@/lib/money";
 import { getPot, isJar, potAdds, same, txEvents, ZERO } from "@/lib/programs";
 import { call } from "@/lib/tx";
@@ -64,6 +65,7 @@ export default function JarDetail() {
         amount={formatMoney(party)}
         subtitle={`Great job sticking with it. Your ${name} money is in your balance.`}
         shareText={`I just saved ${formatMoney(party)} for my ${name} on Kin 🎉`}
+        card={{ kind: "goal", amount: party, title: name, look: me && savedLook(me) }}
         onClose={() => setParty(0n)}
       />
     );

@@ -11,8 +11,11 @@ import { createRequest } from "@/lib/contacts";
 import { humanError } from "@/lib/errors";
 import { formatMoney, fromLocal } from "@/lib/money";
 import { payLink } from "@/lib/payLink";
+import { dueLabel, endOfDay } from "@/lib/reminders";
 
 const MODES = [["person", "From a person"], ["link", "As a link"]] as const;
+const DUE = [["none", "Anytime"], ["3", "In 3 days"], ["7", "In a week"], ["pick", "Pick a date"]] as const;
+const isoDay = (ms: number) => new Date(ms - new Date(ms).getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
 
 const EMOJI = ["📚", "🍕", "🏠", "🚕", "💊", "🎁"];
 
@@ -34,18 +37,22 @@ function RequestForm() {
   const [person, setPerson] = useState<Person | null>(null);
   const [amount, setAmount] = useState(/^\d{0,9}(\.\d{0,2})?$/.test(prefill) ? prefill : "");
   const [note, setNote] = useState("");
+  const [dueMode, setDueMode] = useState<(typeof DUE)[number][0]>("none");
+  const [picked, setPicked] = useState("");
+  const [now] = useState(Date.now); // render-stable "today"
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [sent, setSent] = useState(false);
 
   const units = Number(amount) > 0 ? fromLocal(amount) : 0n;
+  const due = dueMode === "3" || dueMode === "7" ? endOfDay(now, Number(dueMode)) : dueMode === "pick" && picked ? endOfDay(picked) : null;
 
   async function send() {
     if (!person || !units) return;
     setBusy(true);
     setErr("");
     try {
-      await createRequest(person.address, units, note.trim());
+      await createRequest(person.address, units, note.trim(), due);
       setSent(true);
     } catch (e) {
       setErr(humanError(e));
@@ -95,10 +102,22 @@ function RequestForm() {
         ))}
       </div>
 
+      {mode === "person" && (
+        <div className="flex flex-col gap-1.5" role="group" aria-label="Pay by">
+          <span className="text-sm font-medium text-muted">Pay by</span>
+          <Tabs value={dueMode} options={DUE} onChange={setDueMode} />
+          {dueMode === "pick" && (
+            <input type="date" className={inputClass} min={isoDay(now)} max={isoDay(now + 365 * 86_400_000)} value={picked} onChange={(e) => setPicked(e.target.value)} aria-label="Pay by date" />
+          )}
+          {due && <span className="text-xs text-muted">{new Date(due).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })}</span>}
+        </div>
+      )}
+
       {mode === "person" && units > 0n && (
         <div className="flex flex-col gap-1">
           <span className="text-sm font-medium text-muted">{person ? `@${person.name} will see` : "Preview"}</span>
           <Bubble mine amount={`Need ${formatMoney(units)}`} note={note.trim() ? `for ${note.trim()}` : undefined} />
+          {due && <span className="self-end text-sm text-muted">{dueLabel(due)}</span>}
         </div>
       )}
 

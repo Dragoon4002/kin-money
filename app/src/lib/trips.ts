@@ -9,7 +9,10 @@ import { api } from "./contacts";
 export type TripExpense = { id: string; amount: string; note: string; category: string; at: number; by: Address; payer: Address; participants: Address[] };
 export type TripSettlement = { hash: string; amount: string; at: number; from: Address; to: Address };
 export type TripSummary = { id: string; name: string; members: Person[]; net: string };
-export type Trip = { id: string; name: string; createdAt: number; by: Address; members: Person[]; expenses: TripExpense[]; settlements: TripSettlement[] };
+export type Trip = {
+  id: string; name: string; createdAt: number; by: Address; settleBy: number | null;
+  members: Person[]; expenses: TripExpense[]; settlements: TripSettlement[]; reminders: { from: Address; to: Address; at: number }[];
+};
 
 export const listTrips = () => api<{ trips: TripSummary[] }>("/api/trips").then((r) => r.trips);
 export const createTrip = (name: string, members: Address[]) => api<{ id: string }>("/api/trips", "POST", { name, members });
@@ -19,6 +22,12 @@ export const addExpense = (id: string, e: { payer: Address; amount: bigint; part
   api<{ id: string }>(`/api/trips/${id}`, "POST", { action: "expense", ...e, amount: e.amount.toString() });
 
 export const addTripMember = (id: string, address: Address) => api<{ ok: true }>(`/api/trips/${id}`, "POST", { action: "addMember", address });
+
+/** Nudge `from` about what they owe me (server allows once per 12h). */
+export const remindTrip = (id: string, from: Address) => api<{ ok: true }>(`/api/trips/${id}`, "POST", { action: "remind", from });
+
+/** Any member sets (or clears with null) the trip's "settle by" date, unix ms. */
+export const setSettleBy = (id: string, at: number | null) => api<{ ok: true }>(`/api/trips/${id}`, "POST", { action: "settleBy", at });
 
 export const removeExpense = (id: string, expense: string) =>
   api<{ ok: true }>(`/api/trips/${id}?expense=${encodeURIComponent(expense)}`, "DELETE", {});

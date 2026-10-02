@@ -12,7 +12,7 @@ export type Contact = Person & { label: string };
 export type Recent = Person & { count: number; total: string; last: number };
 export type Suggestion = Person & { mutual: number };
 export type Phonebook = { contacts: Contact[]; recents: Recent[]; suggested: Suggestion[] };
-export type MoneyRequest = { id: string; from: Person; to: Person; amount: string; note: string; status: "open" | "paid" | "declined"; at: number };
+export type MoneyRequest = { id: string; from: Person; to: Person; amount: string; note: string; status: "open" | "paid" | "declined"; at: number; due: number | null; remindedAt: number | null };
 
 let cached: { address: string; at: number; headers: Record<string, string> } | null = null;
 
@@ -116,9 +116,12 @@ export const addContactByPhone = (phone: string, label = "") => api<{ ok: true }
 /** Let people find me by my phone number (stored only as a hash). */
 export const saveMyPhone = (myPhone: string) => api<{ ok: true }>("/api/contacts", "POST", { myPhone });
 
-/** Ask `to` for `amount` base units. */
-export const createRequest = (to: Address, amount: bigint, note: string) =>
-  api<{ id: string }>("/api/requests", "POST", { to, amount: amount.toString(), note });
+/** Ask `to` for `amount` base units, optionally "pay by" `due` (unix ms). */
+export const createRequest = (to: Address, amount: bigint, note: string, due: number | null = null) =>
+  api<{ id: string }>("/api/requests", "POST", { to, amount: amount.toString(), note, due });
+
+/** Nudge the payer of my open request (server allows once per 12h). */
+export const remindRequest = (id: string) => api<{ ok: true }>("/api/requests", "POST", { action: "remind", id });
 
 export const listRequests = () => api<{ incoming: MoneyRequest[]; outgoing: MoneyRequest[] }>("/api/requests");
 

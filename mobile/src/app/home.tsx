@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { ChevronDown, ChevronUp, QrCode, ScanLine } from "lucide-react-native";
+import { Bell, ChevronDown, ChevronUp, Menu, QrCode, ScanLine } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { Avatar, Button, IconButton, Keypad, Screen, Serif, Text } from "@/components/ui";
@@ -9,6 +9,7 @@ import { getBalance } from "@/lib/activity";
 import { API_BASE } from "@/lib/config";
 import { recentPeople, type Person } from "@/lib/contacts";
 import { currencySymbol, formatMoney } from "@/lib/money";
+import { useNotificationTaps, usePush } from "@/lib/push";
 import { useTheme } from "@/theme";
 
 export default function Home() {
@@ -20,6 +21,8 @@ export default function Home() {
   const [balance, setBalance] = useState<bigint | null>(null);
   const [failed, setFailed] = useState(false);
   const [people, setPeople] = useState<Person[]>([]);
+  const push = usePush(unlocked);
+  useNotificationTaps();
 
   function toggle() {
     if (show && !failed) return setShow(false);
@@ -50,10 +53,25 @@ export default function Home() {
         <Text numberOfLines={1} style={{ flex: 1, color: t.ink, fontSize: 18, fontWeight: "700" }}>Hi{profile?.name ? ` @${profile.name}` : ""}</Text>
         <IconButton icon={ScanLine} label="Scan to pay" onPress={() => router.push("/scan")} />
         <IconButton icon={QrCode} label="My QR" onPress={() => router.push("/receive")} />
-        <Pressable onPress={() => router.push("/more")} accessibilityLabel="More" accessibilityRole="button" hitSlop={4}>
+        <IconButton icon={Menu} label="More" onPress={() => router.push("/more")} />
+        <Pressable onPress={() => router.push("/closet")} accessibilityLabel="My Kinko" accessibilityRole="button" hitSlop={4}>
           <Avatar name={profile?.name} size={44} />
         </Pressable>
       </View>
+
+      {push.ask && (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 20, borderWidth: 1, borderColor: t.line, backgroundColor: t.surface, padding: 12 }}>
+          <Bell color={t.brand} size={22} />
+          <Text style={{ flex: 1, color: t.ink, fontSize: 14, fontWeight: "600" }}>Get told when money arrives</Text>
+          <Pressable onPress={push.dismiss} accessibilityRole="button" hitSlop={8} style={{ minHeight: 44, justifyContent: "center", paddingHorizontal: 6 }}>
+            <Text style={{ color: t.muted, fontSize: 14, fontWeight: "600" }}>Not now</Text>
+          </Pressable>
+          <Pressable onPress={() => void push.allow()} accessibilityRole="button"
+            style={{ minHeight: 44, justifyContent: "center", borderRadius: 22, backgroundColor: t.brand, paddingHorizontal: 16 }}>
+            <Text style={{ color: t.brandInk, fontSize: 14, fontWeight: "700" }}>Allow</Text>
+          </Pressable>
+        </View>
+      )}
 
       <View style={{ alignItems: "center" }}>
         <Pressable onPress={toggle} accessibilityState={{ expanded: show }}

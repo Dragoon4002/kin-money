@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { shareCard, warmCard, type CardParams } from "@/lib/shareCard";
 import { Ico } from "../ui";
 import { Kinko, type Look } from "./Kinko";
 
@@ -22,11 +23,15 @@ const CSS = `
 @media (prefers-reduced-motion:reduce){.kin-confetti{animation:none;top:10%!important}}
 `;
 
-export function Celebrate({ open, title, amount, subtitle, onClose, shareText, started, ended, look }: {
+export function Celebrate({ open, title, amount, subtitle, onClose, shareText, started, ended, look, card }: {
   open: boolean; title: string; amount?: string; subtitle?: string; onClose: () => void; shareText?: string;
-  started?: string; ended?: string; look?: Look;
+  started?: string; ended?: string; look?: Look; /** Share a picture card instead of plain text. */ card?: CardParams;
 }) {
   const [copied, setCopied] = useState(false);
+  const cardP = card && { ...card, look: card.look ?? look };
+  useEffect(() => {
+    if (open && cardP) warmCard(cardP); // memoized by URL, cheap per render
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -39,6 +44,12 @@ export function Celebrate({ open, title, amount, subtitle, onClose, shareText, s
 
   const text = shareText ?? [title, amount].filter(Boolean).join(" ");
   async function share() {
+    if (cardP) {
+      if ((await shareCard(cardP, text)) !== "copied") return;
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      return;
+    }
     try {
       if (navigator.share) return await navigator.share({ text, url: location.origin });
       await navigator.clipboard.writeText(`${text} ${location.origin}`);
@@ -94,7 +105,7 @@ export function Celebrate({ open, title, amount, subtitle, onClose, shareText, s
         </div>
 
         <button onClick={share} className="h-14 w-full rounded-full text-base font-semibold transition active:scale-[0.98]" style={{ background: "var(--kinko-ink)" }}>
-          {copied ? <span className="inline-flex items-center gap-2"><Ico name="check" /> Copied</span> : "Share to friends"}
+          {copied ? <span className="inline-flex items-center gap-2"><Ico name="check" /> Copied</span> : cardP ? "Share card" : "Share to friends"}
         </button>
       </div>
     </div>

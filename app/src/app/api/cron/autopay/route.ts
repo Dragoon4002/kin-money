@@ -1,7 +1,12 @@
-import { zeroAddress } from "viem";
+import { zeroAddress, type Address } from "viem";
 import { KinGiftLinkAbi, KinMandateAbi } from "@/lib/abi";
 import { addr, publicClient } from "@/lib/chain";
+import { formatMoney } from "@/lib/money";
+import { canRemind, cronNudge, DAY, REMIND_GAP } from "@/lib/reminders";
+import { graphEnabled, q } from "@/lib/server/graph";
+import { notify } from "@/lib/server/push";
 import { submit } from "@/lib/server/relayer";
+import { loadTrip, planOf } from "@/app/api/trips/data";
 
 // Daily job (vercel.json cron): collect every AutoPay payment that has fallen due, and open every accepted
 // gift link whose day has come. `collect`/`open` are permissionless and pay the payee, so the relayer can call them.
@@ -31,7 +36,9 @@ export async function GET(req: Request) {
       console.error("autopay collect failed", ids[i], (e as Error).message?.slice(0, 200));
     }
   }
-  return Response.json({ scanned: ids.length, collected, opened: await openGifts() });
+  const opened = await openGifts();
+  const reminded = await remindAll().catch((e) => (console.error("reminders failed", (e as Error).message?.slice(0, 200)), 0));
+  return Response.json({ scanned: ids.length, collected, opened, reminded });
 }
 
 async function openGifts(): Promise<string[]> {
@@ -56,4 +63,49 @@ async function openGifts(): Promise<string[]> {
     }
   }
   return opened;
+}
+
+// ponytail: ≤50 notifications per run, oldest-due first; anything over waits for tomorrow's run.
+// Fine at hackathon scale; batch/queue push sends if one run must reach thousands.
+const MAX_NOTES = 50;
+const usd = (units: string | bigint) => formatMoney(BigInt(units), "USD");
+
+/** Due-tomorrow / 1-and-3-days-overdue request nudges, then debtors on trips past their settle-by date. */
+async function remindAll(): Promise<number> {
+  if (!graphEnabled()) return 0;
+  const now = Date.now();
+  let sent = 0;
+
+  const reqs = await q<{ id: string; to: string; name: string; amount: string; note: string; due: number; remindedAt: number | null }>(
+    `MATCH (a:Person)-[r:REQUESTED]->(b:Person) WHERE r.status = 'open' AND r.due IS NOT NULL AND r.due > $from AND r.due < $to
+     RETURN r.id AS id, b.address AS to, coalesce(a.name, '') AS name, r.amount AS amount, r.note AS note, r.due AS due, r.remindedAt AS remindedAt
+     ORDER BY r.due LIMIT 500`,
+    { from: now - 4 * DAY, to: now + 2 * DAY },
+  );
+  for (const r of reqs) {
+    const kind = cronNudge(r.due, now);
+    if (sent >= MAX_NOTES || !kind || !canRemind(r.remindedAt, now)) continue;
+    await q(`MATCH ()-[r:REQUESTED {id: $id}]->() SET r.remindedAt = timestamp()`, { id: r.id });
+    const what = `@${r.name || "someone"} is waiting for ${usd(r.amount)}${r.note ? ` for ${r.note}` : ""}`;
+    await notify(r.to, { title: kind === "tomorrow" ? "Due tomorrow" : "Overdue", body: `${what}.`, url: "/requests", tag: `req-${r.id}` });
+    sent++;
+  }
+
+  // Trips: once per daily run (12h gap guards re-runs) while past settle-by and someone still owes.
+  const trips = await q<{ id: string; by: Address }>(
+    `MATCH (t:Trip) WHERE t.settleBy IS NOT NULL AND t.settleBy < $now AND coalesce(t.nudgedAt, 0) <= $cutoff
+     RETURN t.id AS id, t.by AS by ORDER BY t.settleBy LIMIT 50`,
+    { now, cutoff: now - REMIND_GAP },
+  );
+  for (const { id, by } of trips) {
+    if (sent >= MAX_NOTES) break;
+    const trip = await loadTrip(id, by);
+    if (!trip) continue;
+    const owes = planOf(trip).slice(0, MAX_NOTES - sent);
+    await q(`MATCH (t:Trip {id: $id}) SET t.nudgedAt = timestamp()`, { id });
+    const name = (a: string) => `@${trip.members.find((m) => m.address === a)?.name || "someone"}`;
+    await Promise.all(owes.map((t) => notify(t.from, { title: `Time to settle ${trip.name}`, body: `You owe ${name(t.to)} ${usd(t.amount)}.`, url: `/trips/${id}`, tag: `trip-${id}` })));
+    sent += owes.length;
+  }
+  return sent;
 }

@@ -1,11 +1,16 @@
 import { randomUUID } from "node:crypto";
 import { erc20Abi, isAddressEqual, isHash, parseEventLogs, type Address, type Hex } from "viem";
 import { addr, publicClient } from "@/lib/chain";
+import { formatMoney } from "@/lib/money";
+import { REMIND_GAP, validDue } from "@/lib/reminders";
 import { addrOf, bad, q, route, UPSERT_ME, UPSERT_THEM, validAmount, verifiedName } from "@/lib/server/graph";
+import { notify } from "@/lib/server/push";
 
-// (requester)-[:REQUESTED {id, amount, note, status, at}]->(payer)
+// (requester)-[:REQUESTED {id, amount, note, status, at, due?, remindedAt?}]->(payer)
 
-type Row = { id: string; from: { address: Address; name: string }; to: { address: Address; name: string }; amount: string; note: string; status: string; at: number };
+type Row = { id: string; from: { address: Address; name: string }; to: { address: Address; name: string }; amount: string; note: string; status: string; at: number; due: number | null; remindedAt: number | null };
+
+const usd = (units: string) => formatMoney(BigInt(units), "USD");
 
 /** Requests I received (incoming) and sent (outgoing), newest first. */
 export function GET(req: Request) {
@@ -14,7 +19,8 @@ export function GET(req: Request) {
       `MATCH (a:Person)-[r:REQUESTED]->(b:Person) WHERE a.address = $me OR b.address = $me
        RETURN r.id AS id, {address: a.address, name: coalesce(a.name, '')} AS \`from\`,
               {address: b.address, name: coalesce(b.name, '')} AS \`to\`,
-              r.amount AS amount, r.note AS note, r.status AS status, r.at AS at
+              r.amount AS amount, r.note AS note, r.status AS status, r.at AS at,
+              r.due AS due, r.remindedAt AS remindedAt
        ORDER BY r.at DESC LIMIT 100`,
       { me },
     );
@@ -22,11 +28,13 @@ export function GET(req: Request) {
   });
 }
 
-/** Ask someone for money: {to, amount (base units string), note}. */
+/** Ask someone for money: {to, amount (base units string), note, due?}. Or nudge the payer: {action: "remind", id}. */
 export function POST(req: Request) {
   return route(req, { ok: true }, async (me, b) => {
+    if (b.action === "remind") return remind(me, b.id);
     const them = addrOf(b.to);
-    if (!them || them === me || !validAmount(b.amount)) return bad();
+    const due = b.due == null ? null : validDue(b.due) ? b.due : undefined;
+    if (!them || them === me || !validAmount(b.amount) || due === undefined) return bad();
     const note = typeof b.note === "string" ? b.note.trim().slice(0, 140) : "";
     const id = randomUUID();
     const [meName, themName] = await Promise.all([verifiedName(me), verifiedName(them)]);
@@ -34,9 +42,10 @@ export function POST(req: Request) {
       `${UPSERT_ME}
        WITH me
        ${UPSERT_THEM}
-       CREATE (me)-[:REQUESTED {id: $id, amount: $amount, note: $note, status: 'open', at: timestamp()}]->(p)`,
-      { me, meName, them, themName, id, amount: b.amount, note },
+       CREATE (me)-[:REQUESTED {id: $id, amount: $amount, note: $note, status: 'open', at: timestamp(), due: $due}]->(p)`,
+      { me, meName, them, themName, id, amount: b.amount, note, due },
     );
+    await notify(them, { title: `@${meName ?? "someone"} asked you for ${usd(b.amount)}`, body: note || "Tap to pay or decline.", url: "/requests", tag: `req-${id}` });
     return { id };
   });
 }
@@ -58,6 +67,22 @@ export function PATCH(req: Request) {
     await q(`MATCH ()-[r:REQUESTED {id: $id}]->() WHERE r.status = 'open' SET r.status = $status`, { id: b.id, status: b.status });
     return { ok: true };
   });
+}
+
+/** Requester only, open requests only, once per 12h. */
+async function remind(me: Address, id: unknown) {
+  if (typeof id !== "string") return bad();
+  const [r] = await q<{ to: Address; name: string; amount: string; ok: boolean }>(
+    `MATCH (a:Person {address: $me})-[r:REQUESTED {id: $id}]->(b:Person) WHERE r.status = 'open'
+     WITH a, b, r, coalesce(r.remindedAt, 0) <= $cutoff AS ok
+     FOREACH (_ IN CASE WHEN ok THEN [1] ELSE [] END | SET r.remindedAt = timestamp())
+     RETURN b.address AS to, coalesce(a.name, '') AS name, r.amount AS amount, ok`,
+    { me, id, cutoff: Date.now() - REMIND_GAP },
+  );
+  if (!r) return bad("not found", 404);
+  if (!r.ok) return bad("too soon", 429);
+  await notify(r.to, { title: `Reminder: @${r.name || "someone"} is waiting for ${usd(r.amount)}`, body: "Tap to pay or decline.", url: "/requests", tag: `req-${id}` });
+  return { ok: true };
 }
 
 async function paidOnchain(hash: Hex, from: Address, to: Address, min: bigint): Promise<boolean> {

@@ -34,6 +34,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Script id="kin-theme" strategy="beforeInteractive">{themeScript}</Script>
         <div className="mx-auto flex min-h-dvh max-w-md flex-col">{children}</div>
         <InstallPrompt />
+        {process.env.NODE_ENV === "production" && (
+          <Script id="kin-sw" strategy="afterInteractive">{`if("serviceWorker"in navigator)navigator.serviceWorker.register("/sw.js").catch(function(){})`}</Script>
+        )}
       </body>
     </html>
   );

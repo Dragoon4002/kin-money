@@ -21,7 +21,6 @@ const WEB: [string, string, LucideIcon][] = [
   ["Invoice", "/invoice", Briefcase],
   ["Gifts", "/gift", Gift],
   ["Split a bill", "/split", Split],
-  ["Kinko", "/kinko", Smile],
   ["Invite & earn", "/invite", UserPlus],
   ["This month's spends", "/spends", ChartPie],
   ["People", "/contacts", Users],
@@ -60,6 +59,7 @@ export default function More() {
   return (
     <Screen title={profile?.name ? `@${profile.name}` : "More"} back scroll>
       <Row icon={AlignLeft} label="Activity" onPress={() => router.push("/activity")} />
+      <Row icon={Smile} label="Kinko" onPress={() => router.push("/closet")} />
       <Band>More on Kin</Band>
       {WEB.map(([label, path, icon]) => (
         <Row key={path} icon={icon} label={label} onPress={() => void WebBrowser.openBrowserAsync(API_BASE + path)} />

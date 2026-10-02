@@ -6,17 +6,21 @@ import { Empty, Loading, Pad, Sheet, Status, useLoad, useMe } from "@/components
 import { PersonPicker, type Person } from "@/components/PersonPicker";
 import { AddExpense, type NewExpense } from "@/components/trips/AddExpense";
 import { Avatars } from "@/components/trips/bits";
-import { Avatar, Band, Button, Card, Chip, ErrorText, Ico, IconTile, Row, Screen, Tabs } from "@/components/ui";
+import { Avatar, Band, Button, Card, Chip, ErrorText, Ico, IconTile, inputClass, Row, Screen, Tabs } from "@/components/ui";
 import { isUnlocked } from "@/lib/account";
 import { CATEGORIES } from "@/lib/categories";
 import { recordPayment } from "@/lib/contacts";
+import { shareCard } from "@/lib/shareCard";
 import { humanError } from "@/lib/errors";
 import { formatMoney } from "@/lib/money";
+import { canRemind, dueLabel, endOfDay } from "@/lib/reminders";
 import { balances, settleUp, shares, type Transfer } from "@/lib/split";
-import { addExpense, addTripMember, getTrip, pendingSettlements, removeExpense, settleTrip, syncSettlements, type TripExpense } from "@/lib/trips";
+import { addExpense, addTripMember, getTrip, pendingSettlements, remindTrip, removeExpense, setSettleBy, settleTrip, syncSettlements, type TripExpense } from "@/lib/trips";
 import { sendDollars } from "@/lib/tx";
 
 type Tab = "expenses" | "balances" | "settle";
+const isoDay = (ms: number) => new Date(ms - new Date(ms).getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
+const shortDate = (ms: number) => new Date(ms).toLocaleDateString(undefined, { day: "numeric", month: "short" });
 const catOf = (id: string) => CATEGORIES.find((c) => c.id === id) ?? CATEGORIES[CATEGORIES.length - 1];
 
 export default function TripPage() {
@@ -27,12 +31,15 @@ export default function TripPage() {
     return { trip: await getTrip(id), pending: pendingSettlements(id, me!) };
   }, me && id);
   const [tab, setTab] = useState<Tab>("expenses");
-  const [sheet, setSheet] = useState<"add" | "member" | TripExpense | null>(null);
+  const [sheet, setSheet] = useState<"add" | "member" | "date" | TripExpense | null>(null);
   const [adds, setAdds] = useState<TripExpense[]>([]); // optimistic, until the server has them
   const [dels, setDels] = useState<string[]>([]);
   const [err, setErr] = useState("");
   const [progress, setProgress] = useState("");
   const [paidTo, setPaidTo] = useState<string[]>([]);
+  const [nudged, setNudged] = useState<string[]>([]); // debtors I just reminded
+  const [date, setDate] = useState("");
+  const [now] = useState(Date.now); // render-stable "today"
 
   // Friends add costs and pay from their phones — keep this current (never prompts Face ID).
   useEffect(() => {
@@ -100,6 +107,29 @@ export default function TripPage() {
     }
   }
 
+  async function remind(from: string) {
+    setErr("");
+    setNudged((n) => [...n, from]);
+    try {
+      await remindTrip(id, from as Address);
+    } catch (x) {
+      if (String(x).includes("429")) return; // reminded recently — keep "Reminded"
+      setNudged((n) => n.filter((y) => y !== from));
+      setErr(humanError(x));
+    }
+  }
+
+  async function onSettleBy(at: number | null) {
+    setSheet(null);
+    setErr("");
+    try {
+      await setSettleBy(id, at);
+      reload();
+    } catch (x) {
+      setErr(humanError(x));
+    }
+  }
+
   /** Pay each transfer in turn; stop at the first failure (earlier ones stay paid and recorded). */
   async function pay(list: Transfer[]) {
     setErr("");
@@ -137,6 +167,18 @@ export default function TripPage() {
       <Pad className="flex items-center gap-3">
         <Avatars people={members} size={32} max={7} />
         <span className="text-sm text-muted">{members.length} people</span>
+        <button
+          onClick={() => (setDate(trip.settleBy ? isoDay(trip.settleBy) : ""), setSheet("date"))}
+          className="ml-auto flex h-11 items-center gap-1.5 rounded-full bg-surface-2 px-4 text-sm font-semibold active:scale-95"
+        >
+          {trip.settleBy ? (
+            <span className={plan.length && now > trip.settleBy ? "text-bad" : "text-ink"}>
+              Settle by {shortDate(trip.settleBy)}
+            </span>
+          ) : (
+            <span className="text-muted">+ Settle-by date</span>
+          )}
+        </button>
       </Pad>
       <Pad>
         <Tabs value={tab} onChange={setTab} options={[["expenses", "Expenses"], ["balances", "Balances"], ["settle", "Settle up"]] as const} />
@@ -201,6 +243,11 @@ export default function TripPage() {
                 <IconTile name="celebrate" size={56} tone="brand" />
                 <p className="font-display text-3xl">All settled 🎉</p>
                 <p className="text-sm text-muted">{expenses.length ? "Nobody owes anybody." : "Add a cost first, then settle here."}</p>
+                {expenses.length > 0 && (
+                  <Button variant="ghost" onClick={() => void shareCard({ kind: "settled", amount: expenses.reduce((t, e) => t + BigInt(e.amount), 0n), title: trip.name }, `${trip.name} — all settled on Kin`)}>
+                    <span className="inline-flex items-center gap-2"><Ico name="share" /> Share card</span>
+                  </Button>
+                )}
               </Card>
             </Pad>
           ) : (
@@ -221,7 +268,15 @@ export default function TripPage() {
                       title={`${nameOf(t.from)} ${t.from === me ? "pay" : "pays"} ${nameOf(t.to)}`}
                       sub={t.from === me ? formatMoney(t.amount) : `${formatMoney(t.amount)} · Waiting for ${nameOf(t.from)}`}
                       trail={
-                        t.from === me ? (
+                        t.to === me ? (
+                          !nudged.includes(t.from) && canRemind(trip.reminders.find((r) => r.from === t.from && r.to === me)?.at) ? (
+                            <button onClick={() => remind(t.from)} className="h-11 rounded-full bg-brand-soft px-5 text-sm font-semibold text-brand active:scale-95">
+                              Remind
+                            </button>
+                          ) : (
+                            <Chip>Reminded ✓</Chip>
+                          )
+                        ) : t.from === me ? (
                           paidTo.includes(`${t.to}:${t.amount}`) ? (
                             <Chip tone="good">Paid ✓✓</Chip>
                           ) : (
@@ -268,6 +323,22 @@ export default function TripPage() {
 
       <Sheet open={sheet !== null} onClose={() => setSheet(null)}>
         {sheet === "add" && <AddExpense members={members} me={me} onAdd={onAdd} />}
+        {sheet === "date" && (
+          <>
+            <h2 className="text-lg font-bold">Settle by</h2>
+            <p className="text-sm text-muted">Everyone gets a nudge if money is still owed after this day.</p>
+            <input type="date" className={inputClass} min={isoDay(now)} value={date} onChange={(e) => setDate(e.target.value)} aria-label="Settle by date" />
+            {date && <p className="text-sm text-muted">{dueLabel(endOfDay(date))}</p>}
+            <Button onClick={() => onSettleBy(endOfDay(date))} disabled={!date}>
+              Save date
+            </Button>
+            {trip.settleBy && (
+              <Button variant="ghost" onClick={() => onSettleBy(null)}>
+                Remove date
+              </Button>
+            )}
+          </>
+        )}
         {sheet === "member" && (
           <>
             <h2 className="text-lg font-bold">Add someone to the trip</h2>
