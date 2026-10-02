@@ -66,6 +66,7 @@ Tier: **M** must, **S** should, **X** stretch. 🅰 = AUSD cross-border (Agora).
 
 ## Invisible-blockchain rules (Design & Craft = 20%, judged harshly)
 Banned in UI copy: wallet, address, gas, token, AUSD, Monad, chain, tx/transaction hash, sign, seed, crypto, blockchain, web3, mint, approve.
+Exception (user decision, Oct 3): the opt-in **"Other wallet"** sheet on My QR / request cards may say "wallet", "wallet address", "AUSD" and "Monad" — it exists only to let people pay from external wallets. Main text still shows "Pay to @name", never the raw address.
 Use: account, balance, dollars, send, request, pay, Face ID, receipt, delivered.
 Explorer links only behind "Details → Proof of payment" for judges.
 

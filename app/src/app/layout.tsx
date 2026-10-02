@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Instrument_Serif, Plus_Jakarta_Sans } from "next/font/google";
 import Script from "next/script";
 import { InstallPrompt } from "@/components/core/InstallPrompt";
+import { Live } from "@/components/core/Live";
 import "./globals.css";
 
 const jakarta = Plus_Jakarta_Sans({ variable: "--font-jakarta", subsets: ["latin"] });
@@ -34,6 +35,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Script id="kin-theme" strategy="beforeInteractive">{themeScript}</Script>
         <div className="mx-auto flex min-h-dvh max-w-md flex-col">{children}</div>
         <InstallPrompt />
+        <Live />
         {process.env.NODE_ENV === "production" && (
           <Script id="kin-sw" strategy="afterInteractive">{`if("serviceWorker"in navigator)navigator.serviceWorker.register("/sw.js").catch(function(){})`}</Script>
         )}

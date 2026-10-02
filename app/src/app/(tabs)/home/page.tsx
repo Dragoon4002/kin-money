@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Keypad } from "@/components/core/Keypad";
-import { MeButton } from "@/components/core/NavBar";
+import { BellButton, MeButton } from "@/components/core/NavBar";
 import type { Person } from "@/components/PersonPicker";
 import { Amount, Avatar, Ico, Screen } from "@/components/ui";
 import { useRequireAccount } from "@/lib/account";
@@ -12,7 +12,7 @@ import { formatMoney } from "@/lib/money";
 import { useCurrencySymbol } from "@/lib/useCurrencySymbol";
 
 export default function Home() {
-  const { profile, unlocked } = useRequireAccount();
+  const { profile, canRead } = useRequireAccount();
   const me = profile?.address;
   const [amount, setAmount] = useState("");
   const [show, setShow] = useState(false);
@@ -28,15 +28,15 @@ export default function Home() {
     if (me) getBalance(me).then(setBalance).catch(() => setFailed(true));
   }
 
-  // Contacts need a signed request — only ask when already unlocked so Home never pops Face ID.
+  // People need a read session (or unlocked) — Home never pops Face ID.
   useEffect(() => {
-    if (!unlocked) return;
+    if (!canRead) return;
     let live = true;
     recentPeople().then((p) => live && setPeople(p));
     return () => {
       live = false;
     };
-  }, [unlocked]);
+  }, [canRead]);
 
   const q = Number(amount) > 0 ? `?amount=${amount}` : "";
   const symbol = useCurrencySymbol();
@@ -48,6 +48,7 @@ export default function Home() {
       <Screen>
         <header className="flex h-12 items-center gap-3">
           <p className="flex-1 truncate text-lg font-semibold">Hi{profile?.name ? `, ${profile.name}` : ""}</p>
+          <BellButton />
           <Link href="/scan" aria-label="Scan to pay" className="grid size-11 place-items-center rounded-full border border-line bg-surface-2 text-ink active:scale-95">
             <Ico name="scan" size={22} />
           </Link>

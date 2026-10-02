@@ -11,3 +11,6 @@ contracts/broadcast/*/31337/
 
 # Confidential UI reference screenshots — never commit/share
 /references/
+
+# Private planning notes (kept local)
+/tasks/

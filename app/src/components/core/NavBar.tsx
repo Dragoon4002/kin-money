@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Avatar, Ico } from "@/components/ui";
 import type { IconName } from "@/lib/icons";
+import { useUnread } from "@/lib/live";
 
 const ICONS: Record<string, IconName> = { Money: "money", Explore: "explore", Home: "home", People: "people", Activity: "activity" };
 
@@ -121,3 +122,18 @@ export function MeButton({ name }: { name?: string }) {
     </Link>
   );
 }
+
+/** Round header button with an unread badge (bell → /inbox, chat → /messages). */
+function BadgeLink({ href, icon, label, count }: { href: string; icon: IconName; label: string; count: number }) {
+  return (
+    <Link href={href} aria-label={count ? `${label}, ${count} new` : label} className="relative grid size-11 shrink-0 place-items-center rounded-full border border-line bg-surface-2 text-ink active:scale-95">
+      <Ico name={icon} size={22} />
+      {count > 0 && (
+        <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-brand px-1 text-[11px] font-bold text-brand-ink">{count > 9 ? "9+" : count}</span>
+      )}
+    </Link>
+  );
+}
+
+export const BellButton = () => <BadgeLink href="/inbox" icon="bell" label="Notifications" count={useUnread().inbox} />;
+export const MessagesButton = () => <BadgeLink href="/messages" icon="chat" label="Messages" count={useUnread().messages} />;

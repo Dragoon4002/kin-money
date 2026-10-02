@@ -2,6 +2,7 @@ import "server-only";
 import neo4j, { type Driver } from "neo4j-driver";
 import { getAddress, isAddress, isHex, verifyMessage, type Address } from "viem";
 import { nameOf } from "../names";
+import { verifyToken } from "./session";
 
 // Phonebook graph (docs/ARCHITECTURE.md → Graph model). Optional: with no NEO4J_* env,
 // every route answers empty/ok so the app still works.
@@ -40,6 +41,8 @@ export async function verifiedName(a: Address): Promise<string | null> {
 
 /** Caller address from `x-kin-*` headers (EIP-191 over `Kin contacts <address> <ts>`, ±300s), or null. */
 export async function authed(req: Request): Promise<Address | null> {
+  const bearer = req.headers.get("authorization");
+  if (bearer) return bearer.startsWith("Bearer ") ? verifyToken(bearer.slice(7), process.env.SESSION_SECRET ?? "") : null;
   const a = req.headers.get("x-kin-address") ?? "";
   const tsRaw = req.headers.get("x-kin-ts") ?? "";
   const sig = req.headers.get("x-kin-sig") ?? "";

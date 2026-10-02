@@ -1,8 +1,10 @@
 "use client";
+import Link from "next/link";
 import { useEffect, useState } from "react";
+import { MessagesButton } from "@/components/core/NavBar";
 import { PersonPicker, type Person } from "@/components/PersonPicker";
 import { PersonRow, Section, SkeletonRows, useSignedIn } from "@/components/social/bits";
-import { Button, Card, ErrorText, Field, IconTile, Screen, inputClass } from "@/components/ui";
+import { Button, Card, ErrorText, Field, Ico, IconTile, Screen, inputClass } from "@/components/ui";
 import { unlock, useAccount } from "@/lib/account";
 import { addContact, listContacts, type Phonebook } from "@/lib/contacts";
 import { humanError } from "@/lib/errors";
@@ -12,7 +14,7 @@ const sendTo = (p: Person) => `/send?to=${encodeURIComponent(p.name)}`;
 
 export default function ContactsPage() {
   useSignedIn();
-  const { unlocked } = useAccount();
+  const { canRead } = useAccount();
   const [book, setBook] = useState<Phonebook | null>(null);
   const [err, setErr] = useState("");
   const [adding, setAdding] = useState(false);
@@ -20,10 +22,10 @@ export default function ContactsPage() {
   const [label, setLabel] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // Loading people needs a signed request — only when unlocked, so swiping here never pops Face ID.
+  // Loading people needs a read session (or unlocked), so swiping here never pops Face ID.
   useEffect(() => {
-    if (unlocked) listContacts().then(setBook, (e) => setErr(humanError(e)));
-  }, [unlocked]);
+    if (canRead) listContacts().then(setBook, (e) => setErr(humanError(e)));
+  }, [canRead]);
 
   async function save(p: Person, nick: string) {
     setErr("");
@@ -68,14 +70,17 @@ export default function ContactsPage() {
       wide
       title="People"
       action={
-        !adding && (
-          <button onClick={() => setAdding(true)} className="h-11 rounded-full bg-brand-soft px-4 text-sm font-semibold text-brand active:scale-95">
-            + Add
-          </button>
-        )
+        <>
+          <MessagesButton />
+          {!adding && (
+            <button onClick={() => setAdding(true)} className="h-11 rounded-full bg-brand-soft px-4 text-sm font-semibold text-brand active:scale-95">
+              + Add
+            </button>
+          )}
+        </>
       }
     >
-      {!unlocked && (
+      {!canRead && (
         <Card className="mx-5 flex flex-col items-center gap-3 text-center">
           <p className="font-semibold">Your people are private</p>
           <p className="text-sm text-muted">Confirm with Face ID to see them.</p>
@@ -115,7 +120,7 @@ export default function ContactsPage() {
       {!!book?.contacts.length && (
         <Section title="Your people">
           {book.contacts.map((c) => (
-            <PersonRow key={c.address} name={c.label || `@${c.name}`} sub={c.label && c.name ? `@${c.name}` : undefined} href={c.name ? sendTo(c) : undefined} />
+            <PersonRow key={c.address} name={c.label || `@${c.name}`} sub={c.label && c.name ? `@${c.name}` : undefined} href={c.name ? sendTo(c) : undefined} action={<MessageLink address={c.address} name={c.label || c.name} />} />
           ))}
         </Section>
       )}
@@ -123,7 +128,7 @@ export default function ContactsPage() {
       {recents.length > 0 && (
         <Section title="Recent">
           {recents.map((r) => (
-            <PersonRow key={r.address} name={`@${r.name}`} sub={`You've sent ${formatMoney(BigInt(r.total))}`} href={sendTo(r)} />
+            <PersonRow key={r.address} name={`@${r.name}`} sub={`You've sent ${formatMoney(BigInt(r.total))}`} href={sendTo(r)} action={<MessageLink address={r.address} name={r.name} />} />
           ))}
         </Section>
       )}
@@ -147,5 +152,13 @@ export default function ContactsPage() {
       )}
     </Screen>
     </>
+  );
+}
+
+function MessageLink({ address, name }: { address: string; name: string }) {
+  return (
+    <Link href={`/messages/${address}`} aria-label={`Message ${name}`} className="grid size-11 shrink-0 place-items-center rounded-full text-muted active:bg-surface-2">
+      <Ico name="chat" size={22} />
+    </Link>
   );
 }

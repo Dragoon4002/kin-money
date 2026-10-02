@@ -11,6 +11,7 @@ import { recordPayment } from "@/lib/contacts";
 import { formatMoney, fromLocal } from "@/lib/money";
 import { CHORE_MARK, createdId, expiryAfter, listEscrows, nowSec, same, ZERO, type Escrow } from "@/lib/programs";
 import { call } from "@/lib/tx";
+import { notifyAdded } from "@/lib/live";
 
 // Family chores. Parent holds the reward (to = kid, approver = parent, unlockAt = CHORE_MARK, 30-day exit).
 // Kid taps "I did it!" (ping) → parent checks and pays (approve). Titles aren't onchain: they live on
@@ -176,6 +177,7 @@ function NewChore({ me, onClose }: { me?: Address; onClose: () => void }) {
       say("Posting the chore…");
       const id = await createdId(hash, KinEscrowAbi, "Created");
       setMeta(metaKey(id), { t, due });
+      notifyAdded("chore", id, [kid.address]);
       setPosted({ id, due });
     });
   }

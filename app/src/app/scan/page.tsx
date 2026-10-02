@@ -5,6 +5,7 @@ import type QrScannerType from "qr-scanner";
 import { Button, ErrorText, Ico, Screen } from "@/components/ui";
 import { useRequireAccount } from "@/lib/account";
 import { kinTarget } from "@/lib/scan";
+import { walletTarget } from "@/lib/walletUri";
 
 /** Scan & pay: camera QR scanner → opens the pre-filled Pay (or claim/invoice) screen. */
 export default function ScanPage() {
@@ -19,7 +20,10 @@ export default function ScanPage() {
 
   function handle(text: string) {
     if (done.current) return;
-    const path = kinTarget(text, location.origin);
+    // Kin links first, then codes from other apps (EIP-681 / plain account) → same prefilled Pay screen.
+    const wallet = walletTarget(text);
+    const path = kinTarget(text, location.origin) ?? (wallet === "other" ? null : wallet);
+    if (wallet === "other") return setErr("That code can't be paid from Kin.");
     if (!path) return setErr("That's not a Kin code. Ask them to open My QR in Kin.");
     done.current = true;
     navigator.vibrate?.(30);

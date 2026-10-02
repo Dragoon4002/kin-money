@@ -11,6 +11,7 @@ import { createRequest } from "@/lib/contacts";
 import { humanError } from "@/lib/errors";
 import { formatMoney, fromLocal } from "@/lib/money";
 import { payLink } from "@/lib/payLink";
+import { walletUri } from "@/lib/walletUri";
 import { dueLabel, endOfDay } from "@/lib/reminders";
 
 const MODES = [["person", "From a person"], ["link", "As a link"]] as const;
@@ -33,6 +34,7 @@ function RequestForm() {
   const handle = profile?.name;
   const [mode, setMode] = useState<"person" | "link">("person");
   const [copied, setCopied] = useState(false);
+  const [otherWallet, setOtherWallet] = useState(false);
   const prefill = useSearchParams().get("amount") ?? "";
   const [person, setPerson] = useState<Person | null>(null);
   const [amount, setAmount] = useState(/^\d{0,9}(\.\d{0,2})?$/.test(prefill) ? prefill : "");
@@ -126,8 +128,17 @@ function RequestForm() {
       )}
       {link && (
         <Card className="flex flex-col items-center gap-2 text-center">
-          <div className="w-full max-w-56"><PayQr text={link} label={`QR code to pay @${handle} ${formatMoney(units)}`} /></div>
-          <p className="text-sm text-muted">They scan or tap the link — amount and your name are filled in.</p>
+          <p className="font-semibold">Pay to @{handle}</p>
+          <div className="w-full max-w-56">
+            <PayQr text={otherWallet && profile ? walletUri(profile.address, units) : link} label={`QR code to pay @${handle} ${formatMoney(units)}`} />
+          </div>
+          <p className="text-sm text-muted">
+            {otherWallet ? "Works with wallets that support Monad. Send Agora dollars (AUSD) on Monad." : "They scan or tap the link — amount and your name are filled in."}
+          </p>
+          <button type="button" onClick={() => setOtherWallet((v) => !v)} aria-pressed={otherWallet}
+            className="h-11 rounded-full px-4 text-sm font-semibold text-brand active:bg-brand-soft">
+            {otherWallet ? "Show the Kin code" : "Paying from another wallet?"}
+          </button>
         </Card>
       )}
 

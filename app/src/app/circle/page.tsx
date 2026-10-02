@@ -11,6 +11,7 @@ import { addr } from "@/lib/chain";
 import { formatMoney, fromLocal } from "@/lib/money";
 import { circlePhase, createdId, listCircles, same } from "@/lib/programs";
 import { call } from "@/lib/tx";
+import { notifyAdded } from "@/lib/live";
 
 const ROUND_LENGTHS = [
   { value: 7 * 86_400, label: "Weekly" },
@@ -93,6 +94,7 @@ function NewCircle({ me, onCancel }: { me?: Address; onCancel: () => void }) {
       const hash = await call(addr.circle, KinCircleAbi, "create", [members, seats, value, length]);
       say("Setting up your circle…");
       const id = await createdId(hash, KinCircleAbi, "CircleCreated");
+      notifyAdded("circle", id, members);
       router.push(`/circle/${id}`);
     });
   }

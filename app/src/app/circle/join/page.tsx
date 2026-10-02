@@ -16,6 +16,7 @@ import { formatMoney } from "@/lib/money";
 import { nameOf } from "@/lib/names";
 import { circlePhase, getCircle, same, type Circle } from "@/lib/programs";
 import { call } from "@/lib/tx";
+import { notifyAdded } from "@/lib/live";
 
 // Link key lives in the URL fragment (#id.inviter.key), which browsers never send to a server.
 const onHash = (cb: () => void) => (addEventListener("hashchange", cb), () => removeEventListener("hashchange", cb));
@@ -51,6 +52,7 @@ export default function JoinCircleLink() {
     try {
       const mine = (await getAccount()).address;
       await claimSeat(link.id, link.inviter, link.key, mine);
+      notifyAdded("circle", link.id, [mine]);
       void registerMe();
       if (inviter) void addContact({ address: link.inviter, name: inviter }).catch(() => {});
     } catch (e) {

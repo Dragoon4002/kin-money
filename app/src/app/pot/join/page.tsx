@@ -14,6 +14,7 @@ import { nameOf } from "@/lib/names";
 import { inviteKeyOf, joinPot, parsePotLink } from "@/lib/potLinks";
 import { getPot, same, type Pot } from "@/lib/programs";
 import { privateKeyToAccount } from "viem/accounts";
+import { notifyAdded } from "@/lib/live";
 
 // The link key lives in the URL fragment (#id.inviter.key), which browsers never send to a server.
 const onHash = (cb: () => void) => (addEventListener("hashchange", cb), () => removeEventListener("hashchange", cb));
@@ -56,7 +57,10 @@ export default function JoinPot() {
     try {
       const mine = (await getAccount()).address;
       const p = await getPot(link.id);
-      if (!p.members.some((m) => same(m, mine))) await joinPot(link.id, link.inviter, link.key, mine);
+      if (!p.members.some((m) => same(m, mine))) {
+        await joinPot(link.id, link.inviter, link.key, mine);
+        notifyAdded("pot", link.id, [mine]);
+      }
       void registerMe();
       setPhase("joined");
     } catch (e) {

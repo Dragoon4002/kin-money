@@ -4,6 +4,7 @@ import { addr, publicClient } from "@/lib/chain";
 import { formatMoney } from "@/lib/money";
 import { REMIND_GAP, validDue } from "@/lib/reminders";
 import { addrOf, bad, q, route, UPSERT_ME, UPSERT_THEM, validAmount, verifiedName } from "@/lib/server/graph";
+import { blocked, saveMessage } from "@/lib/server/messages";
 import { notify } from "@/lib/server/push";
 
 // (requester)-[:REQUESTED {id, amount, note, status, at, due?, remindedAt?}]->(payer)
@@ -36,6 +37,7 @@ export function POST(req: Request) {
     const due = b.due == null ? null : validDue(b.due) ? b.due : undefined;
     if (!them || them === me || !validAmount(b.amount) || due === undefined) return bad();
     const note = typeof b.note === "string" ? b.note.trim().slice(0, 140) : "";
+    if (await blocked(me, them)) return bad("blocked", 403);
     const id = randomUUID();
     const [meName, themName] = await Promise.all([verifiedName(me), verifiedName(them)]);
     await q(
@@ -45,7 +47,8 @@ export function POST(req: Request) {
        CREATE (me)-[:REQUESTED {id: $id, amount: $amount, note: $note, status: 'open', at: timestamp(), due: $due}]->(p)`,
       { me, meName, them, themName, id, amount: b.amount, note, due },
     );
-    await notify(them, { title: `@${meName ?? "someone"} asked you for ${usd(b.amount)}`, body: note || "Tap to pay or decline.", url: "/requests", tag: `req-${id}` });
+    await saveMessage(me, them, "request", note, id); // shows as a Pay/Decline card in their chat with me
+    await notify(them, { title: `@${meName ?? "someone"} asked you for ${usd(b.amount)}`, body: note || "Tap to pay or decline.", url: `/messages/${me}`, tag: `req-${id}` });
     return { id };
   });
 }

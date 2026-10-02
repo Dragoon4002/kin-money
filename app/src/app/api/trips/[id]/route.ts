@@ -61,6 +61,7 @@ export async function POST(req: Request, { params }: Ctx) {
       const themName = await verifiedName(them);
       if (!themName) return bad("unknown member");
       await q(`${UPSERT_THEM} WITH p MATCH (t:Trip {id: $id}) MERGE (p)-[:IN]->(t)`, { id, them, themName });
+      await notify(them, { title: `${nameOf(me)} added you to ${trip.name}`, body: "Track who paid what, settle up later.", url: `/trips/${id}`, tag: `trip-${id}` });
       return { ok: true };
     }
 

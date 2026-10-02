@@ -8,14 +8,14 @@ import { listInvites, type Invites } from "@/lib/contacts";
 import { noteInvite, useKinko } from "@/lib/kinko";
 
 export default function Invite() {
-  const { profile, unlocked } = useRequireAccount();
+  const { profile, canRead } = useRequireAccount();
   const { look } = useKinko(profile?.address);
   const [copied, setCopied] = useState(false);
   const [invites, setInvites] = useState<Invites | null>(null);
 
   useEffect(() => {
-    if (unlocked) listInvites().then(setInvites, () => {});
-  }, [unlocked]);
+    if (canRead) listInvites().then(setInvites, () => {});
+  }, [canRead]);
 
   const handle = profile?.name;
   const link = typeof window === "undefined" || !handle ? "" : `${location.origin}/?ref=${encodeURIComponent(handle)}`;

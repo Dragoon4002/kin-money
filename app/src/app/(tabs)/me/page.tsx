@@ -4,8 +4,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { MyKinko } from "@/components/kinko/PersonKinko";
 import { Band, Button, Card, Ico, IconTile, Row, Screen, Tabs } from "@/components/ui";
-import { lock, signOut, useRequireAccount } from "@/lib/account";
-import { FX, getCurrency } from "@/lib/money";
+import { getPayCheck, lock, setPayCheck, signOut, useRequireAccount, type PayCheck } from "@/lib/account";
+import { FX, currencySymbol, fromLocal, getCurrency, toDollars } from "@/lib/money";
 import { setPrivate, usePrivate } from "@/lib/privacy";
 import { disablePush, enablePush, iosNeedsInstall, pushState, type PushState } from "@/lib/push";
 import { getTheme, setTheme, type Theme } from "@/lib/theme";
@@ -25,6 +25,11 @@ const CURRENCY_NAME: Record<string, string> = {
   NGN: "Nigerian naira", AED: "UAE dirham", GBP: "British pound", EUR: "Euro",
 };
 const THEMES = [["system", "System"], ["light", "Light"], ["dark", "Dark"]] as const;
+const PAY_MODES: [PayCheck["mode"], string, string][] = [
+  ["always", "Ask every time", "Face ID for every payment"],
+  ["over", "Ask for bigger payments", "Small ones go straight through while Kin is unlocked"],
+  ["unlocked", "Don’t ask again while unlocked", "Kin still locks after 5 minutes of no use"],
+];
 
 export default function Me() {
   const router = useRouter();
@@ -34,6 +39,14 @@ export default function Me() {
   const [copied, setCopied] = useState(false);
   const [confirmOut, setConfirmOut] = useState(false);
   const hidden = usePrivate();
+  const payRaw = useSyncExternalStore(subscribe, () => JSON.stringify(getPayCheck()), () => "");
+  const pay = payRaw ? (JSON.parse(payRaw) as PayCheck) : null;
+  const [limitDraft, setLimitDraft] = useState<string | null>(null);
+  const limitShown = limitDraft ?? (pay ? String(Math.round(toDollars(BigInt(pay.limit)) * (FX[currency] ?? 1))) : "");
+  function savePay(p: PayCheck) {
+    setPayCheck(p);
+    notify();
+  }
   const handle = profile?.name;
   // null = still checking; "ios" = iPhone in the browser (push needs the home-screen app).
   const [push, setPush] = useState<PushState | "ios" | null>(null);
@@ -97,6 +110,35 @@ export default function Me() {
           </span>
           <input type="checkbox" role="switch" className="size-6 accent-brand" checked={hidden} onChange={(e) => setPrivate(e.target.checked)} />
         </label>
+
+        <Band>When I pay</Band>
+        <div role="radiogroup" aria-label="When I pay">
+          {PAY_MODES.map(([mode, title, sub]) => (
+            <label key={mode} className="flex min-h-16 items-center gap-4 px-5">
+              <span className="flex-1">
+                <span className="block font-semibold">{title}</span>
+                <span className="block text-sm text-muted">{sub}</span>
+              </span>
+              <input type="radio" name="pay-check" className="size-6 accent-brand" checked={pay?.mode === mode}
+                onChange={() => pay && savePay({ ...pay, mode })} />
+            </label>
+          ))}
+        </div>
+        {pay?.mode === "over" && (
+          <label className="flex min-h-16 items-center gap-4 px-5">
+            <span className="flex-1 font-semibold">Ask for payments over</span>
+            <span className="font-semibold text-muted">{currencySymbol(currency)}</span>
+            <input inputMode="decimal" aria-label="Ask for payments over" value={limitShown}
+              className="h-11 w-32 rounded-full border border-line bg-surface px-4 text-right text-base font-semibold text-ink outline-none focus:border-brand"
+              onChange={(e) => {
+                const v = e.target.value.replace(/[^\d.]/g, "");
+                setLimitDraft(v);
+                if (Number(v) > 0) savePay({ mode: "over", limit: fromLocal(v, currency).toString() });
+              }}
+              onBlur={() => setLimitDraft(null)} />
+          </label>
+        )}
+        <p className="px-5 pb-3 text-xs text-muted">When Kin is locked, every payment asks for Face ID. Nothing that can spend your money is saved on this phone.</p>
 
         <Band>Notifications</Band>
         <label className="flex min-h-16 items-center gap-4 px-5">

@@ -3,11 +3,12 @@ import type { Address, Hex } from "viem";
 import type { Person } from "@/components/PersonPicker";
 import { DEFAULT_LOOK, type Look } from "@/components/kinko/Kinko";
 import { Trie } from "./trie";
-import { getAccount } from "./account";
+import { dropReadToken, getAccount, readToken } from "./account";
 import { HANDLE_RE } from "./names";
 
 // Client API for the phonebook graph (/api/contacts, /api/requests).
-// Auth: EIP-191 over `Kin contacts <address> <ts>`, cached 4 min (server accepts 5).
+// Auth: read-session Bearer token when we have one (no Face ID); else EIP-191 over
+// `Kin contacts <address> <ts>`, cached 4 min (server accepts 5).
 
 export type Contact = Person & { label: string };
 export type Recent = Person & { count: number; total: string; last: number };
@@ -27,6 +28,8 @@ const savedAddress = () => {
 };
 
 async function authHeaders(): Promise<Record<string, string>> {
+  const token = readToken();
+  if (token) return { authorization: `Bearer ${token}` };
   if (cached && cached.address === savedAddress() && Date.now() - cached.at < 240_000) return cached.headers;
   const account = await getAccount();
   const ts = String(Math.floor(Date.now() / 1000));
@@ -42,7 +45,10 @@ export async function api<T>(path: string, method = "GET", body?: unknown): Prom
     headers: { "content-type": "application/json", ...(await authHeaders()) },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
-  if (res.status === 401) cached = null;
+  if (res.status === 401) {
+    cached = null;
+    if (readToken()) dropReadToken();
+  }
   if (!res.ok) throw new Error(`network: contacts ${res.status}`);
   return res.json() as Promise<T>;
 }

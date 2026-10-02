@@ -1,3 +1,4 @@
+import { saveMessage } from "@/lib/server/messages";
 import { addrOf, bad, q, route, UPSERT_ME, UPSERT_THEM, validAmount, verifiedName } from "@/lib/server/graph";
 
 // ponytail: amount is client-reported (drives recents/"frequent" only, never money). Verify against the receipt if it ever feeds anything financial.
@@ -15,6 +16,7 @@ export function POST(req: Request) {
        SET r.count = r.count + 1, r.total = toString(toInteger(r.total) + toInteger($amount)), r.last = timestamp()`,
       { me, meName, them, themName, amount: b.amount },
     );
+    await saveMessage(me, them, "payment", "", b.amount); // payment card in our chat
     return { ok: true };
   });
 }

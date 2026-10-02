@@ -1,7 +1,7 @@
 "use client";
 import { encodeFunctionData, toHex, type Abi, type Address, type ContractFunctionName, type Hex } from "viem";
 import { KinForwarderAbi } from "./abi";
-import { getAccount } from "./account";
+import { confirmPayment, getAccount } from "./account";
 import { addr, chain, publicClient } from "./chain";
 
 // Gasless writes (see .claude/skills/gasless-relay). User signs; /api/relay pays gas.
@@ -30,6 +30,7 @@ async function relay(body: unknown): Promise<Hex> {
 
 /** Plain P2P send (EIP-3009 transferWithAuthorization). Returns tx hash once delivered. */
 export async function sendDollars(to: Address, value: bigint): Promise<Hex> {
+  await confirmPayment(value);
   const account = await getAccount();
   const auth = { from: account.address, to, value, validAfter: 0n, validBefore: now() + 3600n, nonce: randomNonce() };
   const signature = await account.signTypedData({ domain: AUSD_DOMAIN, types: { TransferWithAuthorization: AUTH_FIELDS }, primaryType: "TransferWithAuthorization", message: auth });
@@ -55,6 +56,7 @@ export async function call<const abi extends Abi>(
   args: readonly unknown[],
   opts: { fund?: bigint } = {},
 ): Promise<Hex> {
+  if (opts.fund !== undefined) await confirmPayment(opts.fund);
   const account = await getAccount();
   const fullArgs = opts.fund !== undefined ? [...args, ...(await fundArgs(to, opts.fund))] : args;
   const data = encodeFunctionData({ abi, functionName, args: fullArgs } as never);

@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+import Pusher from "pusher";
 import webpush from "web-push";
 import { getAddress, isAddressEqual, toEventSelector, type Address, type RpcLog } from "viem";
 import type { contracts } from "./history";
@@ -19,11 +21,44 @@ function vapidReady(): boolean {
   return vapid;
 }
 
-/** Send `msg` to every device of `to`. Never throws. Drops subscriptions the push service says are gone. */
-export async function notify(to: Address | string, msg: Msg): Promise<void> {
+let pusher: Pusher | null | undefined;
+const getPusher = () => {
+  if (pusher === undefined) {
+    const { PUSHER_APP_ID: appId, NEXT_PUBLIC_PUSHER_KEY: key, PUSHER_SECRET: secret, NEXT_PUBLIC_PUSHER_CLUSTER: cluster } = process.env;
+    pusher = appId && key && secret && cluster ? new Pusher({ appId, key, secret, cluster, useTLS: true }) : null;
+  }
+  return pusher;
+};
+
+/** Realtime event on `private-user-<lowercase address>` (Pusher). No-op without PUSHER_* env. Never throws. */
+export async function live(to: Address | string, event: "message" | "notification", data: unknown): Promise<void> {
+  await getPusher()?.trigger(`private-user-${to.toLowerCase()}`, event, data).catch(() => {});
+}
+
+/** Signed Pusher auth for my own channel only; null when Pusher is off or it's someone else's channel. */
+export function pusherAuth(me: Address, socketId: string, channel: string) {
+  const p = getPusher();
+  return p && channel === `private-user-${me.toLowerCase()}` ? p.authorizeChannel(socketId, channel) : null;
+}
+
+/**
+ * Send `msg` to every device of `to`, and (unless `inbox: false`) keep it in their notification center
+ * (:Person)-[:INBOX]->(:Notification {id, title, body, url, at, read}) + realtime `notification` event.
+ * Never throws. Drops subscriptions the push service says are gone.
+ */
+export async function notify(to: Address | string, msg: Msg, { inbox = true } = {}): Promise<void> {
   try {
     const { graphEnabled, q } = await import("./graph");
     if (!graphEnabled()) return;
+    if (inbox) {
+      const n = { id: randomUUID(), title: msg.title, body: msg.body, url: msg.url ?? "/home", at: Date.now() };
+      await q(
+        `MERGE (p:Person {address: $a}) ON CREATE SET p.createdAt = timestamp()
+         CREATE (p)-[:INBOX]->(:Notification {id: $n.id, title: $n.title, body: $n.body, url: $n.url, at: $n.at, read: false})`,
+        { a: getAddress(to), n },
+      );
+      await live(to, "notification", n);
+    }
     const subs = await q<Sub>("MATCH (:Person {address: $a})-[:PUSH]->(s:PushSub) RETURN s.id AS id, s.kind AS kind, s.json AS json", {
       a: getAddress(to),
     });

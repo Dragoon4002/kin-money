@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import type { Hex } from "viem";
+import { getAddress, type Hex } from "viem";
 import { share } from "@/components/core/share";
 import { PersonPicker, type Person } from "@/components/PersonPicker";
 import { AmountInput } from "@/components/social/bits";
@@ -15,7 +15,7 @@ import { createLink } from "@/lib/claimLink";
 import { recordPayment } from "@/lib/contacts";
 import { humanError } from "@/lib/errors";
 import { formatMoney, fromLocal, getCurrency } from "@/lib/money";
-import { resolveName } from "@/lib/names";
+import { nameOf, resolveName } from "@/lib/names";
 import { sendDollars } from "@/lib/tx";
 
 type Mode = "person" | "link";
@@ -35,6 +35,7 @@ export function SendForm() {
   const router = useRouter();
   const params = useSearchParams();
   const to = params.get("to")?.replace(/^@/, "").toLowerCase() ?? "";
+  const toAddr = /^0x[0-9a-f]{40}$/.test(to); // scanned from another app's code: raw account, shown by its Kin name if any
   const [currency] = useState(getCurrency);
   const [mode, setMode] = useState<Mode>("person");
   const [person, setPerson] = useState<Person | null>(null);
@@ -55,13 +56,19 @@ export function SendForm() {
 
   useEffect(() => {
     if (!to) return;
+    if (toAddr) {
+      const address = getAddress(to);
+      nameOf(address).catch(() => "").then((name) => setPerson({ address, name }));
+      return;
+    }
     resolveName(to)
       .then((a) => (a ? setPerson({ address: a, name: to }) : setPicking(true)))
       .catch(() => setPicking(true));
-  }, [to]);
+  }, [to, toAddr]);
 
   const units = linkUnits && amount === unitsToLocal(linkUnits, currency) ? linkUnits : Number(amount) > 0 ? fromLocal(amount, currency) : 0n;
   const ready = units > 0n && (mode === "link" || person);
+  const who = person?.name ? `@${person.name}` : "Kin account";
 
   function label(hash: Hex) {
     if (cat) setCategory(hash, cat);
@@ -76,7 +83,7 @@ export function SendForm() {
     try {
       const account = await getAccount();
       if ((await getBalance(account.address)) < units) throw new Error("insufficient balance");
-      setStatus(mode === "link" ? "Holding it safely…" : `Sending to @${person!.name}…`);
+      setStatus(mode === "link" ? "Holding it safely…" : `Sending to ${who}…`);
       if (mode === "link") {
         const { url, hash } = await createLink(account.address, units);
         label(hash);
@@ -138,13 +145,13 @@ export function SendForm() {
 
       {mode === "person" ? (
         picking || !person ? (
-          picking ? <PersonPicker onPick={setPerson} /> : <p className="text-sm text-muted">Finding @{to}…</p>
+          picking ? <PersonPicker onPick={setPerson} /> : <p className="text-sm text-muted">{toAddr ? "Finding them…" : `Finding @${to}…`}</p>
         ) : (
           <div className="flex items-center gap-3 rounded-[28px] border border-line bg-surface p-3">
             <Avatar name={person.name} size={48} />
             <span className="flex-1">
               <span className="block text-xs text-muted">To</span>
-              <span className="font-semibold">@{person.name}</span>
+              <span className="font-semibold">{who}</span>
             </span>
             <button onClick={() => (setPerson(null), setPicking(true))} className="h-11 rounded-full px-4 text-sm font-semibold text-brand active:bg-brand-soft">
               Change

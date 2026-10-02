@@ -11,6 +11,7 @@ import { formatMoney, fromLocal } from "@/lib/money";
 import { keepKey, newKey } from "@/lib/potLinks";
 import { createdId, isJar, listPots, same, ZERO } from "@/lib/programs";
 import { call } from "@/lib/tx";
+import { notifyAdded } from "@/lib/live";
 
 export default function PotPage() {
   const me = useMe();
@@ -105,6 +106,7 @@ function NewPot({ me, onCancel }: { me?: Address; onCancel: () => void }) {
       say("Setting up your pot…");
       const id = await createdId(hash, KinPotAbi, "PotCreated");
       if (meToo) keepKey(id, me, link.key);
+      notifyAdded("pot", id, members);
       router.push(`/pot/${id}`);
     });
   }

@@ -4,6 +4,7 @@ import {
   Palette, PartyPopper, PiggyBank, Plane, QrCode, Receipt, RefreshCcw, Share2, Shapes, ShoppingBag, ShoppingBasket,
   Siren, Smile, Sparkles, Split, Sprout, SunMoon, Trash2, UserPlus, Users, Utensils, Wallet, LayoutGrid,
   AlignLeft, Plus, X, Clock, ShieldCheck, Undo2, Delete, ScanLine, Download, Flashlight, Luggage,
+  Bell, MessageCircle, EllipsisVertical, Ban, SendHorizontal,
 } from "lucide-react";
 
 /**
@@ -62,6 +63,11 @@ export const ICON = {
   payout: HandCoins,
   doc: FileText,
   trip: Luggage,
+  bell: Bell,
+  chat: MessageCircle,
+  more: EllipsisVertical,
+  block: Ban,
+  post: SendHorizontal,
   // spend categories
   food: Utensils,
   groceries: ShoppingBasket,

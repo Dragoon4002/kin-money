@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { erc20Abi, isAddressEqual, isHash, parseEventLogs, type Address, type Hex } from "viem";
@@ -160,6 +161,11 @@ export function Proof() {
           </span>
         )}
         <span className="mt-2 text-sm text-muted">{when}</span>
+        {other.startsWith("@") && (
+          <Link href={`/messages/${other.slice(1)}`} className="mt-2 flex h-11 items-center gap-2 self-start rounded-full bg-surface-2 px-4 text-sm font-semibold active:scale-95">
+            <Ico name="chat" size={18} /> Message {other}
+          </Link>
+        )}
       </Card>
 
       {r.out && cat && (

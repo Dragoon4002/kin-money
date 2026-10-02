@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { addrOf, bad, q, route, verifiedName } from "@/lib/server/graph";
+import { notify } from "@/lib/server/push";
 import { loadTrip, MAX_MEMBERS, netOf } from "./data";
 
 /** My trips, newest first: {id, name, members, net}. */
@@ -33,6 +34,7 @@ export function POST(req: Request) {
        FOREACH (p IN ps | CREATE (p)-[:IN]->(t))`,
       { id, name, me, people: unique.map((address, i) => ({ address, name: names[i] })) },
     );
+    await Promise.all(unique.slice(1).map((a) => notify(a, { title: `@${names[0]} added you to ${name}`, body: "Track who paid what, settle up later.", url: `/trips/${id}`, tag: `trip-${id}` })));
     return { id };
   });
 }

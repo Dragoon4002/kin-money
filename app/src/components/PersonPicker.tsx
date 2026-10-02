@@ -20,7 +20,7 @@ export function PersonPicker({ label = "To", onPick, recents: showRecents = true
   recents?: boolean;
   exclude?: Set<string>;
 }) {
-  const { unlocked, profile } = useAccount();
+  const { canRead, profile } = useAccount();
   const [q, setQ] = useState("");
   const [found, setFound] = useState<Person | null>(null);
   const [miss, setMiss] = useState(false);
@@ -28,10 +28,10 @@ export function PersonPicker({ label = "To", onPick, recents: showRecents = true
   const [typing, setTyping] = useState(false);
   const [trie, setTrie] = useState<Trie | null>(null);
 
-  // Only when unlocked: loading people must never trigger Face ID on its own.
+  // Only with a read session (or unlocked): loading people must never trigger Face ID on its own.
   useEffect(() => {
-    if (unlocked && showRecents) recentPeople().then(setRecents);
-  }, [unlocked, showRecents]);
+    if (canRead && showRecents) recentPeople().then(setRecents);
+  }, [canRead, showRecents]);
 
   function pick(p: Person) {
     setMiss(false);

@@ -7,7 +7,7 @@ import { PersonPicker, type Person } from "@/components/PersonPicker";
 import { AddExpense, type NewExpense } from "@/components/trips/AddExpense";
 import { Avatars } from "@/components/trips/bits";
 import { Avatar, Band, Button, Card, Chip, ErrorText, Ico, IconTile, inputClass, Row, Screen, Tabs } from "@/components/ui";
-import { isUnlocked } from "@/lib/account";
+import { isUnlocked, readToken } from "@/lib/account";
 import { CATEGORIES } from "@/lib/categories";
 import { recordPayment } from "@/lib/contacts";
 import { shareCard } from "@/lib/shareCard";
@@ -43,7 +43,7 @@ export default function TripPage() {
 
   // Friends add costs and pay from their phones — keep this current (never prompts Face ID).
   useEffect(() => {
-    const i = setInterval(() => isUnlocked() && reload(), 10_000);
+    const i = setInterval(() => (isUnlocked() || readToken()) && reload(), 10_000);
     return () => clearInterval(i);
   }, [reload]);
 

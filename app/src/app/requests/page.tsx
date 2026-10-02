@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Avatar, Button, Chip, ErrorText, IconTile, Screen } from "@/components/ui";
+import { Avatar, Button, Chip, ErrorText, Ico, IconTile, Screen } from "@/components/ui";
 import { Bubble, SkeletonRows, useSignedIn } from "@/components/social/bits";
 import { listRequests, recordPayment, remindRequest, settleRequest, type MoneyRequest } from "@/lib/contacts";
 import { humanError } from "@/lib/errors";
@@ -118,6 +118,9 @@ export default function RequestsPage() {
             <Avatar name={r.from.name} size={24} />
             <span className="font-semibold text-ink">@{r.from.name || "someone"}</span> · {ago(r.at)}
             <span className="ml-auto"><DueChip r={r} /></span>
+            <Link href={`/messages/${r.from.address}`} aria-label={`Message @${r.from.name || "them"}`} className="-my-2 grid size-11 place-items-center rounded-full text-muted active:bg-surface-2">
+              <Ico name="chat" />
+            </Link>
           </p>
           <Bubble amount={formatMoney(BigInt(r.amount))} note={r.note} />
           {r.status === "open" ? (
