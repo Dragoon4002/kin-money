@@ -2,7 +2,7 @@
 import { isAddressEqual, parseEventLogs, type Address, type Hex } from "viem";
 import { KinCircleAbi, KinEscrowAbi, KinGiftLinkAbi, KinMandateAbi, KinPotAbi, KinStreamAbi } from "./abi";
 import { addr, publicClient } from "./chain";
-import { nameOf } from "./names";
+import { nameOf, shortAddr } from "./names";
 import { getEscrow, getPot, getStream, isJar, ZERO, type EscrowKind } from "./programs";
 
 // Money moving in/out of a Kin contract (escrow, allowance, pot, circle, AutoPay) is a transfer to a
@@ -16,7 +16,7 @@ export const isKinContract = KIN;
 const names = new Map<string, Promise<string>>();
 const at = (a: Address) => {
   const k = a.toLowerCase();
-  if (!names.has(k)) names.set(k, nameOf(a).then((n) => (n ? `@${n}` : "someone")).catch(() => "someone"));
+  if (!names.has(k)) names.set(k, nameOf(a).then((n) => (n ? `@${n}` : shortAddr(a))).catch(() => shortAddr(a)));
   return names.get(k)!;
 };
 

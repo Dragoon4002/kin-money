@@ -8,6 +8,7 @@ export function POST(req: Request) {
     const them = addrOf(b.to);
     if (!them || them === me || !validAmount(b.amount)) return bad();
     const [meName, themName] = await Promise.all([verifiedName(me), verifiedName(them)]);
+    if (!themName) return { ok: true }; // not on Kin: never add a bare address to the phonebook
     await q(
       `${UPSERT_ME}
        WITH me

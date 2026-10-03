@@ -1,3 +1,4 @@
+import * as Clipboard from "expo-clipboard";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, KeyboardAvoidingView, Pressable, ScrollView, View } from "react-native";
@@ -9,7 +10,7 @@ import { recentPeople, recordPayment, type Person } from "@/lib/contacts";
 import { humanError } from "@/lib/errors";
 import { currencySymbol, formatMoney, fromLocal, getCurrency } from "@/lib/money";
 import { isAddress, type Address } from "viem";
-import { HANDLE_RE, loadDirectory, nameOf, resolveName } from "@/lib/names";
+import { HANDLE_RE, loadDirectory, nameOf, resolveName, shortAddr } from "@/lib/names";
 import { parseAmt, unitsToLocal } from "@/lib/payLink";
 import { shareCard } from "@/lib/shareCard";
 import { sendDollars } from "@/lib/tx";
@@ -48,9 +49,11 @@ export default function Send() {
   const [rawTo] = useState(() => (isAddress(one(params.to)) ? (one(params.to) as Address) : null));
   useEffect(() => {
     if (!rawTo) return;
-    nameOf(rawTo).catch(() => "").then((n) => setPerson({ address: rawTo, name: n }));
+    nameOf(rawTo).catch(() => "").then((n) => (setPerson({ address: rawTo, name: n }), setTo(n))); // Kin user → their @name in the box, never the address
   }, [rawTo]);
-  const label = (n?: string) => (n ? `@${n}` : "this account");
+  // Not on Kin (no @name) → show the short address; the full one is copyable.
+  const label = (n?: string) => (n ? `@${n}` : rawTo ? shortAddr(rawTo) : "");
+  const [copied, setCopied] = useState(false);
 
   function lookup(h: string) {
     const n = ++seq.current;
@@ -104,7 +107,7 @@ export default function Send() {
       const t0 = Date.now();
       const hash = await sendDollars(person.address, units);
       if (category) setCategory(hash, category).catch(() => {});
-      recordPayment(person.address, units).catch(() => {});
+      if (person.name) recordPayment(person.address, units).catch(() => {}); // not on Kin: keep them out of the phonebook
       setDone({ ms: Date.now() - t0, units, name: person.name });
     } catch (e) {
       setErr(humanError(e));
@@ -147,15 +150,29 @@ export default function Send() {
 
   const me = getProfile()?.name;
   const suggestions = to && !person ? (trie?.suggest(to, 6) ?? []).filter((n) => n !== me && n !== to).slice(0, 5) : [];
-  const hint = !to ? "" : finding ? `Finding @${to}…` : person ? `${label(person.name)} ✓` : HANDLE_RE.test(to) ? "No one on Kin with that name yet." : "";
+  const hint = !to || (person && !person.name) ? "" : finding ? `Finding @${to}…` : person ? `${label(person.name)} ✓` : HANDLE_RE.test(to) ? "No one on Kin with that name yet." : "";
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
       <Screen title="Pay" back scroll>
         <Label>To</Label>
-        <TextInput style={input} value={to ? `@${to}` : ""} placeholder="@name" placeholderTextColor={t.muted}
-          onChangeText={onTo}
-          autoCapitalize="none" autoCorrect={false} maxLength={21} />
+        {rawTo && person && !person.name ? (
+          <>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 28, borderWidth: 1, borderColor: t.line, backgroundColor: t.surface, padding: 12 }}>
+              <Avatar name="" size={40} />
+              <Text style={{ flex: 1, color: t.ink, fontWeight: "600" }}>{shortAddr(rawTo)}</Text>
+              <Pressable onPress={() => void Clipboard.setStringAsync(rawTo).then(() => setCopied(true))} accessibilityRole="button" accessibilityLabel="Copy address"
+                style={{ minHeight: 44, justifyContent: "center", paddingHorizontal: 12 }}>
+                <Text style={{ color: t.brand, fontWeight: "600" }}>{copied ? "Copied ✓" : "Copy"}</Text>
+              </Pressable>
+            </View>
+            <Text style={{ color: t.muted }}>Not on Kin — make sure this address is right.</Text>
+          </>
+        ) : (
+          <TextInput style={input} value={to ? `@${to}` : ""} placeholder="@name" placeholderTextColor={t.muted}
+            onChangeText={onTo}
+            autoCapitalize="none" autoCorrect={false} maxLength={21} />
+        )}
         {suggestions.length > 0 && (
           <View accessibilityLabel="Suggestions" style={{ borderRadius: 20, borderWidth: 1, borderColor: t.line, backgroundColor: t.surface, overflow: "hidden" }}>
             {suggestions.map((n) => (

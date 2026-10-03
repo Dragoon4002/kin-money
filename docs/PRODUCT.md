@@ -67,6 +67,8 @@ Tier: **M** must, **S** should, **X** stretch. 🅰 = AUSD cross-border (Agora).
 ## Invisible-blockchain rules (Design & Craft = 20%, judged harshly)
 Banned in UI copy: wallet, address, gas, token, AUSD, Monad, chain, tx/transaction hash, sign, seed, crypto, blockchain, web3, mint, approve.
 Exception (user decision, Oct 3): the opt-in **"Other wallet"** sheet on My QR / request cards may say "wallet", "wallet address", "AUSD" and "Monad" — it exists only to let people pay from external wallets. Main text still shows "Pay to @name", never the raw address.
+Exception (user decision, Oct 3): paying an account **not on Kin** (no @name, e.g. a scanned wallet code) shows its short address `0x1a2b…9f0e` + Copy and "Not on Kin — make sure this address is right" — on Pay, the receipt and Activity. Never for people with an @name; such accounts are never added to the phonebook.
+Exception (user decision, Oct 3): **Me → Security** (export recovery phrase / private key, add an account from another wallet, account switcher showing `0x1a2b…9f0e` for unnamed imported accounts) may say "recovery phrase", "private key", "wallet", "MetaMask", "Rabby" — needed to move an account in or out of Kin.
 Use: account, balance, dollars, send, request, pay, Face ID, receipt, delivered.
 Explorer links only behind "Details → Proof of payment" for judges.
 

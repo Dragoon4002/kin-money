@@ -15,7 +15,7 @@ import { createLink } from "@/lib/claimLink";
 import { recordPayment } from "@/lib/contacts";
 import { humanError } from "@/lib/errors";
 import { formatMoney, fromLocal, getCurrency } from "@/lib/money";
-import { nameOf, resolveName } from "@/lib/names";
+import { nameOf, resolveName, shortAddr } from "@/lib/names";
 import { sendDollars } from "@/lib/tx";
 
 type Mode = "person" | "link";
@@ -53,6 +53,7 @@ export function SendForm() {
   const [err, setErr] = useState("");
   const [link, setLink] = useState<{ url: string; units: bigint } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [addrCopied, setAddrCopied] = useState(false);
 
   useEffect(() => {
     if (!to) return;
@@ -68,7 +69,7 @@ export function SendForm() {
 
   const units = linkUnits && amount === unitsToLocal(linkUnits, currency) ? linkUnits : Number(amount) > 0 ? fromLocal(amount, currency) : 0n;
   const ready = units > 0n && (mode === "link" || person);
-  const who = person?.name ? `@${person.name}` : "Kin account";
+  const who = person?.name ? `@${person.name}` : person ? shortAddr(person.address) : "";
 
   function label(hash: Hex) {
     if (cat) setCategory(hash, cat);
@@ -91,7 +92,7 @@ export function SendForm() {
       } else {
         const [hash, ms] = await timed(() => sendDollars(person!.address, units));
         label(hash);
-        recordPayment(person!.address, units).catch(() => {});
+        if (person!.name) recordPayment(person!.address, units).catch(() => {}); // not on Kin: keep them out of the phonebook
         router.replace(`/details?tx=${hash}&fresh=1&ms=${Math.round(ms)}`);
         return; // keep the progress screen up while the receipt loads
       }
@@ -147,15 +148,24 @@ export function SendForm() {
         picking || !person ? (
           picking ? <PersonPicker onPick={setPerson} /> : <p className="text-sm text-muted">{toAddr ? "Finding them…" : `Finding @${to}…`}</p>
         ) : (
-          <div className="flex items-center gap-3 rounded-[28px] border border-line bg-surface p-3">
-            <Avatar name={person.name} size={48} />
-            <span className="flex-1">
-              <span className="block text-xs text-muted">To</span>
-              <span className="font-semibold">{who}</span>
-            </span>
-            <button onClick={() => (setPerson(null), setPicking(true))} className="h-11 rounded-full px-4 text-sm font-semibold text-brand active:bg-brand-soft">
-              Change
-            </button>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-3 rounded-[28px] border border-line bg-surface p-3">
+              <Avatar name={person.name} size={48} />
+              <span className="flex-1">
+                <span className="block text-xs text-muted">To</span>
+                <span className="font-semibold">{who}</span>
+              </span>
+              {!person.name && (
+                <button onClick={() => navigator.clipboard.writeText(person.address).then(() => setAddrCopied(true))} aria-label="Copy address"
+                  className="grid size-11 place-items-center rounded-full text-muted active:bg-surface-2">
+                  <Ico name={addrCopied ? "check" : "copy"} className={addrCopied ? "text-good" : undefined} />
+                </button>
+              )}
+              <button onClick={() => (setPerson(null), setPicking(true))} className="h-11 rounded-full px-4 text-sm font-semibold text-brand active:bg-brand-soft">
+                Change
+              </button>
+            </div>
+            {!person.name && <p className="px-3 text-sm text-muted">Not on Kin — make sure this address is right.</p>}
           </div>
         )
       ) : (

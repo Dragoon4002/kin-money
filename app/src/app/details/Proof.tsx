@@ -13,11 +13,12 @@ import { savedLook } from "@/lib/kinko";
 import { formatMoney } from "@/lib/money";
 import { shareCard, warmCard, type CardParams } from "@/lib/shareCard";
 import { describe, isKinContract } from "@/lib/counterparty";
-import { nameOf } from "@/lib/names";
+import { nameOf, shortAddr } from "@/lib/names";
 
-type Receipt = { amount: bigint; from: string; to: string; out: boolean; at: Date; block: bigint; ok: boolean };
+type Receipt = { amount: bigint; from: string; to: string; fromA?: Address; toA?: Address; out: boolean; at: Date; block: bigint; ok: boolean };
 
-const label = (n: string) => (n ? `@${n}` : "Kin account");
+// Not on Kin (no @name) → short address; the full one is copyable below.
+const label = (n: string, a?: Address) => (n ? `@${n}` : a ? shortAddr(a) : "someone");
 
 async function load(hash: Hex, me?: Address): Promise<Receipt> {
   const r = await publicClient.getTransactionReceipt({ hash });
@@ -26,18 +27,24 @@ async function load(hash: Hex, me?: Address): Promise<Receipt> {
   const t = transfers.find((l) => me && (isAddressEqual(l.args.from, me) || isAddressEqual(l.args.to, me))) ?? transfers[0];
   // A Kin contract on either side → describe what it was for ("Chore for @b"), else the person's @name.
   const side = async (a: Address, dir: "in" | "out") =>
-    isKinContract(a) && me ? describe(hash, a, dir, me) : label(await nameOf(a).catch(() => ""));
+    isKinContract(a) && me ? describe(hash, a, dir, me) : label(await nameOf(a).catch(() => ""), a);
   const [from, to] = t ? await Promise.all([side(t.args.from, "in"), side(t.args.to, "out")]) : [label(""), label("")];
   return {
     amount: t?.args.value ?? 0n,
     from,
     to,
+    fromA: t?.args.from,
+    toA: t?.args.to,
     out: !!(t && me && isAddressEqual(t.args.from, me)),
     at: new Date(Number(block.timestamp) * 1000),
     block: r.blockNumber,
     ok: r.status === "success",
   };
 }
+
+const onKin = (s: string) => (s.startsWith("0x") ? "Not on Kin" : "On Kin");
+const copyOf = (s: string, a?: Address) =>
+  s.startsWith("@") ? <Copy text={s} what="name" /> : s.startsWith("0x") && a ? <Copy text={a} what="address" /> : null;
 
 /** Friendly short receipt number: "A1B2C3…9F0E". */
 const paymentId = (h: string) => `${h.slice(2, 8)}…${h.slice(-4)}`.toUpperCase();
@@ -196,8 +203,8 @@ export function Proof() {
 
       <section className="flex flex-col">
         <Band>Details</Band>
-        <Row title={`To: ${r.to}`} sub={r.out ? "On Kin" : "You"} trail={r.to.startsWith("@") && <Copy text={r.to} what="name" />} />
-        <Row title={`From: ${r.from}`} sub={r.out ? "You" : "On Kin"} trail={r.from.startsWith("@") && <Copy text={r.from} what="name" />} />
+        <Row title={`To: ${r.to}`} sub={r.out ? onKin(r.to) : "You"} trail={copyOf(r.to, r.toA)} />
+        <Row title={`From: ${r.from}`} sub={r.out ? "You" : onKin(r.from)} trail={copyOf(r.from, r.fromA)} />
         <Row title="Payment ID" sub={paymentId(hash)} trail={<Copy text={paymentId(hash)} what="payment ID" />} />
       </section>
 

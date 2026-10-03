@@ -4,8 +4,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { MyKinko } from "@/components/kinko/PersonKinko";
 import { Band, Button, Card, Ico, IconTile, Row, Screen, Tabs } from "@/components/ui";
-import { getPayCheck, lock, setPayCheck, signOut, useRequireAccount, type PayCheck } from "@/lib/account";
+import { getPayCheck, lock, setPayCheck, signOut, switchAccount, useRequireAccount, type PayCheck } from "@/lib/account";
 import { FX, currencySymbol, fromLocal, getCurrency, toDollars } from "@/lib/money";
+import { shortAddr } from "@/lib/names";
 import { setPrivate, usePrivate } from "@/lib/privacy";
 import { disablePush, enablePush, iosNeedsInstall, pushState, type PushState } from "@/lib/push";
 import { getTheme, setTheme, type Theme } from "@/lib/theme";
@@ -33,7 +34,7 @@ const PAY_MODES: [PayCheck["mode"], string, string][] = [
 
 export default function Me() {
   const router = useRouter();
-  const { profile } = useRequireAccount();
+  const { profile, accounts } = useRequireAccount();
   const currency = useSyncExternalStore(subscribe, getCurrency, () => "USD");
   const theme = useSyncExternalStore(subscribe, getTheme, (): Theme => "system");
   const [copied, setCopied] = useState(false);
@@ -92,6 +93,16 @@ export default function Me() {
             <p className="font-display text-4xl">Your account</p>
           )}
           <p className="text-sm text-muted">Family pays you with this name</p>
+          {accounts.length > 1 && (
+            <div role="radiogroup" aria-label="Account in use" className="flex w-full flex-wrap justify-center gap-2">
+              {accounts.map((a) => (
+                <button key={a.address} role="radio" aria-checked={a.address === profile?.address} onClick={() => switchAccount(a.address)}
+                  className={`min-h-11 rounded-full px-4 text-sm font-semibold ${a.address === profile?.address ? "bg-brand text-brand-ink" : "bg-surface-2 text-ink"}`}>
+                  {a.kin ? `Kin account${a.name ? ` (@${a.name})` : ""}` : a.name ? `@${a.name}` : shortAddr(a.address)}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="mt-2 w-full">
             <Link href="/kinko" className="grid h-14 place-items-center rounded-full bg-brand-soft font-semibold text-brand active:scale-[0.98]">Customize Kinko</Link>
           </div>
@@ -175,12 +186,13 @@ export default function Me() {
         <p className="px-5 py-4 text-sm text-muted">
           {"Your account is backed up with your phone’s Face ID and password manager (iCloud Keychain or Google Password Manager). On a new phone, open Kin and tap “Already have Kin on another phone?”."}
         </p>
+        <Row href="/security" icon={<IconTile name="safe" size={44} />} title="Security" sub="Recovery phrase, other accounts" trail={<Chev />} />
 
         <div className="mt-auto flex flex-col gap-2 px-5 pt-4">
           <Button variant="ghost" onClick={() => (lock(), router.replace("/"))}>Lock now</Button>
           {confirmOut ? (
             <Card className="flex flex-col gap-3 text-sm">
-              <p>Remove Kin from this phone? Your money stays safe — come back anytime with Face ID.</p>
+              <p>Remove Kin from this phone? Your money stays safe — come back anytime with Face ID.{accounts.length > 1 && " Accounts you added from other wallets are forgotten too: you’ll need their recovery phrase to add them again."}</p>
               <div className="grid grid-cols-2 gap-2">
                 <Button variant="ghost" onClick={() => setConfirmOut(false)}>Keep</Button>
                 <Button onClick={() => (signOut(), router.replace("/"))}>Remove</Button>

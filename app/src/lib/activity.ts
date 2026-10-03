@@ -2,7 +2,7 @@
 import { erc20Abi, isAddressEqual, parseEventLogs, type Address, type Hex } from "viem";
 import { addr, publicClient } from "./chain";
 import { describe, isKinContract } from "./counterparty";
-import { nameOf } from "./names";
+import { nameOf, shortAddr } from "./names";
 import { history } from "./programs";
 
 // Activity feed from AUSD Transfer logs since deploy (server-side history + live tail, see programs.history).
@@ -31,7 +31,7 @@ function who(other: Address, dir: Item["dir"], hash: Hex, me: Address): Promise<
   if (isAddressEqual(other, "0xd236c18D274E54FAccC3dd9DDA4b27965a73ee6C")) return Promise.resolve("Welcome money");
   const k = other.toLowerCase();
   if (!names.has(k)) names.set(k, nameOf(other).catch(() => ""));
-  return names.get(k)!.then((n) => (n ? `@${n}` : dir === "in" ? "Money received" : "Payment"));
+  return names.get(k)!.then((n) => (n ? `@${n}` : shortAddr(other)));
 }
 
 const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });

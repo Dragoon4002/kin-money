@@ -24,6 +24,9 @@ export function nameOf(address: Address): Promise<string> {
 
 export const HANDLE_RE = /^[a-z0-9_]{3,20}$/;
 
+/** "0x1a2b…9f0e" — shown only for accounts not on Kin (no @name). */
+export const shortAddr = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
+
 // ---------- directory (/api/names): all @names (autocomplete) + published Kinko looks (avatars) ----------
 
 type Directory = { trie: Trie; looks: Map<string, Look> };

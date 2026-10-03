@@ -53,7 +53,7 @@ export async function notify(to: Address | string, msg: Msg, { inbox = true } = 
     if (inbox) {
       const n = { id: randomUUID(), title: msg.title, body: msg.body, url: msg.url ?? "/home", at: Date.now() };
       await q(
-        `MERGE (p:Person {address: $a}) ON CREATE SET p.createdAt = timestamp()
+        `MATCH (p:Person {address: $a}) // never create a Person just to notify a bare address
          CREATE (p)-[:INBOX]->(:Notification {id: $n.id, title: $n.title, body: $n.body, url: $n.url, at: $n.at, read: false})`,
         { a: getAddress(to), n },
       );

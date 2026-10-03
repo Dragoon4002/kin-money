@@ -1,7 +1,7 @@
 import { isAddressEqual, parseEventLogs, type Address, type Hex } from "viem";
 import { KinCircleAbi, KinEscrowAbi, KinGiftLinkAbi, KinMandateAbi, KinPotAbi, KinStreamAbi } from "./abi";
 import { addr, publicClient } from "./config";
-import { nameOf } from "./names";
+import { nameOf, shortAddr } from "./names";
 
 // Port of app/src/lib/counterparty.ts: money moving in/out of a Kin contract is a transfer to a contract
 // address (no @name). Read the contract's own event in the same tx to say what it was for: "Bill for @b".
@@ -18,7 +18,7 @@ export const isKinContract = (a: Address) => KIN.some((k) => isAddressEqual(k, a
 const names = new Map<string, Promise<string>>();
 const at = (a: Address) => {
   const k = a.toLowerCase();
-  if (!names.has(k)) names.set(k, nameOf(a).then((n) => (n ? `@${n}` : "someone")).catch(() => "someone"));
+  if (!names.has(k)) names.set(k, nameOf(a).then((n) => (n ? `@${n}` : shortAddr(a))).catch(() => shortAddr(a)));
   return names.get(k)!;
 };
 

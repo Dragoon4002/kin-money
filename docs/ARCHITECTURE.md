@@ -60,6 +60,11 @@ lib/
 Auth for writes: client signs EIP-191 message `Kin contacts <address> <timestamp>` with Mera account; route verifies with viem `verifyMessage` (±5 min). No sessions table.
 Risk: Aura Free pauses when idle (UNVERIFIED exact window) — wake it before judging; onchain features work without it.
 
+## Security
+- **Rule-7 deviation (user decision, Oct 3):** Me → Security can reveal the Kin account's 24 words + private key (fresh Face ID pinned to the credential, never stored/logged, auto-hidden on background, clipboard wiped after 60s) and import keys from other wallets. Mera stays the only account layer; nothing goes to a server.
+- Imported keys at rest: `kin.imported` = `[{address, iv, ct, name?}]`, AES-256-GCM under HKDF-SHA256(passkey PRF, salt `kin.import.v1`, info = address) (`lib/keys.ts`; WebCrypto on web, @noble on mobile). Only `unlock()` (Face ID) decrypts them into in-memory sessions; `lock()` ends all; PRF zeroed after.
+- Active account persisted by address only (`kin.active`); `getAccount()`/`tx` sign with it; read tokens per address. Checks: `app/scripts/check-keys.mts`.
+
 ## Env
 See `app/.env.example`, `contracts/.env.example`. Testnet AUSD `0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC`, faucet `0xd236c18D274E54FAccC3dd9DDA4b27965a73ee6C` (`requestFunds(address)`).
 

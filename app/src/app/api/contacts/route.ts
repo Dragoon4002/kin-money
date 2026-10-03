@@ -41,6 +41,7 @@ export function POST(req: Request) {
     if (!them || them === me) return bad();
 
     const [meName, themName] = await Promise.all([verifiedName(me), verifiedName(them)]);
+    if (!themName) return bad("That account isn't on Kin");
     await q(
       `${UPSERT_ME}
        WITH me

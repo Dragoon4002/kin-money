@@ -3,7 +3,7 @@ import { erc20Abi, formatLog, isAddressEqual, parseAbiItem, parseEventLogs, type
 import { CATEGORIES } from "./categories";
 import { API_BASE, addr, publicClient } from "./config";
 import { describe, isKinContract } from "./counterparty";
-import { nameOf } from "./names";
+import { nameOf, shortAddr } from "./names";
 
 // Activity feed straight from AUSD Transfer logs (same as web lib/activity.ts).
 // ponytail: public Monad RPC caps eth_getLogs at 100 blocks, so we scan the last DEPTH blocks in chunks,
@@ -35,7 +35,7 @@ function who(other: Address, dir: Raw["dir"]): Promise<string> {
   if (label) return Promise.resolve(label);
   const k = other.toLowerCase();
   if (!names.has(k)) names.set(k, nameOf(other).catch(() => ""));
-  return names.get(k)!.then((n) => (n ? `@${n}` : dir === "in" ? "Money received" : "Payment"));
+  return names.get(k)!.then((n) => (n ? `@${n}` : shortAddr(other)));
 }
 
 // ponytail: hand-rolled; Hermes' Intl.RelativeTimeFormat support is spotty.

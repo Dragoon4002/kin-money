@@ -49,7 +49,7 @@ export function POST(req: Request) {
         unblock: `WITH me, p OPTIONAL MATCH (me)-[x:BLOCKED]->(p) DELETE x`,
         accept: `MERGE (me)-[:ACCEPTED]->(p)`,
       }[b.action];
-      await q(`${UPSERT_ME} WITH me ${UPSERT_THEM} ${cypher}`, { me, meName: null, them, themName: null });
+      await q(`${UPSERT_ME} WITH me MATCH (p:Person {address: $them}) ${cypher}`, { me, meName: null, them });
       return { ok: true };
     }
 
@@ -63,6 +63,7 @@ export function POST(req: Request) {
     );
     if (n >= RATE) return bad("too many", 429);
     const [meName, themName] = await Promise.all([verifiedName(me), verifiedName(them)]);
+    if (!themName) return bad("That account isn't on Kin");
     await q(`${UPSERT_ME} WITH me ${UPSERT_THEM}`, { me, meName, them, themName });
     const m = await saveMessage(me, them, "text", body);
     // Chat texts skip the notification center (the Messages badge covers them); push still goes to the phone.
