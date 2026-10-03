@@ -45,6 +45,7 @@ export const NATIVE: Record<string, string> = {
   "/autopay": "/autopay",
   "/autopay/[id]": "/autopay/[id]",
   "/earmark": "/earmark",
+  "/earmark/[id]": "/earmark/[id]",
 };
 
 const TAB: Record<string, Tab> = { "/money": "Money", "/explore": "Explore", "/home": "Home", "/contacts": "People", "/activity": "Activity" };

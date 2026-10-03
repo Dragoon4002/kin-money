@@ -85,7 +85,7 @@ function NewTrip() {
       <Field label="Trip name">
         <input className={inputClass} placeholder="Goa with the gang" maxLength={60} value={name} onChange={(e) => setName(e.target.value)} />
       </Field>
-      <PersonPicker key={pickerKey} label="Who's coming?" onPick={add} />
+      <PersonPicker key={pickerKey} label="Who's coming?" onPick={add} exclude={new Set(people.map((p) => p.name))} />
       {people.length > 0 && (
         <ul className="flex flex-wrap gap-2" aria-label="Coming along">
           {people.map((p) => (

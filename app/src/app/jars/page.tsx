@@ -2,13 +2,13 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { Address } from "viem";
-import { Empty, Loading, MoneyInput, Pad, Status, jarKey, jarMeta, setMeta, useAction, useLoad, useMe, OldPots } from "@/components/programs/kit";
+import { Empty, Loading, MoneyInput, Pad, Status, jarKey, jarMeta, setMeta, useAction, useLoad, useMe } from "@/components/programs/kit";
 import { Amount, Band, Button, Chip, ErrorText, Field, Ico, IconTile, Ring, Row, Screen, inputClass } from "@/components/ui";
 import type { IconName } from "@/lib/icons";
 import { KinPotAbi } from "@/lib/abi";
 import { addr } from "@/lib/chain";
 import { formatMoney, fromLocal } from "@/lib/money";
-import { createdId, isJar, listPots, ZERO } from "@/lib/programs";
+import { createdId, isJar, listOldPots, listPots, potPath, ZERO } from "@/lib/programs";
 import { call } from "@/lib/tx";
 
 // Savings jars: a KinPot where I'm the only member and the beneficiary. When the jar hits its goal,
@@ -17,7 +17,10 @@ import { call } from "@/lib/tx";
 export default function JarsPage() {
   const me = useMe();
   const [creating, setCreating] = useState(false);
-  const { data, error } = useLoad(() => listPots(me!).then((ps) => ps.filter((p) => isJar(p) && !p.closed)), me);
+  const { data, error } = useLoad(
+    () => Promise.all([listPots(me!), listOldPots(me!).catch(() => [])]).then(([ps, old]) => [...ps, ...old].filter((p) => isJar(p) && !p.closed)),
+    me,
+  );
 
   if (creating) return <NewJar me={me} onCancel={() => setCreating(false)} />;
   const saved = data?.reduce((a, p) => a + p.balance, 0n) ?? 0n;
@@ -33,12 +36,12 @@ export default function JarsPage() {
       {data && !data.length && <Empty icon="jars" title="No jars yet" sub="Saving for a bike, a trip or a phone? Give it a jar and watch it fill." />}
       {!!data?.length && <Band>Your jars</Band>}
       {data?.map((p) => {
-        const { name, icon } = jarMeta(p.id);
+        const { name, icon } = jarMeta(p.id, p.old);
         const pct = Number(p.balance) / Number(p.target);
         return (
           <Row
-            key={String(p.id)}
-            href={`/jars/${p.id}`}
+            key={potPath(p)}
+            href={`/jars/${potPath(p)}`}
             icon={<IconTile name={icon} />}
             title={name}
             sub={p.round > 0n ? <Chip tone="good">Goal reached ✓✓</Chip> : `${formatMoney(p.balance)} of ${formatMoney(p.target)}`}
@@ -50,7 +53,6 @@ export default function JarsPage() {
           />
         );
       })}
-      <OldPots me={me} jars={true} />
       <Pad className="mt-auto pt-4">
         <Button onClick={() => setCreating(true)}>New jar</Button>
       </Pad>

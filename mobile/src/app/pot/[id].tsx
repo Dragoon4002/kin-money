@@ -5,11 +5,10 @@ import { BigRing, Celebrate, InviteSheet, OfGoal } from "@/components/pot/bits";
 import { Loading, MoneyInput, PotFor, Sheet, Status, Who, WhoAvatar, useAction, useLoad, useMe } from "@/components/programs/kit";
 import { Band, Button, Chip, ErrorText, Footer, Row, Screen, Serif, Text } from "@/components/ui";
 import { KinPotAbi } from "@/lib/abi";
-import { addr } from "@/lib/config";
 import { recordPayment } from "@/lib/contacts";
 import { formatMoney, fromLocal } from "@/lib/money";
 import { createPotInvite, disablePotInvite, inviteKeyOf, savedLink } from "@/lib/potLinks";
-import { getPot, potPayouts, same, txEvents, ZERO } from "@/lib/programs";
+import { getPot, OldPotAbi, potAt, potPayouts, potRoute, same, txEvents, ZERO } from "@/lib/programs";
 import { call } from "@/lib/tx";
 import { fonts, useTheme } from "@/theme";
 
@@ -18,16 +17,19 @@ export default function PotDetail() {
   const t = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const me = useMe();
+  const r = potRoute(id);
   const { data, error, reload } = useLoad(async () => {
-    const [pot, payouts, myKey] = await Promise.all([getPot(BigInt(id)), potPayouts(BigInt(id)), me ? inviteKeyOf(BigInt(id), me) : ZERO]);
+    // Old pots (before the update) have no invite links; their payouts aren't in our history.
+    const [pot, payouts, myKey] = await Promise.all([getPot(r!.id, r!.old), r!.old ? [] : potPayouts(r!.id), me && !r!.old ? inviteKeyOf(r!.id, me) : ZERO]);
     return { pot, payouts, myKey };
-  }, me && id && /^\d+$/.test(id) ? `${id}.${me}` : undefined);
+  }, me && r ? `${id}.${me}` : undefined);
   const [amount, setAmount] = useState("");
   const [sheet, setSheet] = useState<"" | "chip" | "close" | "invite">("");
   const [link, setLink] = useState("");
   const [party, setParty] = useState(0n);
   const { busy, status, error: actionError, run } = useAction();
 
+  if (!r) return <Screen title="Family pot" back><ErrorText>We couldn&apos;t find this pot.</ErrorText></Screen>;
   if (!data) return <Screen title="Family pot" back>{error ? <ErrorText>{error}</ErrorText> : <Loading />}</Screen>;
   const { pot, payouts, myKey } = data;
   if (!pot.target) return <Screen title="Family pot" back><ErrorText>We couldn&apos;t find this pot.</ErrorText></Screen>;
@@ -41,9 +43,9 @@ export default function PotDetail() {
     const value = fromLocal(amount);
     if (!value) return;
     const ok = await run(async (say) => {
-      const hash = await call(addr.pot, KinPotAbi, "contribute", [pot.id], { fund: value });
+      const hash = await call(potAt(pot), KinPotAbi, "contribute", [pot.id], { fund: value });
       say("Adding it to the pot…");
-      const paid = (await txEvents(hash, KinPotAbi)).find((l) => l.eventName === "PotPaid");
+      const paid = (await txEvents(hash, pot.old ? OldPotAbi : KinPotAbi)).find((l) => l.eventName === "PotPaid");
       const payout = paid ? (paid.args as { amount: bigint }).amount : 0n;
       if (payout && split === 1) void recordPayment(pot.beneficiaries[0], payout);
       return { payout };
@@ -57,7 +59,7 @@ export default function PotDetail() {
   }
 
   async function closePot() {
-    const ok = await run(async () => (await call(addr.pot, KinPotAbi, "close", [pot.id]), true));
+    const ok = await run(async () => (await call(potAt(pot), KinPotAbi, "close", [pot.id]), true));
     if (ok) {
       setSheet("");
       reload();
@@ -165,7 +167,7 @@ export default function PotDetail() {
       <Footer>
         <ErrorText>{sheet ? "" : actionError}</ErrorText>
         {!pot.closed && iMember && <Button title="Chip in" onPress={() => { setAmount(""); setSheet("chip"); }} />}
-        {!pot.closed && iMember && pot.members.length < 20 && <Button title="Invite family" variant="soft" onPress={openInvite} />}
+        {!pot.closed && iMember && !pot.old && pot.members.length < 20 && <Button title="Invite family" variant="soft" onPress={openInvite} />}
         {!pot.closed && iGet && pot.balance > 0n && (
           <Button title={split > 1 ? "Pay out what's there now" : "Take what's there now"} variant={iMember ? "ghost" : "primary"} onPress={() => setSheet("close")} />
         )}

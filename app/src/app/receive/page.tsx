@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import QRCode from "qrcode";
 import { useState } from "react";
 import { PayQr } from "@/components/core/PayQr";
 import { share } from "@/components/core/share";
@@ -12,6 +13,33 @@ import { payLink } from "@/lib/payLink";
 import { walletUri } from "@/lib/walletUri";
 
 const MODES = [["kin", "Kin app"], ["wallet", "Other wallet"]] as const;
+
+/** My QR card as a PNG: @name, one line, the QR (dark on white so every camera reads it). */
+function qrCardFile(qr: string, handle: string, line: string): Promise<File | null> {
+  const { size, data } = QRCode.create(qr, { errorCorrectionLevel: "M" }).modules;
+  const W = 720;
+  const cell = Math.floor((W - 160) / (size + 4));
+  const x0 = (W - cell * size) / 2;
+  const y0 = 220 + 2 * cell;
+  const c = document.createElement("canvas");
+  c.width = W;
+  c.height = y0 + cell * (size + 2) + 80;
+  const g = c.getContext("2d");
+  if (!g) return Promise.resolve(null);
+  const font = getComputedStyle(document.body).fontFamily;
+  g.fillStyle = "#fff";
+  g.fillRect(0, 0, W, c.height);
+  g.fillStyle = "#111";
+  g.textAlign = "center";
+  g.font = `700 60px ${font}`;
+  g.fillText(`@${handle}`, W / 2, 120);
+  g.fillStyle = "#666";
+  g.font = `400 30px ${font}`;
+  g.fillText(line, W / 2, 175);
+  g.fillStyle = "#111";
+  for (let i = 0; i < data.length; i++) if (data[i]) g.fillRect(x0 + (i % size) * cell, y0 + Math.floor(i / size) * cell, cell, cell);
+  return new Promise((ok) => c.toBlob((b) => ok(b ? new File([b], "kin-qr.png", { type: "image/png" }) : null), "image/png"));
+}
 
 export default function Receive() {
   const { profile } = useRequireAccount();
@@ -32,10 +60,25 @@ export default function Receive() {
     await navigator.clipboard?.writeText(profile.address).then(() => setAddrCopied(true), () => {});
   }
 
+  const shareText = units ? `Pay me ${formatMoney(units)} on Kin: @${handle}` : `Pay me on Kin: @${handle}`;
+
+  // Card image when this browser can share files (most phones); else the link.
   async function doShare() {
-    if (!url) return;
-    const text = units ? `Pay me ${formatMoney(units)} on Kin: @${handle}` : `Pay me on Kin: @${handle}`;
-    if ((await share(text, url)) === "copied") setCopied(true);
+    if (!url || !handle) return;
+    const file = await qrCardFile(url, handle, units ? `Scan to pay ${formatMoney(units)}` : "Scan to pay me on Kin").catch(() => null);
+    if (file && navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], text: `${shareText} ${url}` });
+        return;
+      } catch (e) {
+        if ((e as Error).name === "AbortError") return;
+      }
+    }
+    if ((await share(shareText, url)) === "copied") setCopied(true);
+  }
+
+  async function copyLink() {
+    await navigator.clipboard?.writeText(url).then(() => setCopied(true), () => {});
   }
 
   return (
@@ -76,7 +119,13 @@ export default function Receive() {
           </Field>
           {mode === "kin" && (
             <div className="mt-auto">
-              <Button onClick={doShare} disabled={!url}>{copied ? "Link copied ✓" : "Share my pay link"}</Button>
+              <Button onClick={doShare} disabled={!url}>Share my QR</Button>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <a href={url ? `https://wa.me/?text=${encodeURIComponent(`${shareText} ${url}`)}` : undefined} target="_blank" rel="noopener noreferrer"
+                  className="grid h-12 place-items-center rounded-full bg-surface-2 text-sm font-semibold text-ink active:scale-[0.98]">Share on WhatsApp</a>
+                <button type="button" onClick={copyLink} disabled={!url}
+                  className="h-12 rounded-full bg-surface-2 text-sm font-semibold text-ink active:scale-[0.98]">{copied ? "Copied ✓" : "Copy link"}</button>
+              </div>
             </div>
           )}
         </>

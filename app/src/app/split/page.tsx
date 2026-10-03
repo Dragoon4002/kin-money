@@ -73,7 +73,7 @@ export default function SplitPage() {
         <input className={`${inputClass} text-center`} placeholder="Dinner 🍕" maxLength={140} value={note} onChange={(e) => setNote(e.target.value)} />
       </Field>
 
-      <PersonPicker key={pickerKey} label="Split with" onPick={add} />
+      <PersonPicker key={pickerKey} label="Split with" onPick={add} exclude={new Set(people.map((p) => p.name))} />
 
       {people.length > 0 && (
         <ul className="flex flex-wrap gap-2" aria-label="Splitting with">

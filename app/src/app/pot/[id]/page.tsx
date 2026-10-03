@@ -6,20 +6,21 @@ import { share } from "@/components/core/share";
 import { Celebrate } from "@/components/kinko/Celebrate";
 import { Amount, Band, Button, Chip, ErrorText, Ico, Ring, Row, Screen } from "@/components/ui";
 import { KinPotAbi } from "@/lib/abi";
-import { addr } from "@/lib/chain";
 import { recordPayment } from "@/lib/contacts";
 import { formatMoney, fromLocal } from "@/lib/money";
 import { createPotInvite, disablePotInvite, inviteKeyOf, savedLink } from "@/lib/potLinks";
-import { getPot, potPayouts, same, txEvents, ZERO } from "@/lib/programs";
+import { getPot, OldPotAbi, potAt, potPayouts, potRoute, same, txEvents, ZERO } from "@/lib/programs";
 import { call } from "@/lib/tx";
 
 export default function PotDetail() {
   const { id } = useParams<{ id: string }>();
   const me = useMe();
+  const r = potRoute(id);
   const { data, error, reload } = useLoad(async () => {
-    const [pot, payouts, myKey] = await Promise.all([getPot(BigInt(id)), potPayouts(BigInt(id)), me ? inviteKeyOf(BigInt(id), me) : ZERO]);
+    // Old pots (before the update) have no invite links; their payouts aren't in our history.
+    const [pot, payouts, myKey] = await Promise.all([getPot(r!.id, r!.old), r!.old ? [] : potPayouts(r!.id), me && !r!.old ? inviteKeyOf(r!.id, me) : ZERO]);
     return { pot, payouts, myKey };
-  }, me && id);
+  }, me && r ? id : undefined);
   const [amount, setAmount] = useState("");
   const [sheet, setSheet] = useState<"" | "chip" | "close" | "invite">("");
   const [link, setLink] = useState("");
@@ -27,6 +28,7 @@ export default function PotDetail() {
   const [party, setParty] = useState(0n);
   const { busy, status, error: actionError, run } = useAction();
 
+  if (!r) return <Screen title="Family pot" back="/pot"><ErrorText>We couldn&apos;t find this pot.</ErrorText></Screen>;
   if (!data) return <Screen title="Family pot" back="/pot">{error ? <ErrorText>{error}</ErrorText> : <Loading />}</Screen>;
   const { pot, payouts, myKey } = data;
   if (!pot.target) return <Screen title="Family pot" back="/pot"><ErrorText>We couldn&apos;t find this pot.</ErrorText></Screen>;
@@ -40,9 +42,9 @@ export default function PotDetail() {
     const value = fromLocal(amount);
     if (!value) return;
     const ok = await run(async (say) => {
-      const hash = await call(addr.pot, KinPotAbi, "contribute", [pot.id], { fund: value });
+      const hash = await call(potAt(pot), KinPotAbi, "contribute", [pot.id], { fund: value });
       say("Adding it to the pot…");
-      const paid = (await txEvents(hash, KinPotAbi)).find((l) => l.eventName === "PotPaid");
+      const paid = (await txEvents(hash, pot.old ? OldPotAbi : KinPotAbi)).find((l) => l.eventName === "PotPaid");
       const payout = paid ? (paid.args as { amount: bigint }).amount : 0n;
       if (payout && split === 1) void recordPayment(pot.beneficiaries[0], payout);
       return { payout };
@@ -56,7 +58,7 @@ export default function PotDetail() {
   }
 
   async function closePot() {
-    const ok = await run(async () => (await call(addr.pot, KinPotAbi, "close", [pot.id]), true));
+    const ok = await run(async () => (await call(potAt(pot), KinPotAbi, "close", [pot.id]), true));
     if (ok) {
       setSheet("");
       reload();
@@ -146,9 +148,7 @@ export default function PotDetail() {
       <Pad className="mt-auto flex flex-col gap-2 pt-4">
         <ErrorText>{!sheet && actionError}</ErrorText>
         {!pot.closed && iMember && <Button onClick={() => { setAmount(""); setSheet("chip"); }}>Chip in</Button>}
-        {!pot.closed && iMember && pot.members.length < 20 && (
-          <Button variant="soft" onClick={openInvite}><Ico name="share" /> Invite family</Button>
-        )}
+        {!pot.closed && iMember && !pot.old && pot.members.length < 20 && <Button variant="soft" onClick={openInvite}>Invite family</Button>}
         {!pot.closed && iGet && pot.balance > 0n && (
           <Button variant={iMember ? "ghost" : "primary"} onClick={() => setSheet("close")}>{split > 1 ? "Pay out what's there now" : "Take what's there now"}</Button>
         )}

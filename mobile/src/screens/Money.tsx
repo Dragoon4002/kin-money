@@ -1,4 +1,4 @@
-import { ChevronRight, House, ListChecks, type LucideIcon, PiggyBank, RefreshCcw, Sprout } from "lucide-react-native";
+import { ChevronRight, type LucideIcon, PiggyBank } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { Pressable, View } from "react-native";
 import type { Address } from "viem";
@@ -9,19 +9,10 @@ import { API_BASE, publicClient } from "@/lib/config";
 import { humanError } from "@/lib/errors";
 import { formatMoney, getCurrency } from "@/lib/money";
 import { openKin } from "@/lib/nav";
+import { isJar, listPots } from "@/lib/programs";
 import { useTheme } from "@/theme";
 
-// Native port of app/src/app/(tabs)/money/page.tsx. Pockets open their web page (no native screens yet).
-// ponytail: idle line only; web's live per-pocket summaries need the programs lib ported.
-const POCKETS: [string, string, string, LucideIcon][] = [
-  ["Live allowance", "/allowance", "Grows every second", Sprout],
-  ["Savings jars", "/jars", "Save toward something big", PiggyBank],
-  ["Family pots", "/pot", "Chip in together", House],
-  ["Circles", "/circle", "Save as a group, take turns", RefreshCcw],
-  ["Chores", "/chores", "Earn for helping out", ListChecks],
-];
-
-// ponytail: rough bank-wire cost (3% + $5 per transfer) — an estimate, labelled as such in the UI.
+// Native port of app/src/app/(tabs)/money/page.tsx.
 
 function Row({ title, sub, onPress, icon }: { title: string; sub: string; onPress: () => void; icon?: LucideIcon }) {
   const t = useTheme();
@@ -45,12 +36,17 @@ export default function Money() {
   const [balance, setBalance] = useState<bigint | null>(null);
   const [adding, setAdding] = useState<"idle" | "busy" | "done" | "had">("idle");
   const [err, setErr] = useState("");
+  const [jars, setJars] = useState<string | null>(null);
 
   useEffect(() => {
     if (!me) return;
     let on = true;
     const tick = () => getBalance(me).then((b) => on && setBalance(b)).catch(() => {});
     tick();
+    listPots(me).then((ps) => {
+      const js = ps.filter((p) => !p.closed && isJar(p));
+      if (on && js.length) setJars(`${formatMoney(js.reduce((a, p) => a + p.balance, 0n))} saved · ${js.length} ${js.length === 1 ? "jar" : "jars"}`);
+    }, () => {});
     const iv = setInterval(tick, 6000);
     return () => {
       on = false;
@@ -107,12 +103,7 @@ export default function Money() {
 
       <Row title="Cash out to bank" sub="Arrives in 1–2 days · no fee" onPress={() => openKin("/cashout")} />
 
-      <Text style={{ marginTop: 8, color: t.muted, fontSize: 12, fontWeight: "600", letterSpacing: 1.5, textTransform: "uppercase" }}>Pockets</Text>
-      <View style={{ gap: 12 }}>
-        {POCKETS.map(([title, href, idle, icon]) => (
-          <Row key={href} title={title} sub={idle} icon={icon} onPress={() => openKin(href)} />
-        ))}
-      </View>
+      <Row title="Savings jars" sub={jars ?? "Save toward something big"} icon={PiggyBank} onPress={() => openKin("/jars")} />
     </Screen>
   );
 }

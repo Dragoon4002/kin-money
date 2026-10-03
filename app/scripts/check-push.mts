@@ -47,6 +47,7 @@ m = await messageFor(log(escrow, [R, id(2), pad(kid)]), ctx);
 assert.deepEqual([m?.to, m?.msg.title, m?.msg.url], [mum, "@kid is asking for emergency money", "/allowance"]);
 m = await messageFor(log(escrow, [R, id(3), pad(nameless)]), ctx);
 assert.deepEqual([m?.to, m?.msg.title], [mum, "Someone is asking you to OK a payment"]);
+assert.equal(m?.msg.url, "/earmark/3", "bill opens its own page");
 
 // Gift link bound, AutoPay collected
 m = await messageFor(log(giftlink, [toEventSelector("Bound(uint256,address)"), id(7), pad(bob)]), ctx);

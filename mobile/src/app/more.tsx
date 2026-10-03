@@ -1,8 +1,9 @@
 import { router } from "expo-router";
-import { Bell, ChevronRight, Fingerprint, Lock, type LucideIcon, MessageCircle, QrCode, ShieldCheck, Smile, SunMoon, Trash2 } from "lucide-react-native";
+import * as Clipboard from "expo-clipboard";
+import { Bell, Check, ChevronRight, Copy, Fingerprint, Lock, type LucideIcon, MessageCircle, QrCode, ShieldCheck, Smile, SunMoon, Trash2 } from "lucide-react-native";
 import { useState } from "react";
-import { Alert, Pressable, View } from "react-native";
-import { Screen, Text } from "@/components/ui";
+import { Alert, Platform, Pressable, ToastAndroid, View } from "react-native";
+import { Screen, Serif, Text } from "@/components/ui";
 import { getPayCheck, lock, setPayCheck, signOut, switchAccount, useAccount, type PayCheck } from "@/lib/account";
 import { openKin } from "@/lib/nav";
 import { formatMoney } from "@/lib/money";
@@ -51,6 +52,15 @@ export default function More() {
     ]);
   }
 
+  const [copied, setCopied] = useState(false);
+  const circle = { width: 44, height: 44, borderRadius: 22, backgroundColor: t.surface2, alignItems: "center", justifyContent: "center" } as const;
+  async function copyName(name: string) {
+    await Clipboard.setStringAsync(`@${name}`);
+    if (Platform.OS === "android") ToastAndroid.show("Copied", ToastAndroid.SHORT);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
+
   function remove() {
     const extra = accounts.length > 1 ? " Accounts you added from other wallets are forgotten too: you’ll need their recovery phrase to add them again." : "";
     Alert.alert("Remove Kin from this phone?", `Your money stays safe. Unlock again any time with Face ID.${extra}`, [
@@ -60,7 +70,18 @@ export default function More() {
   }
 
   return (
-    <Screen title={profile?.name ? `@${profile.name}` : "Me"} back scroll>
+    <Screen title="Me" back scroll>
+      {!!profile?.name && (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <View style={{ flexShrink: 1 }}><Serif size={32}>@{profile.name}</Serif></View>
+          <Pressable onPress={() => void copyName(profile.name!)} accessibilityRole="button" accessibilityLabel="Copy your Kin name" style={circle}>
+            {copied ? <Check color={t.good} size={18} /> : <Copy color={t.muted} size={18} />}
+          </Pressable>
+          <Pressable onPress={() => router.push("/receive")} accessibilityRole="button" accessibilityLabel="My QR" style={circle}>
+            <QrCode color={t.muted} size={18} />
+          </Pressable>
+        </View>
+      )}
       {accounts.length > 1 && (
         <View accessibilityRole="radiogroup" accessibilityLabel="Account in use" style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
           {accounts.map((a) => {

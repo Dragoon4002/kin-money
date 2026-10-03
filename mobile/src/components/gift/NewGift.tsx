@@ -109,7 +109,7 @@ export function NewGift({ me, onClose }: { me?: Address; onClose: () => void }) 
       {when === "date" && <DateField label="Opens on" min={tomorrow} value={date} onChange={setDate} />}
       {mode === "name" ? (
         <View style={{ gap: 6 }}>
-          <PersonPicker label="Someone to OK it first? (optional)" onPick={setGuard} />
+          <PersonPicker label="Someone to OK it first? (optional)" onPick={setGuard} exclude={to ? new Set([to.name]) : undefined} />
           <Text style={{ color: t.muted, fontSize: 12 }}>{selfGuard ? "Pick someone else — or leave it empty." : "E.g. a parent who confirms they graduated."}</Text>
         </View>
       ) : (

@@ -172,39 +172,55 @@ export function canRelease(e: Escrow, t = nowSec()): boolean {
 
 // ---------- Family pot (KinPot) ----------
 
-/** `beneficiaries` = who gets paid now (every current member when `toAll`). Unknown pot → target 0. */
-export type Pot = { id: bigint; beneficiaries: Address[]; toAll: boolean; target: bigint; balance: bigint; round: bigint; closed: boolean; members: Address[]; creator: Address };
+/** `beneficiaries` = who gets paid now (every current member when `toAll`). Unknown pot → target 0. `old` = lives in OLD_POT. */
+export type Pot = { id: bigint; beneficiaries: Address[]; toAll: boolean; target: bigint; balance: bigint; round: bigint; closed: boolean; members: Address[]; creator: Address; old?: boolean };
 
-export async function getPot(id: bigint): Promise<Pot & { mine: Map<Address, bigint> }> {
-  const [[target, balance, round, closed, toAll], members, beneficiaries] = await Promise.all([
-    publicClient.readContract({ address: addr.pot, abi: KinPotAbi, functionName: "pots", args: [id] }),
-    publicClient.readContract({ address: addr.pot, abi: KinPotAbi, functionName: "membersOf", args: [id] }),
-    publicClient.readContract({ address: addr.pot, abi: KinPotAbi, functionName: "beneficiariesOf", args: [id] }),
-  ]);
-  const amounts = await Promise.all(members.map((m) => publicClient.readContract({ address: addr.pot, abi: KinPotAbi, functionName: "contributed", args: [id, round, m] })));
-  return { id, beneficiaries: [...beneficiaries], toAll, target, balance, round, closed, members: [...members], creator: ZERO, mine: new Map(members.map((m, i) => [m, amounts[i]])) };
+/** Route id: "7" = pot 7, "old-7" = pot 7 in OLD_POT. Null if malformed. */
+export function potRoute(s = "") {
+  const m = /^(old-)?(\d{1,30})$/.exec(s);
+  return m && { id: BigInt(m[2]), old: !!m[1] };
+}
+export const potPath = (p: Pick<Pot, "id" | "old">) => `${p.old ? "old-" : ""}${p.id}`;
+/** Contract holding `p`. contribute/close/membersOf/contributed have the same signatures in both, so KinPotAbi encodes either. */
+export const potAt = (p: Pick<Pot, "old">) => (p.old ? OLD_POT : addr.pot);
+
+export async function getPot(id: bigint, old = false): Promise<Pot & { mine: Map<Address, bigint> }> {
+  const at = old ? OLD_POT : addr.pot;
+  const head = old
+    ? publicClient.readContract({ address: OLD_POT, abi: OldPotAbi, functionName: "pots", args: [id] })
+      .then(([to, target, balance, round, closed]) => ({ target, balance, round, closed, toAll: false, beneficiaries: [to] }))
+    : Promise.all([
+      publicClient.readContract({ address: addr.pot, abi: KinPotAbi, functionName: "pots", args: [id] }),
+      publicClient.readContract({ address: addr.pot, abi: KinPotAbi, functionName: "beneficiariesOf", args: [id] }),
+    ]).then(([[target, balance, round, closed, toAll], b]) => ({ target, balance, round, closed, toAll, beneficiaries: [...b] }));
+  const [p, members] = await Promise.all([head, publicClient.readContract({ address: at, abi: KinPotAbi, functionName: "membersOf", args: [id] })]);
+  const amounts = await Promise.all(members.map((m) => publicClient.readContract({ address: at, abi: KinPotAbi, functionName: "contributed", args: [id, p.round, m] })));
+  return { id, ...p, members: [...members], creator: ZERO, old, mine: new Map(members.map((m, i) => [m, amounts[i]])) };
 }
 
-// ponytail: pots and jars made before the 2026-10-03 KinPot redeploy live in the old contract.
-// Only close() is needed (receiver takes the balance); drop this once those pots are empty.
+// ponytail: pots and jars made before the 2026-10-03 KinPot redeploy live in the old contract (no invite links,
+// one receiver). They open like normal pots via "old-<id>" routes; drop this once those pots are empty.
 export const OLD_POT: Address = "0x58ab4Da1575758be9d4Fe53bdB79fabe8F4C2caD";
 export const OldPotAbi = [
   { type: "function", name: "count", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
   { type: "function", name: "pots", stateMutability: "view", inputs: [{ type: "uint256" }], outputs: [{ type: "address" }, { type: "uint96" }, { type: "uint96" }, { type: "uint64" }, { type: "bool" }] },
   { type: "function", name: "membersOf", stateMutability: "view", inputs: [{ type: "uint256" }], outputs: [{ type: "address[]" }] },
   { type: "function", name: "close", stateMutability: "nonpayable", inputs: [{ name: "id", type: "uint256" }], outputs: [] },
+  {
+    type: "event", name: "PotPaid", anonymous: false,
+    inputs: [{ name: "id", type: "uint256", indexed: true }, { name: "beneficiary", type: "address", indexed: true }, { name: "round", type: "uint256", indexed: false }, { name: "amount", type: "uint256", indexed: false }],
+  },
 ] as const;
-export type OldPot = { id: bigint; target: bigint; balance: bigint; jar: boolean };
 
-/** Old pots that pay out to me and still hold money. Jar = I'm also the only member. */
-export async function listOldPots(me: Address): Promise<OldPot[]> {
+/** Old pots that pay out to me and still hold money. */
+export async function listOldPots(me: Address): Promise<Pot[]> {
   type Row = readonly [Address, bigint, bigint, bigint, boolean];
   const rows = await scan<Row>(OLD_POT, OldPotAbi as unknown as Kin, "pots", ([to, , bal, , closed]) => same(to, me) && !closed && bal > 0n);
   const members = await publicClient.multicall({
     contracts: rows.map(([id]) => ({ address: OLD_POT, abi: OldPotAbi, functionName: "membersOf", args: [id] }) as const),
     allowFailure: false,
   });
-  return rows.map(([id, [, target, balance]], i) => ({ id, target, balance, jar: members[i].length === 1 && same(members[i][0], me) }));
+  return rows.map(([id, [to, target, balance, round, closed]], i) => ({ id, beneficiaries: [to], toAll: false, target, balance, round, closed, members: [...members[i]], creator: ZERO, old: true }));
 }
 
 export async function listPots(me: Address): Promise<Pot[]> {

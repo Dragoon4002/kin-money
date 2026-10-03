@@ -248,7 +248,7 @@ function NewGift({ me, onClose }: { me?: Address; onClose: () => void }) {
       )}
       {mode === "name" ? (
         <>
-          <PersonPicker label="Someone to OK it first? (optional)" onPick={setGuard} />
+          <PersonPicker label="Someone to OK it first? (optional)" onPick={setGuard} exclude={to ? new Set([to.name]) : undefined} />
           <p className="-mt-2 text-xs text-muted">
             {selfGuard ? "Pick someone else — or leave it empty." : "E.g. a parent who confirms they graduated."}
           </p>

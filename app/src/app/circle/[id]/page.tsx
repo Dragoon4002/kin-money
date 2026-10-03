@@ -175,9 +175,7 @@ export default function CircleDetail() {
         <ErrorText>{!inviting && actionError}</ErrorText>
         <Status>{!inviting && busy && status}</Status>
         {primary}
-        {mine && phase === "gathering" && open > 0 && (
-          <Button variant="soft" onClick={openInvite}><Ico name="share" /> Invite to circle</Button>
-        )}
+        {mine && phase === "gathering" && open > 0 && <Button variant="soft" onClick={openInvite}>Invite to circle</Button>}
       </Pad>
 
       <Sheet open={inviting} onClose={() => !busy && setInviting(false)}>

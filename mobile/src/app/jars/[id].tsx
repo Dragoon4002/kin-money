@@ -5,10 +5,9 @@ import { BigRing, Celebrate, OfGoal } from "@/components/pot/bits";
 import { Loading, MoneyInput, Sheet, Status, jarMeta, useAction, useLoad, useMe } from "@/components/programs/kit";
 import { Band, Button, Chip, ErrorText, Footer, IconTile, Row, Screen, Serif, Text } from "@/components/ui";
 import { KinPotAbi } from "@/lib/abi";
-import { addr } from "@/lib/config";
 import { ICON } from "@/lib/icons";
 import { formatMoney, fromLocal } from "@/lib/money";
-import { getPot, isJar, potAdds, same, txEvents } from "@/lib/programs";
+import { getPot, isJar, OldPotAbi, potAdds, potAt, potRoute, same, txEvents } from "@/lib/programs";
 import { call } from "@/lib/tx";
 import { fonts, useTheme } from "@/theme";
 
@@ -17,22 +16,23 @@ export default function JarDetail() {
   const t = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const me = useMe();
-  const valid = /^\d{1,30}$/.test(id ?? "");
+  const r = potRoute(id);
   const { data, error, reload } = useLoad(async () => {
-    const [pot, adds] = await Promise.all([getPot(BigInt(id)), potAdds(BigInt(id)).catch(() => [])]);
+    // ponytail: old jars' adds aren't in our history, so their list stays hidden.
+    const [pot, adds] = await Promise.all([getPot(r!.id, r!.old), r!.old ? [] : potAdds(r!.id).catch(() => [])]);
     return { pot, adds };
-  }, valid ? id : undefined);
+  }, r ? id : undefined);
   const [amount, setAmount] = useState("");
   const [sheet, setSheet] = useState<"" | "add" | "break">("");
   const [party, setParty] = useState(0n);
   const { busy, status, error: actionError, run } = useAction();
 
   const missing = <Screen title="Savings jar" back><ErrorText>We couldn&apos;t find this jar.</ErrorText></Screen>;
-  if (!valid) return missing;
+  if (!r) return missing;
   if (!data || !me) return <Screen title="Savings jar" back>{error ? <ErrorText>{error}</ErrorText> : <Loading />}</Screen>;
   const { pot, adds } = data;
   if (!pot.target || !isJar(pot) || !same(pot.beneficiaries[0], me)) return missing;
-  const { name, icon } = jarMeta(pot.id);
+  const { name, icon } = jarMeta(pot.id, pot.old);
   const pct = pot.closed ? 0 : Number(pot.balance) / Number(pot.target);
   const left = pot.target - pot.balance;
 
@@ -40,9 +40,9 @@ export default function JarDetail() {
     const value = fromLocal(amount);
     if (!value) return;
     const ok = await run(async (say) => {
-      const hash = await call(addr.pot, KinPotAbi, "contribute", [pot.id], { fund: value });
+      const hash = await call(potAt(pot), KinPotAbi, "contribute", [pot.id], { fund: value });
       say("Into the jar…");
-      const paid = (await txEvents(hash, KinPotAbi)).find((l) => l.eventName === "PotPaid");
+      const paid = (await txEvents(hash, pot.old ? OldPotAbi : KinPotAbi)).find((l) => l.eventName === "PotPaid");
       return { payout: paid ? (paid.args as { amount: bigint }).amount : 0n };
     });
     if (ok) {
@@ -54,7 +54,7 @@ export default function JarDetail() {
   }
 
   async function breakJar() {
-    const ok = await run(async () => (await call(addr.pot, KinPotAbi, "close", [pot.id]), true));
+    const ok = await run(async () => (await call(potAt(pot), KinPotAbi, "close", [pot.id]), true));
     if (ok) {
       setSheet("");
       reload();
@@ -88,7 +88,7 @@ export default function JarDetail() {
         )}
       </View>
 
-      <View>
+      {!pot.old && <View>
         <Band>Added lately</Band>
         {adds.length ? (
           adds.map((a, i) => (
@@ -102,7 +102,7 @@ export default function JarDetail() {
         ) : (
           <Text style={{ color: t.muted, fontSize: 14, paddingVertical: 16 }}>Every bit you add shows up here.</Text>
         )}
-      </View>
+      </View>}
 
       <Sheet open={sheet === "add"} onClose={close}>
         <Serif size={30}>Add money</Serif>

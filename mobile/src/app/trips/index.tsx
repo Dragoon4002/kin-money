@@ -87,7 +87,7 @@ function NewTrip({ onCreated }: { onCreated: (id: string) => void }) {
         <Field label="Trip name">
           <TextInput style={input} placeholder="Goa with the gang" placeholderTextColor={t.muted} maxLength={60} value={name} onChangeText={setName} />
         </Field>
-        <PersonPicker key={pickerKey} label="Who's coming?" onPick={add} />
+        <PersonPicker key={pickerKey} label="Who's coming?" onPick={add} exclude={new Set(people.map((p) => p.name))} />
         <PeopleChips label="Coming along" people={people} onRemove={(p) => setPeople((ps) => ps.filter((x) => x.address !== p.address))} />
         <ErrorText>{err}</ErrorText>
       </ScrollView>

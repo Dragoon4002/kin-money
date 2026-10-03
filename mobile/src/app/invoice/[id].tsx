@@ -2,18 +2,20 @@ import { useLocalSearchParams } from "expo-router";
 import { ShieldCheck } from "lucide-react-native";
 import { View } from "react-native";
 import type { Address } from "viem";
+import type { Invoice as Meta } from "@/components/invoice/meta";
+import { MarkDone, PartChip } from "@/components/invoice/parts";
 import { Loading, Status, Who, WhoAvatar, dateLabel, timeLeft, useAction, useLoad, useMe, useNow } from "@/components/programs/kit";
 import { Amount, Card } from "@/components/trips/bits";
 import { Button, Chip, ErrorText, Screen, Serif, Text } from "@/components/ui";
 import { KinEscrowAbi } from "@/lib/abi";
 import { addr } from "@/lib/config";
-import { recordPayment } from "@/lib/contacts";
+import { api, recordPayment } from "@/lib/contacts";
 import { formatMoney } from "@/lib/money";
 import { canRelease, getEscrow, same, type Escrow } from "@/lib/programs";
 import { call } from "@/lib/tx";
 import { useTheme } from "@/theme";
 
-// Port of app/src/app/invoice/[id]/page.tsx. /invoice/12-13-14?t=Logo — one held payment per part.
+// Port of app/src/app/invoice/[id]/page.tsx. /invoice/12-13-14 — one held payment per part. Names/dues/"done" from /api/invoices (older links: ?t=Logo).
 
 export default function Invoice() {
   const t = useTheme();
@@ -22,6 +24,7 @@ export default function Invoice() {
   const me = useMe();
   const ids = id.split("-").filter((x) => /^\d+$/.test(x)).slice(0, 3).map(BigInt);
   const { data, error, reload } = useLoad(() => Promise.all(ids.map(getEscrow)), id);
+  const { data: inv, reload: reloadInv } = useLoad(() => api<Meta | null>(`/api/invoices?e=${ids[0]}`).catch(() => null), me && ids.length ? `${id}-${me}` : undefined);
 
   if (!data) return <Screen title="Invoice" back>{error ? <ErrorText>{error}</ErrorText> : <Loading />}</Screen>;
   const first = data[0];
@@ -33,7 +36,7 @@ export default function Invoice() {
   const iWork = same(first.to, me);
 
   return (
-    <Screen title={title || "Invoice"} back scroll>
+    <Screen title={inv?.title || title || "Invoice"} back scroll>
       <Card style={{ alignItems: "center", gap: 8, paddingVertical: 24 }}>
         <View style={{ flexDirection: "row" }}>
           <WhoAvatar a={first.from} size={48} />
@@ -45,14 +48,17 @@ export default function Invoice() {
         <Amount value={formatMoney(total)} size={64} />
         <View style={{ alignItems: "center" }}>{paid === total ? <Chip good>All paid ✓✓</Chip> : <Chip>{formatMoney(paid)} paid so far</Chip>}</View>
       </Card>
-      {data.map((e, i) => (
-        <Part key={String(e.id)} e={e} n={i + 1} many={data.length > 1} me={me} iWork={iWork} onDone={reload} />
-      ))}
+      {data.map((e, i) => {
+        const n = inv?.escrows.indexOf(String(e.id)) ?? -1;
+        const meta = n >= 0 ? { inv: inv!, n } : undefined;
+        return <Part key={String(e.id)} e={e} n={i + 1} many={data.length > 1} me={me} iWork={iWork} meta={meta} onDone={() => (reload(), reloadInv())} />;
+      })}
     </Screen>
   );
 }
 
-function Part({ e, n, many, me, iWork, onDone }: { e: Escrow; n: number; many: boolean; me?: Address; iWork: boolean; onDone: () => void }) {
+function Part({ e, n, many, me, iWork, meta, onDone }: { e: Escrow; n: number; many: boolean; me?: Address; iWork: boolean; meta?: { inv: Meta; n: number }; onDone: () => void }) {
+  const p = meta?.inv.parts[meta.n];
   const t = useTheme();
   const now = useNow();
   const { busy, status, error, run } = useAction();
@@ -74,11 +80,12 @@ function Part({ e, n, many, me, iWork, onDone }: { e: Escrow; n: number; many: b
   return (
     <Card>
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-        <Text style={{ color: t.ink, fontWeight: "600" }}>{many ? `Part ${n}` : "Payment"}</Text>
+        <Text numberOfLines={1} style={{ flex: 1, color: t.ink, fontWeight: "600" }}>{p?.name ?? (many ? `Part ${n}` : "Payment")}</Text>
         <Serif size={30}>{formatMoney(e.amount)}</Serif>
       </View>
+      {p && <PartChip p={p} settled={e.settled} iWork={iWork} />}
       {e.settled ? (
-        <Chip good>Paid ✓✓</Chip>
+        !p && <Chip good>Paid ✓✓</Chip>
       ) : due ? (
         <Text style={{ color: t.muted, fontSize: 14 }}>No reply in time — ready to pay out.</Text>
       ) : (
@@ -93,6 +100,7 @@ function Part({ e, n, many, me, iWork, onDone }: { e: Escrow; n: number; many: b
       {!e.settled && !due && <Text style={{ color: t.muted, fontSize: 12 }}>On {dateLabel(e.autoApproveAt)}, unless it&apos;s OK&apos;d sooner.</Text>}
       <ErrorText>{error}</ErrorText>
       <Status>{busy && status}</Status>
+      {meta && p && iWork && !p.done && !e.settled && <MarkDone id={meta.inv.id} n={meta.n} onDone={onDone} />}
       {iPay && !due && <Button title="Work looks good — pay" onPress={() => act("approve")} busy={busy} />}
       {due && !e.settled && <Button title={iWork ? `Collect ${formatMoney(e.amount)}` : "Pay out now"} variant={iWork ? "primary" : "soft"} onPress={() => act("release")} busy={busy} />}
     </Card>

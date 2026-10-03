@@ -3,13 +3,13 @@ import { useState } from "react";
 import { Pressable, View } from "react-native";
 import type { Address } from "viem";
 import { PctRing } from "@/components/pot/bits";
-import { Empty, Loading, MoneyInput, OldPots, Status, jarKey, jarMeta, setMeta, useAction, useLoad, useMe, useBack } from "@/components/programs/kit";
+import { Empty, Loading, MoneyInput, Status, jarKey, jarMeta, setMeta, useAction, useLoad, useMe, useBack } from "@/components/programs/kit";
 import { Band, Button, ErrorText, Field, Footer, IconTile, Row, Screen, Serif, Text, TextInput, useInputStyle } from "@/components/ui";
 import { KinPotAbi } from "@/lib/abi";
 import { addr } from "@/lib/config";
 import { ICON, type IconName } from "@/lib/icons";
 import { formatMoney, fromLocal } from "@/lib/money";
-import { createdId, isJar, listPots, ZERO } from "@/lib/programs";
+import { createdId, isJar, listOldPots, listPots, potPath, ZERO } from "@/lib/programs";
 import { call } from "@/lib/tx";
 import { useTheme } from "@/theme";
 
@@ -19,7 +19,10 @@ export default function JarsPage() {
   const t = useTheme();
   const me = useMe();
   const [creating, setCreating] = useState(false);
-  const { data, error } = useLoad(() => listPots(me!).then((ps) => ps.filter((p) => isJar(p) && !p.closed)), me);
+  const { data, error } = useLoad(
+    () => Promise.all([listPots(me!), listOldPots(me!).catch(() => [])]).then(([ps, old]) => [...ps, ...old].filter((p) => isJar(p) && !p.closed)),
+    me,
+  );
 
   if (creating) return <NewJar me={me} onCancel={() => setCreating(false)} />;
   const saved = data?.reduce((a, p) => a + p.balance, 0n) ?? 0n;
@@ -35,11 +38,11 @@ export default function JarsPage() {
       {data && !data.length && <Empty icon="jars" title="No jars yet" sub="Saving for a bike, a trip or a phone? Give it a jar and watch it fill." />}
       {!!data?.length && <Band>Your jars</Band>}
       {data?.map((p) => {
-        const { name, icon } = jarMeta(p.id);
+        const { name, icon } = jarMeta(p.id, p.old);
         return (
           <Row
-            key={String(p.id)}
-            onPress={() => router.push(`/jars/${p.id}`)}
+            key={potPath(p)}
+            onPress={() => router.push(`/jars/${potPath(p)}`)}
             icon={<IconTile icon={ICON[icon]} />}
             title={name}
             sub={p.round > 0n ? <Text style={{ color: t.good, fontWeight: "600" }}>Goal reached ✓✓</Text> : `${formatMoney(p.balance)} of ${formatMoney(p.target)}`}
@@ -47,7 +50,6 @@ export default function JarsPage() {
           />
         );
       })}
-      <OldPots me={me} jars />
       <Footer>
         <Button title="New jar" onPress={() => setCreating(true)} />
       </Footer>

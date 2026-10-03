@@ -2,14 +2,14 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { Address } from "viem";
-import { Choice, Empty, Loading, MoneyInput, Pad, PotFor, Status, Who, WhoAvatar, useAction, useLoad, useMe, OldPots } from "@/components/programs/kit";
+import { Choice, Empty, Loading, MoneyInput, Pad, PotFor, Status, Who, WhoAvatar, useAction, useLoad, useMe } from "@/components/programs/kit";
 import { PersonPicker, type Person } from "@/components/PersonPicker";
 import { Band, Button, Chip, ErrorText, Ico, IconTile, Ring, Row, Screen } from "@/components/ui";
 import { KinPotAbi } from "@/lib/abi";
 import { addr } from "@/lib/chain";
 import { formatMoney, fromLocal } from "@/lib/money";
 import { keepKey, newKey } from "@/lib/potLinks";
-import { createdId, isJar, listPots, same, ZERO } from "@/lib/programs";
+import { createdId, isJar, listOldPots, listPots, potPath, same, ZERO } from "@/lib/programs";
 import { call } from "@/lib/tx";
 import { notifyAdded } from "@/lib/live";
 
@@ -17,7 +17,7 @@ export default function PotPage() {
   const me = useMe();
   const [creating, setCreating] = useState(false);
   // Savings jars are pots too; they live on /jars.
-  const { data, error } = useLoad(() => listPots(me!).then((ps) => ps.filter((p) => !isJar(p))), me);
+  const { data, error } = useLoad(() => Promise.all([listPots(me!), listOldPots(me!).catch(() => [])]).then(([ps, old]) => [...ps, ...old].filter((p) => !isJar(p))), me);
 
   if (creating) return <NewPot me={me} onCancel={() => setCreating(false)} />;
 
@@ -34,8 +34,8 @@ export default function PotPage() {
         const pct = Number(p.balance) / Number(p.target);
         return (
           <Row
-            key={String(p.id)}
-            href={`/pot/${p.id}`}
+            key={potPath(p)}
+            href={`/pot/${potPath(p)}`}
             icon={p.toAll ? <IconTile name="pot" size={44} tone="brand" /> : <WhoAvatar a={p.beneficiaries[0]} size={44} />}
             title={<>For <PotFor p={p} me={me} /></>}
             sub={p.closed ? <Chip>Closed</Chip> : `${formatMoney(p.balance)} of ${formatMoney(p.target)}`}
@@ -49,7 +49,6 @@ export default function PotPage() {
           />
         );
       })}
-      <OldPots me={me} jars={false} />
       <Pad className="mt-auto pt-4">
         <Button onClick={() => setCreating(true)}>Start a pot</Button>
       </Pad>
@@ -78,7 +77,7 @@ function People({ list, set, me, label, max = 20 }: { list: Address[]; set: (l: 
         </span>
       ))}
       <div className="flex w-full items-end gap-2">
-        <div className="min-w-0 flex-1"><PersonPicker key={pickerKey} label={label} onPick={setPicked} /></div>
+        <div className="min-w-0 flex-1"><PersonPicker key={pickerKey} label={label} onPick={setPicked} exclude={new Set(list.map((a) => a.toLowerCase()))} /></div>
         <button onClick={add} disabled={!picked || list.length >= max} className="h-14 rounded-full bg-brand-soft px-5 font-semibold text-brand disabled:opacity-40">Add</button>
       </div>
     </>

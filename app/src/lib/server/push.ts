@@ -134,7 +134,9 @@ export async function messageFor(log: RpcLog, ctx: Ctx): Promise<{ to: Address; 
     const t = `escrow-${topicNum(t1)}`;
     if (e.unlockAt === 1) return { to, msg: { title: `${kid} says the chore is done`, body: "Take a look and OK it.", url: `/chores/${topicNum(t1)}`, tag: t } };
     if (same(e.approver, e.from)) return { to, msg: { title: `${kid} is asking for emergency money`, body: "Tap to OK it.", url: "/allowance", tag: t } };
-    return { to, msg: { title: `${kid} is asking you to OK a payment`, body: "Tap to take a look.", url: "/activity", tag: t } };
+    // Left: bills (no unlock date, someone else OKs) open their own page; anything else goes to Activity.
+    const url = e.unlockAt === 0 ? `/earmark/${topicNum(t1)}` : "/activity";
+    return { to, msg: { title: `${kid} is asking you to OK a payment`, body: "Tap to take a look.", url, tag: t } };
   }
   if (same(log.address, c.giftlink) && t0 === BOUND) {
     const from = await ctx.giftFrom(topicNum(t1));

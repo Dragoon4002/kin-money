@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Pressable, View } from "react-native";
 import type { Address } from "viem";
 import { PctRing } from "@/components/pot/bits";
-import { Choice, Empty, Loading, MoneyInput, OldPots, PotFor, Status, Who, WhoAvatar, useAction, useLoad, useMe, useBack } from "@/components/programs/kit";
+import { Choice, Empty, Loading, MoneyInput, PotFor, Status, Who, WhoAvatar, useAction, useLoad, useMe, useBack } from "@/components/programs/kit";
 import { PersonPicker, type Person } from "@/components/PersonPicker";
 import { Band, Button, ErrorText, Footer, IconTile, Label, Row, Screen, Text } from "@/components/ui";
 import { KinPotAbi } from "@/lib/abi";
@@ -13,7 +13,7 @@ import { ICON } from "@/lib/icons";
 import { notifyAdded } from "@/lib/live";
 import { formatMoney, fromLocal } from "@/lib/money";
 import { keepKey, newKey } from "@/lib/potLinks";
-import { createdId, isJar, listPots, same, ZERO } from "@/lib/programs";
+import { createdId, isJar, listOldPots, listPots, potPath, same, ZERO } from "@/lib/programs";
 import { call } from "@/lib/tx";
 import { useTheme } from "@/theme";
 
@@ -23,7 +23,7 @@ export default function PotPage() {
   const me = useMe();
   const [creating, setCreating] = useState(false);
   // Savings jars are pots too; they live on /jars.
-  const { data, error } = useLoad(() => listPots(me!).then((ps) => ps.filter((p) => !isJar(p))), me);
+  const { data, error } = useLoad(() => Promise.all([listPots(me!), listOldPots(me!).catch(() => [])]).then(([ps, old]) => [...ps, ...old].filter((p) => !isJar(p))), me);
 
   if (creating) return <NewPot me={me} onCancel={() => setCreating(false)} />;
 
@@ -36,15 +36,14 @@ export default function PotPage() {
       {!!data?.length && <Band>Your pots</Band>}
       {data?.map((p) => (
         <Row
-          key={String(p.id)}
-          onPress={() => router.push(`/pot/${p.id}`)}
+          key={potPath(p)}
+          onPress={() => router.push(`/pot/${potPath(p)}`)}
           icon={p.toAll ? <IconTile icon={ICON.pot} size={44} brand /> : <WhoAvatar a={p.beneficiaries[0]} size={44} />}
           title={<>For <PotFor p={p} me={me} /></>}
           sub={p.closed ? "Closed" : `${formatMoney(p.balance)} of ${formatMoney(p.target)}`}
           trail={!p.closed && <PctRing value={Number(p.balance) / Number(p.target)} />}
         />
       ))}
-      <OldPots me={me} jars={false} />
       <Footer>
         <Button title="Start a pot" onPress={() => setCreating(true)} />
       </Footer>
@@ -83,7 +82,7 @@ function People({ list, set, me, label, max = 20 }: { list: Address[]; set: (l: 
     <>
       {list.map((m) => <PersonChip key={m} a={m} me={me} onRemove={() => set(list.filter((x) => x !== m))} />)}
       <View style={{ width: "100%", flexDirection: "row", alignItems: "flex-end", gap: 8 }}>
-        <View style={{ flex: 1 }}><PersonPicker key={pickerKey} label={label} onPick={setPicked} /></View>
+        <View style={{ flex: 1 }}><PersonPicker key={pickerKey} label={label} onPick={setPicked} exclude={new Set(list.map((a) => a.toLowerCase()))} /></View>
         <Pressable onPress={add} disabled={off} accessibilityRole="button"
           style={{ height: 56, borderRadius: 28, paddingHorizontal: 20, justifyContent: "center", backgroundColor: t.brandSoft, opacity: off ? 0.4 : 1 }}>
           <Text style={{ color: t.brand, fontWeight: "600", fontSize: 16 }}>Add</Text>

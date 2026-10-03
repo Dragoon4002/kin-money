@@ -61,15 +61,24 @@ export async function publishLook(look: Look): Promise<void> {
   await api("/api/contacts/me", "POST", { look }).catch(() => {});
 }
 
-/** Recent + frequent people (recents first, then saved contacts). Never throws. */
-export async function recentPeople(): Promise<Person[]> {
-  const book = await api<{ recents: Person[]; contacts: Person[] }>("/api/contacts").catch(() => null);
-  if (!book) return [];
-  const seen = new Set<string>();
-  return [...book.recents, ...book.contacts]
-    .filter((p) => p.name && !seen.has(p.address) && seen.add(p.address))
-    .slice(0, 8)
-    .map(({ address, name }) => ({ address, name }));
+// One fetch shared by every picker on a screen (pickers remount per pick); 30 s TTL, per account.
+let recentCache: { who?: string; at: number; p: Promise<Person[]> } | null = null;
+
+/** Recent + frequent people for pickers (recents first, then saved contacts). Never throws. */
+export function recentPeople(): Promise<Person[]> {
+  const who = getProfile()?.address;
+  if (recentCache && recentCache.who === who && Date.now() - recentCache.at < 30_000) return recentCache.p;
+  const p = api<{ recents: Person[]; contacts: Person[] }>("/api/contacts")
+    .then((book) => {
+      const seen = new Set<string>();
+      return [...book.recents, ...book.contacts]
+        .filter((x) => x.name && !seen.has(x.address) && seen.add(x.address))
+        .slice(0, 8)
+        .map(({ address, name }) => ({ address, name }));
+    })
+    .catch(() => ((recentCache = null), [] as Person[]));
+  recentCache = { who, at: Date.now(), p };
+  return p;
 }
 
 // ---------- phonebook (People tab), same shapes as web lib/contacts.ts ----------

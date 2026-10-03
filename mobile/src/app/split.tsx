@@ -84,7 +84,7 @@ export default function SplitPage() {
         <TextInput style={[input, { textAlign: "center" }]} placeholder="Dinner 🍕" placeholderTextColor={t.muted} maxLength={140} value={note} onChangeText={setNote} />
       </Field>
 
-      <PersonPicker key={pickerKey} label="Split with" onPick={add} />
+      <PersonPicker key={pickerKey} label="Split with" onPick={add} exclude={new Set(people.map((p) => p.name))} />
       <PeopleChips label="Splitting with" people={people} onRemove={(p) => setPeople((ps) => ps.filter((x) => x.address !== p.address))} />
 
       <View style={{ minHeight: 44, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>

@@ -6,11 +6,9 @@ import { humanError } from "@/lib/errors";
 import { FX, getCurrency } from "@/lib/money";
 import { useCurrencySymbol } from "@/lib/useCurrencySymbol";
 import { nameOf } from "@/lib/names";
-import { listOldPots, nowSec, OLD_POT, OldPotAbi, same } from "@/lib/programs";
-import { formatMoney } from "@/lib/money";
-import { call } from "@/lib/tx";
+import { nowSec, same } from "@/lib/programs";
 import { ICON, type IconName } from "@/lib/icons";
-import { Avatar, Band, ErrorText, Field, IconTile, inputClass, Row } from "../ui";
+import { Avatar, Field, IconTile, inputClass } from "../ui";
 
 // Shared bits for programmable-money screens (allowance, pot, circle, bills, invoices, gifts).
 
@@ -205,35 +203,9 @@ export const setMeta = (key: string, v: unknown) => localStorage.setItem(key, JS
 
 // Stored as `{name, emoji}` for old entries; `emoji` now holds an ICON key. Old emoji values fall back to "jars".
 export const jarKey = (id: bigint | string) => `kin.jar.${id}`;
-export function jarMeta(id: bigint): { name: string; icon: IconName } {
-  const m = getMeta<{ name?: string; emoji?: string }>(jarKey(id));
+/** `old` jars (OLD_POT) share ids with new ones, so they never read the new jar's label. */
+export function jarMeta(id: bigint, old = false): { name: string; icon: IconName } {
+  const m = old ? null : getMeta<{ name?: string; emoji?: string }>(jarKey(id));
   return { name: m?.name ?? "Savings jar", icon: m?.emoji && m.emoji in ICON ? (m.emoji as IconName) : "jars" };
 }
 
-/** Pots/jars from before the update: still hold money; the receiver can move it to their balance. */
-export function OldPots({ me, jars }: { me?: Address; jars: boolean }) {
-  const { data, reload } = useLoad(() => listOldPots(me!), me);
-  const { busy, error, run } = useAction();
-  const list = data?.filter((p) => p.jar === jars);
-  if (!list?.length) return null;
-  return (
-    <>
-      <Band>From before the update</Band>
-      {list.map((p) => (
-        <Row
-          key={String(p.id)}
-          icon={<IconTile name={jars ? "jars" : "pot"} />}
-          title={`${formatMoney(p.balance)} saved`}
-          sub={`Goal ${formatMoney(p.target)}`}
-          trail={
-            <button disabled={busy} onClick={() => run(() => call(OLD_POT, OldPotAbi, "close", [p.id])).then(reload)}
-              className="rounded-full bg-ink px-3 py-2 text-xs font-semibold text-bg disabled:opacity-50">
-              Move to balance
-            </button>
-          }
-        />
-      ))}
-      <div className="px-5"><ErrorText>{error}</ErrorText></div>
-    </>
-  );
-}

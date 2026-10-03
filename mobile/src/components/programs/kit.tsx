@@ -3,14 +3,13 @@ import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { ActivityIndicator, Modal, Pressable, Share, View, BackHandler } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { Address } from "viem";
-import { Avatar, Band, ErrorText, Field, IconTile, Row, Text, TextInput, useInputStyle } from "@/components/ui";
+import { Avatar, Field, IconTile, Text, TextInput, useInputStyle } from "@/components/ui";
 import { isUnlocked, useAccount } from "@/lib/account";
 import { humanError } from "@/lib/errors";
 import { ICON, type IconName } from "@/lib/icons";
-import { currencySymbol, formatMoney, FX, getCurrency } from "@/lib/money";
+import { currencySymbol, FX, getCurrency } from "@/lib/money";
 import { nameOf } from "@/lib/names";
-import { listOldPots, nowSec, OLD_POT, OldPotAbi, same } from "@/lib/programs";
-import { call } from "@/lib/tx";
+import { nowSec, same } from "@/lib/programs";
 import { fonts, useTheme } from "@/theme";
 
 // Port of app/src/components/programs/kit.tsx — shared bits for programmable-money screens.
@@ -209,38 +208,10 @@ export const setMeta = (key: string, v: unknown) => SecureStore.setItem(key, JSO
 
 // Stored as `{name, emoji}` (same as web); `emoji` holds an ICON key. Unknown values fall back to "jars".
 export const jarKey = (id: bigint | string) => `kin.jar.${id}`;
-export function jarMeta(id: bigint): { name: string; icon: IconName } {
-  const m = getMeta<{ name?: string; emoji?: string }>(jarKey(id));
+/** `old` jars (OLD_POT) share ids with new ones, so they never read the new jar's label. */
+export function jarMeta(id: bigint, old = false): { name: string; icon: IconName } {
+  const m = old ? null : getMeta<{ name?: string; emoji?: string }>(jarKey(id));
   return { name: m?.name ?? "Savings jar", icon: m?.emoji && m.emoji in ICON ? (m.emoji as IconName) : "jars" };
-}
-
-/** Pots/jars from before the update: still hold money; the receiver can move it to their balance. */
-export function OldPots({ me, jars }: { me?: Address; jars: boolean }) {
-  const t = useTheme();
-  const { data, reload } = useLoad(() => listOldPots(me!), me);
-  const { busy, error, run } = useAction();
-  const list = data?.filter((p) => p.jar === jars);
-  if (!list?.length) return null;
-  return (
-    <>
-      <Band>From before the update</Band>
-      {list.map((p) => (
-        <Row
-          key={String(p.id)}
-          icon={<IconTile icon={ICON[jars ? "jars" : "pot"]} />}
-          title={`${formatMoney(p.balance)} saved`}
-          sub={`Goal ${formatMoney(p.target)}`}
-          trail={
-            <Pressable disabled={busy} onPress={() => run(() => call(OLD_POT, OldPotAbi, "close", [p.id])).then(reload)} accessibilityRole="button"
-              style={{ minHeight: 44, justifyContent: "center", borderRadius: 22, paddingHorizontal: 14, backgroundColor: t.ink, opacity: busy ? 0.5 : 1 }}>
-              <Text style={{ color: t.bg, fontSize: 12, fontWeight: "600" }}>Move to balance</Text>
-            </Pressable>
-          }
-        />
-      ))}
-      <ErrorText>{error}</ErrorText>
-    </>
-  );
 }
 
 /** Android back button runs `fn` (e.g. close a create form back to its list) instead of leaving the screen. */

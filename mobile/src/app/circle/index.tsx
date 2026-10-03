@@ -150,7 +150,7 @@ function NewCircle({ me, onCancel }: { me?: Address; onCancel: () => void }) {
           </View>
         ))}
         <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8 }}>
-          <View style={{ flex: 1 }}><PersonPicker key={pickerKey} label="Add a friend" onPick={setPicked} /></View>
+          <View style={{ flex: 1 }}><PersonPicker key={pickerKey} label="Add a friend" onPick={setPicked} exclude={new Set(others.map((a) => a.toLowerCase()))} /></View>
           <Pressable onPress={add} disabled={addOff} accessibilityRole="button"
             style={{ height: 56, borderRadius: 28, paddingHorizontal: 20, justifyContent: "center", backgroundColor: t.brandSoft, opacity: addOff ? 0.4 : 1 }}>
             <Text style={{ color: t.brand, fontWeight: "600", fontSize: 16 }}>Add</Text>

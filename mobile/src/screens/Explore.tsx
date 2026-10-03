@@ -1,33 +1,41 @@
-import { Briefcase, CalendarClock, ChartPie, Gift, House, ListChecks, Luggage, type LucideIcon, PiggyBank, Receipt, RefreshCcw, Split, UserPlus, Users } from "lucide-react-native";
+import { ArrowDownLeft, Briefcase, CalendarClock, ChartPie, Gift, House, ListChecks, Luggage, type LucideIcon, PiggyBank, Receipt, RefreshCcw, Split, Sprout, UserPlus } from "lucide-react-native";
+import { useEffect, useState } from "react";
 import { Pressable, View } from "react-native";
 import { Kinko } from "@/components/Kinko";
 import { IconTile, MeButton, Screen, Serif, TabHeader, Text } from "@/components/ui";
 import { useAccount } from "@/lib/account";
+import { listRequests } from "@/lib/contacts";
 import { useAvatarLook } from "@/lib/names";
 import { openKin } from "@/lib/nav";
 import { useTheme } from "@/theme";
 
-// Native port of app/src/app/(tabs)/explore/page.tsx. [title, sub, href, icon (null = my Kinko), wide].
+// Native port of app/src/app/(tabs)/explore/page.tsx. [title, sub, href, icon (null = my Kinko), wide]. Wide = full row; the rest pair up.
 const TILES: [string, string, string, LucideIcon | null, boolean][] = [
-  ["Pay a bill", "Money only for school, rent, doctor", "/earmark", Receipt, true],
-  ["AutoPay", "Paid automatically every month", "/autopay", CalendarClock, true],
-  ["Chores", "Earn for helping", "/chores", ListChecks, false],
-  ["Savings jars", "Save for a goal", "/jars", PiggyBank, false],
-  ["Kinko & Kin Score", "Dress up your buddy", "/kinko", null, true],
-  ["Gifts", "Opens on the day", "/gift", Gift, false],
-  ["Invoice", "Get paid for work", "/invoice", Briefcase, false],
-  ["Circles", "Save together, take turns", "/circle", RefreshCcw, false],
-  ["Family pot", "Chip in for home", "/pot", House, false],
-  ["This month's spends", "Where your money went", "/spends", ChartPie, true],
-  ["Trips", "Who paid what, settled in one tap", "/trips", Luggage, true],
+  ["Pay a bill", "Money only for school, rent, doctor", "/earmark", Receipt, false],
   ["Split a bill", "Share the cost", "/split", Split, false],
-  ["People", "Your Kin contacts", "/contacts", Users, false],
+  ["Trips", "Who paid what", "/trips", Luggage, false],
+  ["Circles", "Save together, take turns", "/circle", RefreshCcw, false],
+  ["Chores", "Earn for helping", "/chores", ListChecks, false],
+  ["Invoices", "Get paid for work", "/invoice", Briefcase, false],
+  ["Savings jars", "Save for a goal", "/jars", PiggyBank, false],
+  ["Monthly spends", "Where your money went", "/spends", ChartPie, false],
+  ["Live allowance", "Grows every second", "/allowance", Sprout, false],
+  ["AutoPay", "Paid every month", "/autopay", CalendarClock, false],
+  ["Family pot", "Chip in for home", "/pot", House, false],
+  ["Gifts", "Opens on the day", "/gift", Gift, false],
+  ["Kinko & Kin Score", "Dress up your buddy", "/kinko", null, true],
   ["Invite & earn", "You both get a Kinko treat", "/invite", UserPlus, true],
 ];
 
 export default function Explore() {
   const t = useTheme();
-  const { profile } = useAccount();
+  const { profile, canRead } = useAccount();
+  const [waiting, setWaiting] = useState(0);
+  // Only with a read session: the count must never trigger Face ID on its own.
+  useEffect(() => {
+    if (canRead) listRequests().then((r) => setWaiting(r.incoming.filter((q) => q.status === "open").length), () => {});
+  }, [canRead]);
+  const tiles: typeof TILES = [["Requests", waiting ? `${waiting} waiting for you` : "See what's waiting", "/requests", ArrowDownLeft, true], ...TILES];
   const look = useAvatarLook(profile?.name);
   return (
     <Screen tab scroll>
@@ -36,7 +44,7 @@ export default function Explore() {
       </TabHeader>
       <Serif size={36}>Money that behaves.</Serif>
       <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 12 }}>
-        {TILES.map(([title, sub, href, icon, wide]) => (
+        {tiles.map(([title, sub, href, icon, wide]) => (
           <Pressable key={href} onPress={() => openKin(href)} accessibilityRole="button" accessibilityLabel={title}
             style={({ pressed }) => ({
               width: wide ? "100%" : "48.2%", gap: 12, borderRadius: 24, borderWidth: 1, borderColor: t.line, backgroundColor: t.surface, padding: 16,

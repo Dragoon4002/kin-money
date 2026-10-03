@@ -1,10 +1,14 @@
 "use client";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { Address } from "viem";
-import { Choice, Empty, Loading, MoneyInput, Pad, Who, WhoAvatar, useLoad, useMe, useName } from "@/components/programs/kit";
-import { Band, Button, Card, Chip, ErrorText, Field, Row, Screen, inputClass } from "@/components/ui";
+import { Choice, Empty, Loading, MoneyInput, Pad, Status, Who, WhoAvatar, useAction, useLoad, useMe, useNow } from "@/components/programs/kit";
+import { Band, Button, Card, Chip, ErrorText, Field, IconTile, Row, Screen, inputClass } from "@/components/ui";
+import { api } from "@/lib/contacts";
+import { MAX_PARTS, partsTotal, type Invoice } from "@/lib/invoiceMeta";
 import { formatMoney, fromLocal } from "@/lib/money";
 import { listEscrows, same, type Escrow } from "@/lib/programs";
+import { endOfDay } from "@/lib/reminders";
 
 // Freelancer invoices: compose a pay link; the client holds each part safely until they OK the work
 // (or it pays itself after N quiet days).
@@ -13,6 +17,8 @@ export default function InvoicePage() {
   const me = useMe();
   const [creating, setCreating] = useState(false);
   const { data, error } = useLoad(() => listEscrows(me!, "invoice").then((r) => r.escrows), me);
+  // Not paid yet: ones I sent, and ones sent to me. Best effort — held ones show from the money itself.
+  const { data: waiting } = useLoad(() => api<Invoice[]>("/api/invoices?mine=1").catch((): Invoice[] => []), me);
 
   if (creating) return <Compose me={me} onClose={() => setCreating(false)} />;
 
@@ -29,8 +35,23 @@ export default function InvoicePage() {
         <p className="text-muted">Get paid for your work. Your client&apos;s money is held safely until they OK each part.</p>
         <ErrorText>{error}</ErrorText>
         {!data && !error && <Loading />}
-        {data && !data.length && <Empty icon="invoice" title="No invoices yet" sub="Send a client a pay link. If they go quiet, you still get paid." />}
+        {data && !data.length && !waiting?.length && <Empty icon="invoice" title="No invoices yet" sub="Send a client a pay link. If they go quiet, you still get paid." />}
       </Pad>
+      {!!waiting?.length && <Band>Waiting to be paid</Band>}
+      {waiting?.map((inv) => {
+        const mine = same(inv.owner as Address, me);
+        const other = (mine ? inv.sentTo : inv.owner) as Address | null;
+        return (
+          <Row
+            key={inv.id}
+            href={`/invoice/new?i=${inv.id}`}
+            icon={other ? <WhoAvatar a={other} size={44} /> : <IconTile name="invoice" size={44} />}
+            title={inv.title}
+            sub={mine ? (other ? <>Sent to <Who a={other} me={me} /></> : "Not sent yet") : <>From <Who a={other!} me={me} /> · tap to pay</>}
+            trail={<span className="font-display text-2xl tabular">{formatMoney(partsTotal(inv.parts))}</span>}
+          />
+        );
+      })}
       {groups.size > 0 && <Band>Your invoices</Band>}
       {[...groups.values()].map((list) => {
         const e = list[0];
@@ -56,30 +77,34 @@ export default function InvoicePage() {
   );
 }
 
+type Draft = { name: string; amount: string; due: string };
+const blank: Draft = { name: "", amount: "", due: "" };
+const isoDay = (t: number) => new Date(t - new Date(t).getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
+
 function Compose({ me, onClose }: { me?: Address; onClose: () => void }) {
-  const handle = useName(me);
+  const router = useRouter();
   const [title, setTitle] = useState("");
-  const [parts, setParts] = useState<string[]>([""]);
+  const [parts, setParts] = useState<Draft[]>([blank]);
   const [days, setDays] = useState(7);
-  const [copied, setCopied] = useState(false);
+  const { busy, status, error, run } = useAction();
+  const today = isoDay(useNow(60_000) * 1000);
 
-  const units = parts.map((p) => (Number(p) > 0 ? fromLocal(p) : 0n));
-  const ready = title.trim() && units.every((u) => u > 0n);
+  const units = parts.map((p) => (Number(p.amount) > 0 ? fromLocal(p.amount) : 0n));
+  const many = parts.length > 1;
+  const ready = !!me && !!title.trim() && units.every((u) => u > 0n);
   const total = units.reduce((a, b) => a + b, 0n);
+  const edit = (i: number, d: Partial<Draft>) => setParts(parts.map((x, j) => (j === i ? { ...x, ...d } : x)));
 
-  function link() {
-    const q = new URLSearchParams({ to: handle || me || "", m: units.join(","), d: String(days), t: title.trim() });
-    return `${location.origin}/invoice/new?${q}`;
-  }
-
-  async function share() {
-    const url = link();
-    if (navigator.share) {
-      await navigator.share({ title: `Invoice: ${title.trim()}`, text: `Pay for "${title.trim()}" on Kin`, url }).catch(() => {});
-    } else {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-    }
+  async function create() {
+    await run(async (say) => {
+      say("Saving your invoice…");
+      const { id } = await api<{ id: string }>("/api/invoices", "POST", {
+        title: title.trim(),
+        days,
+        parts: parts.map((p, i) => ({ name: many ? p.name : title, amount: String(units[i]), due: p.due ? endOfDay(p.due) : 0 })),
+      });
+      router.push(`/invoice/new?i=${id}`);
+    });
   }
 
   return (
@@ -88,19 +113,27 @@ function Compose({ me, onClose }: { me?: Address; onClose: () => void }) {
         <input className={inputClass} placeholder="Logo design" value={title} maxLength={60} onChange={(e) => setTitle(e.target.value)} />
       </Field>
       {parts.map((p, i) => (
-        <div key={i} className="flex items-end gap-2">
-          <div className="flex-1">
-            <MoneyInput label={parts.length > 1 ? `Part ${i + 1}` : "Amount"} value={p} onChange={(v) => setParts(parts.map((x, j) => (j === i ? v : x)))} />
-          </div>
-          {parts.length > 1 && (
-            <button aria-label={`Remove part ${i + 1}`} onClick={() => setParts(parts.filter((_, j) => j !== i))} className="grid size-16 place-items-center rounded-full border border-line text-xl text-muted">
-              ×
-            </button>
+        <Card key={i} className="flex flex-col gap-3">
+          {many && (
+            <div className="flex items-end gap-2">
+              <div className="min-w-0 flex-1">
+                <Field label={`Part ${i + 1}`}>
+                  <input className={inputClass} placeholder={["First drafts", "Final files", "Changes"][i]} value={p.name} maxLength={30} onChange={(e) => edit(i, { name: e.target.value })} />
+                </Field>
+              </div>
+              <button aria-label={`Remove part ${i + 1}`} onClick={() => setParts(parts.filter((_, j) => j !== i))} className="grid size-14 shrink-0 place-items-center rounded-full border border-line text-xl text-muted">
+                ×
+              </button>
+            </div>
           )}
-        </div>
+          <MoneyInput label="Amount" value={p.amount} onChange={(v) => edit(i, { amount: v })} />
+          <Field label="Due date (optional)">
+            <input type="date" className={inputClass} min={today} value={p.due} onChange={(e) => edit(i, { due: e.target.value })} aria-label={`Part ${i + 1} due date`} />
+          </Field>
+        </Card>
       ))}
-      {parts.length < 3 && (
-        <button onClick={() => setParts([...parts, ""])} className="h-11 self-start rounded-full px-3 text-sm font-semibold text-brand">
+      {parts.length < MAX_PARTS && (
+        <button onClick={() => setParts([...parts, blank])} className="h-11 self-start rounded-full px-3 text-sm font-semibold text-brand">
           + Split into parts
         </button>
       )}
@@ -113,9 +146,10 @@ function Compose({ me, onClose }: { me?: Address; onClose: () => void }) {
           Your client pays {formatMoney(total)} with Face ID. It&apos;s held safely and reaches you when they OK each part — or automatically after {days} quiet days.
         </Card>
       )}
+      <ErrorText>{error}</ErrorText>
       <div className="mt-auto flex flex-col gap-2 pt-4">
-        {copied && <p className="text-center text-sm text-good">Link copied — paste it to your client.</p>}
-        <Button onClick={share} disabled={!ready}>Share pay link</Button>
+        <Status>{busy && status}</Status>
+        <Button onClick={create} busy={busy} disabled={!ready}>Create invoice</Button>
       </div>
     </Screen>
   );

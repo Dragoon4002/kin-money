@@ -13,7 +13,7 @@ export type { Person };
 /**
  * Port of app/src/components/PersonPicker.tsx. Pick a person: calls onPick with a resolved Person, or null when cleared.
  * Recent/saved people as a one-tap avatar row; "Add new" opens the @name field.
- * `recents={false}` skips the row (field only); `exclude` hides those names from autocomplete.
+ * `recents={false}` skips the row (field only); `exclude` (@names or lowercase addresses) hides people already chosen from the row; names also from autocomplete.
  */
 export function PersonPicker({ label = "To", onPick, recents: showRecents = true, exclude }: {
   label?: string;
@@ -27,7 +27,7 @@ export function PersonPicker({ label = "To", onPick, recents: showRecents = true
   const [q, setQ] = useState("");
   const [found, setFound] = useState<Person | null>(null);
   const [miss, setMiss] = useState(false);
-  const [recents, setRecents] = useState<Person[]>([]);
+  const [allRecents, setRecents] = useState<Person[]>([]);
   const [typing, setTyping] = useState(false);
   const [trie, setTrie] = useState<Trie | null>(null);
 
@@ -54,6 +54,7 @@ export function PersonPicker({ label = "To", onPick, recents: showRecents = true
     else setMiss(true);
   }
 
+  const recents = exclude ? allRecents.filter((p) => !exclude.has(p.name) && !exclude.has(p.address.toLowerCase())) : allRecents;
   const showField = typing || recents.length === 0;
 
   useEffect(() => {

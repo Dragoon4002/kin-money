@@ -7,60 +7,23 @@ import { useRequireAccount } from "@/lib/account";
 import { getBalance } from "@/lib/activity";
 import { publicClient } from "@/lib/chain";
 import { humanError } from "@/lib/errors";
-import type { IconName } from "@/lib/icons";
 import { formatMoney, getCurrency } from "@/lib/money";
 import { usePrivate } from "@/lib/privacy";
-import { accrued, isJar, listCircles, listEscrows, listPots, listStreams, nowSec, same } from "@/lib/programs";
+import { isJar, listPots } from "@/lib/programs";
 import type { Address } from "viem";
 
-type Pocket = { key: IconName; title: string; href: string; idle: string };
-
-const POCKETS: Pocket[] = [
-  { key: "allowance", title: "Live allowance", href: "/allowance", idle: "Grows every second" },
-  { key: "jars", title: "Savings jars", href: "/jars", idle: "Save toward something big" },
-  { key: "pot", title: "Family pots", href: "/pot", idle: "Chip in together" },
-  { key: "circle", title: "Circles", href: "/circle", idle: "Save as a group, take turns" },
-  { key: "chores", title: "Chores", href: "/chores", idle: "Earn for helping out" },
-];
-
-const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
-
-/** Live one-line summary per pocket; missing key = still loading or nothing to show. */
-async function summaries(me: Address): Promise<Record<string, string>> {
-  const out: Record<string, string> = {};
-  const t = nowSec();
-  await Promise.all([
-    listStreams(me).then((ss) => {
-      const live = ss.filter((s) => t < s.end || accrued(s, t) > 0n);
-      if (!live.length) return;
-      const ready = live.filter((s) => same(s.payee, me)).reduce((a, s) => a + accrued(s, t), 0n);
-      out.allowance = ready > 0n ? `${formatMoney(ready)} ready to collect` : `${plural(live.length, "allowance")} running`;
-    }),
-    listPots(me).then((ps) => {
-      const open = ps.filter((p) => !p.closed);
-      const jars = open.filter(isJar);
-      const pots = open.filter((p) => !isJar(p));
-      const sum = (xs: typeof open) => formatMoney(xs.reduce((a, p) => a + p.balance, 0n));
-      if (jars.length) out.jars = `${sum(jars)} saved · ${plural(jars.length, "jar")}`;
-      if (pots.length) out.pot = `${sum(pots)} in ${plural(pots.length, "pot")}`;
-    }),
-    listCircles(me).then((cs) => {
-      const active = cs.filter((c) => c.round < c.members.length);
-      if (active.length) out.circle = `${plural(active.length, "circle")} going`;
-    }),
-    listEscrows(me, "chore").then(({ escrows }) => {
-      const open = escrows.filter((e) => !e.settled && (same(e.to, me) || same(e.approver, me)));
-      if (open.length) out.chores = `${open.length} waiting for an OK`;
-    }),
-  ].map((p) => p.catch(() => {})));
-  return out;
+/** "₹120 saved · 2 jars", or null when there are no open jars. */
+async function jarLine(me: Address): Promise<string | null> {
+  const jars = (await listPots(me)).filter((p) => !p.closed && isJar(p));
+  if (!jars.length) return null;
+  return `${formatMoney(jars.reduce((a, p) => a + p.balance, 0n))} saved · ${jars.length} ${jars.length === 1 ? "jar" : "jars"}`;
 }
 
 export default function Money() {
   const { profile } = useRequireAccount();
   const me = profile?.address;
   const [balance, setBalance] = useState<bigint | null>(null);
-  const [live, setLive] = useState<Record<string, string> | null>(null);
+  const [jars, setJars] = useState<string | null | undefined>(undefined); // undefined = loading
   const [adding, setAdding] = useState<"idle" | "busy" | "done" | "had">("idle");
   const [err, setErr] = useState("");
   const hide = usePrivate();
@@ -70,7 +33,7 @@ export default function Money() {
     let on = true;
     const tick = () => getBalance(me).then((b) => on && setBalance(b)).catch(() => {});
     tick();
-    summaries(me).then((s) => on && setLive(s));
+    jarLine(me).then((j) => on && setJars(j), () => on && setJars(null));
     const t = setInterval(tick, 6000);
     return () => {
       on = false;
@@ -136,23 +99,18 @@ export default function Money() {
           <Ico name="chevron" className="text-muted" />
         </Link>
 
-        <h2 className="mt-2 text-xs font-semibold uppercase tracking-widest text-muted">Pockets</h2>
-        <div className="flex flex-col gap-3">
-          {POCKETS.map((p) => (
-            <Link key={p.key} href={p.href} className="flex min-h-20 items-center gap-4 rounded-[24px] border border-line bg-surface p-4 transition active:scale-[0.98]">
-              <IconTile name={p.key} />
-              <span className="min-w-0 flex-1">
-                <span className="block font-semibold">{p.title}</span>
-                {live === null ? (
-                  <span className="mt-1 block h-4 w-32 animate-pulse rounded-full bg-surface-2" />
-                ) : (
-                  <span className={`block truncate text-sm ${live[p.key] ? "text-ink" : "text-muted"}`}>{live[p.key] ?? p.idle}</span>
-                )}
-              </span>
-              <Ico name="chevron" className="text-muted" />
-            </Link>
-          ))}
-        </div>
+        <Link href="/jars" className="flex min-h-20 items-center gap-4 rounded-[24px] border border-line bg-surface p-4 transition active:scale-[0.98]">
+          <IconTile name="jars" />
+          <span className="min-w-0 flex-1">
+            <span className="block font-semibold">Savings jars</span>
+            {jars === undefined ? (
+              <span className="mt-1 block h-4 w-32 animate-pulse rounded-full bg-surface-2" />
+            ) : (
+              <span className={`block truncate text-sm ${jars ? "text-ink" : "text-muted"}`}>{jars ?? "Save toward something big"}</span>
+            )}
+          </span>
+          <Ico name="chevron" className="text-muted" />
+        </Link>
       </Screen>
     </>
   );

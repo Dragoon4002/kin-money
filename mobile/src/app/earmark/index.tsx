@@ -1,19 +1,21 @@
-import { useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
 import { View } from "react-native";
 import type { Address } from "viem";
-import { Card, Delivered } from "@/components/allowance/bits";
+import { Delivered } from "@/components/allowance/bits";
+import { BILL_FOR, BillState, loadBillFor, saveBillFor, type BillFor } from "@/components/earmark/bill";
 import { PersonPicker, type Person } from "@/components/PersonPicker";
-import { Empty, Loading, MoneyInput, Status, Who, WhoAvatar, dateLabel, useAction, useLoad, useMe, useNow, useBack } from "@/components/programs/kit";
-import { Band, Button, ErrorText, Footer, Screen, Serif, Text } from "@/components/ui";
+import { Choice, Empty, Loading, MoneyInput, Status, Who, WhoAvatar, useAction, useLoad, useMe, useBack } from "@/components/programs/kit";
+import { Band, Button, ErrorText, Footer, Label, Row, Screen, Serif, Text } from "@/components/ui";
 import { KinEscrowAbi } from "@/lib/abi";
 import { addr } from "@/lib/config";
 import { recordPayment } from "@/lib/contacts";
 import { formatMoney, fromLocal } from "@/lib/money";
-import { canRelease, expiryAfter, HOLD_DAYS, listEscrows, nowSec, same, ZERO, type Escrow } from "@/lib/programs";
+import { createdId, expiryAfter, HOLD_DAYS, listEscrows, nowSec, same, ZERO, type Escrow } from "@/lib/programs";
 import { call } from "@/lib/tx";
 import { useTheme } from "@/theme";
 
-// Port of app/src/app/earmark/page.tsx. "Pay a bill": money that can only go to one payee
+// Port of app/src/app/earmark/page.tsx. Rows open /earmark/[id]. "Pay a bill": money that can only go to one payee
 // (school, landlord, hospital), optionally held until a family member OKs it.
 
 export default function EarmarkPage() {
@@ -21,6 +23,11 @@ export default function EarmarkPage() {
   const me = useMe();
   const [creating, setCreating] = useState(false);
   const { data, error, reload } = useLoad(() => listEscrows(me!, "bill").then((r) => r.escrows), me);
+  const ids = data?.map((e) => e.id).reverse() ?? [];
+  const { data: what } = useLoad(() => loadBillFor(ids), ids.join(",") || undefined);
+  // Back from a bill: it may have been paid.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- reload is a fresh closure each render
+  useFocusEffect(useCallback(() => reload(), []));
 
   if (creating) return <NewBill me={me} onClose={() => { setCreating(false); reload(); }} />;
   const open = data?.filter((e) => !e.settled) ?? [];
@@ -32,9 +39,9 @@ export default function EarmarkPage() {
       <ErrorText>{error}</ErrorText>
       {!data && !error && <Loading />}
       {data && !data.length && <Empty icon="bill" title="No bills yet" sub="Send money that can only pay the fees — and let family OK it first." />}
-      {open.map((e) => <Bill key={String(e.id)} e={e} me={me} onDone={reload} />)}
+      {open.map((e) => <BillRow key={String(e.id)} e={e} me={me} what={what?.[String(e.id)]} />)}
       {past.length > 0 && <Band>Done</Band>}
-      {past.map((e) => <Bill key={String(e.id)} e={e} me={me} onDone={reload} />)}
+      {past.map((e) => <BillRow key={String(e.id)} e={e} me={me} what={what?.[String(e.id)]} />)}
       <Footer>
         <Button title="Pay a bill" onPress={() => setCreating(true)} />
       </Footer>
@@ -42,49 +49,19 @@ export default function EarmarkPage() {
   );
 }
 
-function Bill({ e, me, onDone }: { e: Escrow; me?: Address; onDone: () => void }) {
-  const t = useTheme();
-  const now = useNow(30_000);
-  const { busy, status, error, run } = useAction();
-  const iApprove = same(e.approver, me) && !e.approved;
-  const iCollect = same(e.to, me) && canRelease(e, now);
-  const iRefund = same(e.from, me) && !e.settled && !!e.expiresAt && now >= e.expiresAt;
-
-  async function act(fn: "approve" | "release" | "refund") {
-    const ok = await run(async () => (await call(addr.escrow, KinEscrowAbi, fn, [e.id]), true));
-    if (ok) {
-      if (fn === "approve") void recordPayment(e.to, e.amount);
-      onDone();
-    }
-  }
-
-  const state = e.settled
-    ? <Text style={{ color: t.good }}>Paid ✓✓</Text>
-    : e.approver === ZERO || e.approved
-      ? <Text style={{ color: t.brand }}>Ready for <Who a={e.to} me={me} you="you" /> to collect</Text>
-      : <Text style={{ color: t.warn }}>Waiting for <Who a={e.approver} me={me} you="your" />{same(e.approver, me) ? "" : "'s"} OK</Text>;
-
+function BillRow({ e, me, what }: { e: Escrow; me?: Address; what?: BillFor }) {
   return (
-    <Card>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-        <WhoAvatar a={e.to} />
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text numberOfLines={1} style={{ color: t.ink, fontWeight: "600" }}>To <Who a={e.to} me={me} you="you" /></Text>
-          <Text numberOfLines={1} style={{ marginTop: 4, fontSize: 13, fontWeight: "600" }}>{state}</Text>
-        </View>
-        <Serif size={24}>{formatMoney(e.amount)}</Serif>
-      </View>
-      {!e.settled && same(e.from, me) && !iRefund && e.expiresAt > 0 && (
-        <Text style={{ color: t.muted, fontSize: 12 }}>If it isn&apos;t paid by {dateLabel(e.expiresAt)}, it comes back to you.</Text>
-      )}
-      <ErrorText>{error}</ErrorText>
-      <Status>{busy && status}</Status>
-      {iApprove && <Button title="Bill looks right — pay it" onPress={() => act("approve")} busy={busy} />}
-      {!iApprove && iCollect && <Button title={`Collect ${formatMoney(e.amount)}`} onPress={() => act("release")} busy={busy} />}
-      {iRefund && <Button title="Take it back" variant="soft" onPress={() => act("refund")} busy={busy} />}
-    </Card>
+    <Row
+      onPress={() => router.push({ pathname: "/earmark/[id]", params: { id: String(e.id) } })}
+      icon={<WhoAvatar a={e.to} size={44} />}
+      title={<>{what ? `${BILL_FOR[what].label} · ` : ""}{same(e.from, me) ? <>To <Who a={e.to} me={me} you="you" /></> : <>From <Who a={e.from} me={me} /></>}</>}
+      sub={<BillState e={e} me={me} />}
+      trail={<Serif size={24}>{formatMoney(e.amount)}</Serif>}
+    />
   );
 }
+
+const FOR_OPTIONS = (Object.keys(BILL_FOR) as BillFor[]).map((k) => ({ value: k, label: BILL_FOR[k].short }));
 
 function NewBill({ me, onClose }: { me?: Address; onClose: () => void }) {
   useBack(onClose);
@@ -92,6 +69,7 @@ function NewBill({ me, onClose }: { me?: Address; onClose: () => void }) {
   const [payee, setPayee] = useState<Person | null>(null);
   const [checker, setChecker] = useState<Person | null>(null);
   const [amount, setAmount] = useState("");
+  const [what, setWhat] = useState<BillFor | "">("");
   const [done, setDone] = useState(false);
   const { busy, status, error, run } = useAction();
   const value = Number(amount) > 0 ? fromLocal(amount) : 0n;
@@ -100,8 +78,9 @@ function NewBill({ me, onClose }: { me?: Address; onClose: () => void }) {
   async function send() {
     if (!payee || !value || selfCheck) return;
     const ok = await run(async (say) => {
-      await call(addr.escrow, KinEscrowAbi, "create", [payee.address, ZERO, checker?.address ?? ZERO, 0, expiryAfter(nowSec()), 0], { fund: value });
+      const hash = await call(addr.escrow, KinEscrowAbi, "create", [payee.address, ZERO, checker?.address ?? ZERO, 0, expiryAfter(nowSec()), 0], { fund: value });
       say("Holding it safely…");
+      if (what) void saveBillFor(await createdId(hash, KinEscrowAbi, "Created"), what);
       return true;
     });
     if (ok) {
@@ -127,6 +106,10 @@ function NewBill({ me, onClose }: { me?: Address; onClose: () => void }) {
   return (
     <Screen title="Pay a bill" scroll>
       <PersonPicker label="Who gets paid? School, landlord, hospital…" onPick={setPayee} />
+      <View style={{ gap: 6 }}>
+        <Label>What&apos;s it for?</Label>
+        <Choice<BillFor | ""> options={FOR_OPTIONS} value={what} onChange={setWhat} />
+      </View>
       <MoneyInput label="Amount" value={amount} onChange={setAmount} />
       <PersonPicker label="Who checks the bill first? (optional)" onPick={setChecker} />
       <Text style={{ marginTop: -8, color: t.muted, fontSize: 12 }}>

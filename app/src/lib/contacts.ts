@@ -111,15 +111,24 @@ export const listInvites = () => api<Invites>("/api/invites");
 
 export const listContacts = () => api<Phonebook>("/api/contacts");
 
+// One fetch shared by every picker on a screen (pickers remount per pick); 30 s TTL, per account.
+let recentCache: { who?: string; at: number; p: Promise<Person[]> } | null = null;
+
 /** Recent + frequent people for pickers (recents first, then saved contacts). Never throws. */
-export async function recentPeople(): Promise<Person[]> {
-  const book = await listContacts().catch(() => null);
-  if (!book) return [];
-  const seen = new Set<string>();
-  return [...book.recents, ...book.contacts]
-    .filter((p) => p.name && !seen.has(p.address) && seen.add(p.address))
-    .slice(0, 8)
-    .map(({ address, name }) => ({ address, name }));
+export function recentPeople(): Promise<Person[]> {
+  const who = savedAddress();
+  if (recentCache && recentCache.who === who && Date.now() - recentCache.at < 30_000) return recentCache.p;
+  const p = listContacts()
+    .then((book) => {
+      const seen = new Set<string>();
+      return [...book.recents, ...book.contacts]
+        .filter((x) => x.name && !seen.has(x.address) && seen.add(x.address))
+        .slice(0, 8)
+        .map(({ address, name }) => ({ address, name }));
+    })
+    .catch(() => ((recentCache = null), [] as Person[]));
+  recentCache = { who, at: Date.now(), p };
+  return p;
 }
 
 /** Save someone with a nickname ("Mum"). */

@@ -305,7 +305,7 @@ export default function TripPage() {
         {sheet === "member" && (
           <>
             <Text style={{ color: t.ink, fontSize: 18, fontWeight: "700" }}>Add someone to the trip</Text>
-            <PersonPicker label="Who's joining?" onPick={onMember} />
+            <PersonPicker label="Who's joining?" onPick={onMember} exclude={new Set(members.map((m) => m.name))} />
           </>
         )}
         {open && (

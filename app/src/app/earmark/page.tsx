@@ -1,14 +1,15 @@
 "use client";
 import { useState } from "react";
 import type { Address } from "viem";
-import { Empty, Loading, MoneyInput, Pad, Status, Who, WhoAvatar, dateLabel, useAction, useLoad, useMe, useNow } from "@/components/programs/kit";
+import { BILL_FOR, BillState, loadBillFor, saveBillFor, type BillFor } from "@/components/earmark/bill";
+import { Choice, Empty, Loading, MoneyInput, Pad, Status, Who, WhoAvatar, useAction, useLoad, useMe } from "@/components/programs/kit";
 import { PersonPicker, type Person } from "@/components/PersonPicker";
-import { Band, Button, Card, Chip, Delivered, ErrorText, Screen } from "@/components/ui";
+import { Band, Button, Delivered, ErrorText, Row, Screen } from "@/components/ui";
 import { KinEscrowAbi } from "@/lib/abi";
 import { addr } from "@/lib/chain";
 import { recordPayment } from "@/lib/contacts";
 import { formatMoney, fromLocal } from "@/lib/money";
-import { canRelease, expiryAfter, HOLD_DAYS, listEscrows, nowSec, same, ZERO, type Escrow } from "@/lib/programs";
+import { createdId, expiryAfter, HOLD_DAYS, listEscrows, nowSec, same, ZERO, type Escrow } from "@/lib/programs";
 import { call } from "@/lib/tx";
 
 // "Pay a bill": money that can only go to one payee (school, landlord, hospital),
@@ -18,6 +19,8 @@ export default function EarmarkPage() {
   const me = useMe();
   const [creating, setCreating] = useState(false);
   const { data, error, reload } = useLoad(() => listEscrows(me!, "bill").then((r) => r.escrows), me);
+  const ids = data?.map((e) => e.id).reverse() ?? [];
+  const { data: what } = useLoad(() => loadBillFor(ids), ids.join(",") || undefined);
 
   if (creating) return <NewBill me={me} onClose={() => { setCreating(false); reload(); }} />;
   const open = data?.filter((e) => !e.settled) ?? [];
@@ -30,10 +33,10 @@ export default function EarmarkPage() {
         <ErrorText>{error}</ErrorText>
         {!data && !error && <Loading />}
         {data && !data.length && <Empty icon="bill" title="No bills yet" sub="Send money that can only pay the fees — and let family OK it first." />}
-        {open.map((e) => <Bill key={String(e.id)} e={e} me={me} onDone={reload} />)}
       </Pad>
+      {open.map((e) => <BillRow key={String(e.id)} e={e} me={me} what={what?.[String(e.id)]} />)}
       {past.length > 0 && <Band>Done</Band>}
-      {past.length > 0 && <Pad className="flex flex-col gap-3">{past.map((e) => <Bill key={String(e.id)} e={e} me={me} onDone={reload} />)}</Pad>}
+      {past.map((e) => <BillRow key={String(e.id)} e={e} me={me} what={what?.[String(e.id)]} />)}
       <Pad className="mt-auto pt-4">
         <Button onClick={() => setCreating(true)}>Pay a bill</Button>
       </Pad>
@@ -41,53 +44,25 @@ export default function EarmarkPage() {
   );
 }
 
-function Bill({ e, me, onDone }: { e: Escrow; me?: Address; onDone: () => void }) {
-  const now = useNow(30_000);
-  const { busy, status, error, run } = useAction();
-  const iApprove = same(e.approver, me) && !e.approved;
-  const iCollect = same(e.to, me) && canRelease(e, now);
-  const iRefund = same(e.from, me) && !e.settled && !!e.expiresAt && now >= e.expiresAt;
-
-  async function act(fn: "approve" | "release" | "refund") {
-    const ok = await run(async () => (await call(addr.escrow, KinEscrowAbi, fn, [e.id]), true));
-    if (ok) {
-      if (fn === "approve") void recordPayment(e.to, e.amount);
-      onDone();
-    }
-  }
-
-  const state = e.settled
-    ? <Chip tone="good">Paid ✓✓</Chip>
-    : e.approver === ZERO || e.approved
-      ? <Chip tone="brand">Ready for <Who a={e.to} me={me} you="you" /> to collect</Chip>
-      : <Chip tone="warn">Waiting for <Who a={e.approver} me={me} you="your" />{same(e.approver, me) ? "" : "'s"} OK</Chip>;
-
+function BillRow({ e, me, what }: { e: Escrow; me?: Address; what?: BillFor }) {
   return (
-    <Card className="flex flex-col gap-3">
-      <div className="flex items-center gap-3">
-        <WhoAvatar a={e.to} />
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-semibold">To <Who a={e.to} me={me} you="you" /></p>
-          <p className="mt-1 truncate">{state}</p>
-        </div>
-        <p className="font-display text-2xl tabular">{formatMoney(e.amount)}</p>
-      </div>
-      {!e.settled && same(e.from, me) && !iRefund && e.expiresAt > 0 && (
-        <p className="text-xs text-muted">If it isn&apos;t paid by {dateLabel(e.expiresAt)}, it comes back to you.</p>
-      )}
-      <ErrorText>{error}</ErrorText>
-      <Status>{busy && status}</Status>
-      {iApprove && <Button onClick={() => act("approve")} busy={busy}>Bill looks right — pay it</Button>}
-      {!iApprove && iCollect && <Button onClick={() => act("release")} busy={busy}>Collect {formatMoney(e.amount)}</Button>}
-      {iRefund && <Button variant="soft" onClick={() => act("refund")} busy={busy}>Take it back</Button>}
-    </Card>
+    <Row
+      href={`/earmark/${e.id}`}
+      icon={<WhoAvatar a={e.to} size={44} />}
+      title={<>{what ? `${BILL_FOR[what].label} · ` : ""}{same(e.from, me) ? <>To <Who a={e.to} me={me} you="you" /></> : <>From <Who a={e.from} me={me} /></>}</>}
+      sub={<BillState e={e} me={me} />}
+      trail={<span className="font-display text-2xl tabular">{formatMoney(e.amount)}</span>}
+    />
   );
 }
+
+const FOR_OPTIONS = (Object.keys(BILL_FOR) as BillFor[]).map((k) => ({ value: k, label: BILL_FOR[k].short }));
 
 function NewBill({ me, onClose }: { me?: Address; onClose: () => void }) {
   const [payee, setPayee] = useState<Person | null>(null);
   const [checker, setChecker] = useState<Person | null>(null);
   const [amount, setAmount] = useState("");
+  const [what, setWhat] = useState<BillFor | "">("");
   const [done, setDone] = useState(false);
   const { busy, status, error, run } = useAction();
   const value = Number(amount) > 0 ? fromLocal(amount) : 0n;
@@ -96,8 +71,9 @@ function NewBill({ me, onClose }: { me?: Address; onClose: () => void }) {
   async function send() {
     if (!payee || !value || selfCheck) return;
     const ok = await run(async (say) => {
-      await call(addr.escrow, KinEscrowAbi, "create", [payee.address, ZERO, checker?.address ?? ZERO, 0, expiryAfter(nowSec()), 0], { fund: value });
+      const hash = await call(addr.escrow, KinEscrowAbi, "create", [payee.address, ZERO, checker?.address ?? ZERO, 0, expiryAfter(nowSec()), 0], { fund: value });
       say("Holding it safely…");
+      if (what) void saveBillFor(await createdId(hash, KinEscrowAbi, "Created"), what);
       return true;
     });
     if (ok) {
@@ -122,6 +98,10 @@ function NewBill({ me, onClose }: { me?: Address; onClose: () => void }) {
   return (
     <Screen title="Pay a bill" action={<button onClick={onClose} className="h-11 px-2 text-muted">Cancel</button>}>
       <PersonPicker label="Who gets paid? School, landlord, hospital…" onPick={setPayee} />
+      <div className="flex flex-col gap-1.5">
+        <span className="text-sm font-medium text-muted">What&apos;s it for?</span>
+        <Choice<BillFor | ""> options={FOR_OPTIONS} value={what} onChange={setWhat} />
+      </div>
       <MoneyInput label="Amount" value={amount} onChange={setAmount} />
       <PersonPicker label="Who checks the bill first? (optional)" onPick={setChecker} />
       <p className="-mt-2 text-xs text-muted">

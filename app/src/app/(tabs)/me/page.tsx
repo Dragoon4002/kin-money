@@ -85,10 +85,15 @@ export default function Me() {
         <section className="flex flex-col items-center gap-3 px-5 pb-4 text-center">
           <MyKinko size={140} mood="happy" />
           {handle ? (
-            <button onClick={copy} className="flex min-h-11 items-center gap-2 rounded-full px-4 font-display text-4xl active:bg-surface-2">
-              @{handle}
-              <span className="font-sans text-xs font-semibold text-muted">{copied ? "Copied ✓" : "Copy"}</span>
-            </button>
+            <div className="flex min-w-0 max-w-full items-center gap-2">
+              <span className="truncate font-display text-4xl">@{handle}</span>
+              <button onClick={copy} aria-label="Copy your Kin name" className="grid size-11 shrink-0 place-items-center rounded-full bg-surface-2 text-muted active:scale-95">
+                <Ico name="copy" size={18} />
+              </button>
+              <Link href="/receive" aria-label="My QR" className="grid size-11 shrink-0 place-items-center rounded-full bg-surface-2 text-muted active:scale-95">
+                <Ico name="qr" size={18} />
+              </Link>
+            </div>
           ) : (
             <p className="font-display text-4xl">Your account</p>
           )}
@@ -107,6 +112,8 @@ export default function Me() {
             <Link href="/kinko" className="grid h-14 place-items-center rounded-full bg-brand-soft font-semibold text-brand active:scale-[0.98]">Customize Kinko</Link>
           </div>
         </section>
+
+        <Row href="/receive" icon={<IconTile name="qr" size={44} />} title="My QR" sub="Scan to pay me" trail={<Chev />} />
 
         <Band>Appearance</Band>
         <div className="px-5 py-4">
@@ -179,7 +186,6 @@ export default function Me() {
 
         {/* ponytail: phone-number lookup removed (SMS verification not free); old phoneHash props in Neo4j are inert. */}
         <Band>Share</Band>
-        <Row href="/receive" icon={<IconTile name="qr" size={44} />} title="My QR" sub="Scan to pay me" trail={<Chev />} />
         <Row href="/invite" icon={<IconTile name="invite" size={44} />} title="Invite & earn" sub="You both get a Kinko treat" trail={<Chev />} />
 
         <Band>Backup</Band>
@@ -203,6 +209,9 @@ export default function Me() {
           )}
         </div>
       </Screen>
+      {copied && (
+        <p role="status" className="fixed bottom-28 left-1/2 z-50 -translate-x-1/2 rounded-full bg-ink px-4 py-2 text-sm font-semibold text-surface shadow-lg">Copied</p>
+      )}
     </>
   );
 }
