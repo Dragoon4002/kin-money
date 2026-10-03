@@ -144,6 +144,15 @@ export function lookForName(name = ""): Look {
 
 /** Kin's mascot. `avatar`: head-and-shoulders crop for small profile pictures. */
 export function Kinko({ look = DEFAULT_LOOK, mood = "happy", size = 120, avatar = false }: { look?: Look; mood?: Mood; size?: number; avatar?: boolean }) {
+  return (
+    <Svg viewBox={avatar ? "22 10 156 156" : "-12 -16 224 222"} width={size} height={size} accessibilityLabel="Kinko">
+      <KinkoArt look={look} mood={mood} />
+    </Svg>
+  );
+}
+
+/** Kinko's drawing in its own 200-unit space, for embedding inside another <Svg> (e.g. the QR badge). */
+export function KinkoArt({ look = DEFAULT_LOOK, mood = "happy" }: { look?: Look; mood?: Mood }) {
   const skin = SKINS[look.skin] ?? SKINS.classic;
   const party = mood === "celebrate";
   const face = mood === "sad" || party ? mood : look.expression;
@@ -157,7 +166,7 @@ export function Kinko({ look = DEFAULT_LOOK, mood = "happy", size = 120, avatar 
     );
 
   return (
-    <Svg viewBox={avatar ? "22 10 156 156" : "-12 -16 224 222"} width={size} height={size} accessibilityLabel="Kinko">
+    <G>
       <Ellipse cx={100} cy={196} rx={50} ry={7} fill={INK} opacity={0.12} />
       {arm(26, 1)}
       {arm(174, -1)}
@@ -185,6 +194,6 @@ export function Kinko({ look = DEFAULT_LOOK, mood = "happy", size = 120, avatar 
             <Path d={star} fill={F2} stroke={INK} strokeWidth={2} />
           </G>
         ))}
-    </Svg>
+    </G>
   );
 }

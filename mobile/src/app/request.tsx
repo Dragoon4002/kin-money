@@ -35,7 +35,6 @@ export default function Request() {
   const params = useLocalSearchParams<{ to?: string; amount?: string }>();
   const [prefillTo] = useState(() => one(params.to).replace(/^@/, "").toLowerCase());
   const [mode, setMode] = useState<"person" | "link">("person");
-  const [otherWallet, setOtherWallet] = useState(false);
   const [person, setPerson] = useState<Person | null>(null);
   const [picking, setPicking] = useState(() => !HANDLE_RE.test(prefillTo));
   const [amount, setAmount] = useState(() => (AMOUNT_RE.test(one(params.amount)) ? one(params.amount) : ""));
@@ -167,15 +166,10 @@ export default function Request() {
           <View style={{ alignItems: "center", gap: 8, borderRadius: 28, borderWidth: 1, borderColor: t.line, backgroundColor: t.surface, padding: 20 }}>
             <Text style={{ color: t.ink, fontWeight: "600" }}>Pay to @{handle}</Text>
             <View style={{ width: "100%", maxWidth: 224, borderRadius: 16, overflow: "hidden" }}>
-              <PayQr text={otherWallet ? walletUri(profile.address, units) : link} label={`QR code to pay @${handle} ${formatMoney(units)}`} />
+              <PayQr text={walletUri(profile.address, units)} label={`QR code to pay @${handle} ${formatMoney(units)}`} />
             </View>
-            <Text style={{ color: t.muted, fontSize: 14, textAlign: "center" }}>
-              {otherWallet ? "Works with wallets that support Monad. Send Agora dollars (AUSD) on Monad." : "They scan or tap the link — amount and your name are filled in."}
-            </Text>
-            <Pressable onPress={() => setOtherWallet((v) => !v)} accessibilityRole="button" accessibilityState={{ selected: otherWallet }}
-              style={({ pressed }) => ({ height: 44, justifyContent: "center", borderRadius: 22, paddingHorizontal: 16, backgroundColor: pressed ? t.brandSoft : "transparent" })}>
-              <Text style={{ color: t.brand, fontSize: 14, fontWeight: "600" }}>{otherWallet ? "Show the Kin code" : "Paying from another wallet?"}</Text>
-            </Pressable>
+            <Text style={{ color: t.ink, fontWeight: "600" }}>{formatMoney(units)}{note.trim() ? ` for ${note.trim()}` : ""}</Text>
+            <Text style={{ color: t.muted, fontSize: 14, textAlign: "center" }}>Scan with Kin or any wallet app</Text>
           </View>
         )}
 

@@ -15,8 +15,6 @@ const light = {
   good: "#1f9d6b",
   bad: "#d64545",
   warn: "#c9851a",
-  qrInk: "#1b1530",
-  qrBg: "#ffffff",
 };
 export type Theme = typeof light;
 const dark: Theme = {
