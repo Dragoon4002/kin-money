@@ -27,6 +27,9 @@ export const markThreadRead = (withAddr: Address) => api("/api/messages", "POST"
 export const setThread = (action: "block" | "unblock" | "accept", address: Address) => api("/api/messages", "POST", { action, address });
 export const listInbox = () => api<{ items: Notice[]; unread: number }>("/api/inbox");
 export const markInboxRead = (ids?: string[]) => api("/api/inbox", "POST", ids ? { action: "read", ids } : { action: "read", all: true }).then(refreshCounts, () => {});
+/** Tell people they were added to a pot/circle/chore (push + inbox). Fire-and-forget. */
+export const notifyAdded = (kind: "pot" | "circle" | "chore", id: bigint, addresses: Address[]) =>
+  void api("/api/notify-added", "POST", { kind, id: id.toString(), addresses }).catch(() => {});
 /** Payer settles a money request (server re-checks the payment for "paid"). */
 export const settleRequest = (id: string, status: "paid" | "declined", hash?: Hex) => api<{ ok: true }>("/api/requests", "PATCH", { id, status, hash });
 

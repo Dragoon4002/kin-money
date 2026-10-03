@@ -1,6 +1,6 @@
 import { Check, Plus } from "lucide-react-native";
 import { useEffect, useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { Avatar, Label, Text, TextInput, useInputStyle } from "@/components/ui";
 import { useAccount } from "@/lib/account";
 import { recentPeople, type Person } from "@/lib/contacts";
@@ -66,7 +66,7 @@ export function PersonPicker({ label = "To", onPick, recents: showRecents = true
     <View style={{ gap: 12 }}>
       <Label>{label}</Label>
       {recents.length > 0 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 16 }} accessibilityLabel="Recent people">
+        <View style={{ flexDirection: "row", flexWrap: "wrap", columnGap: 16, rowGap: 12 }} accessibilityLabel="Recent people">
           <Pressable onPress={() => setTyping((v) => !v)} accessibilityRole="button" accessibilityState={{ selected: typing }} style={{ width: 60, alignItems: "center", gap: 6 }}>
             <View style={{ width: 56, height: 56, borderRadius: 28, borderWidth: 1, borderStyle: "dashed", borderColor: typing ? t.brand : t.line, alignItems: "center", justifyContent: "center" }}>
               <Plus color={typing ? t.brand : t.ink} size={24} />
@@ -85,7 +85,7 @@ export function PersonPicker({ label = "To", onPick, recents: showRecents = true
               </Pressable>
             );
           })}
-        </ScrollView>
+        </View>
       )}
       {showField && (
         <View style={{ gap: 6 }}>

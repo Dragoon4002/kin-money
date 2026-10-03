@@ -10,7 +10,7 @@ import { payLink, walletUri } from "@/lib/payLink";
 import { useTheme } from "@/theme";
 
 /** QR as one SVG path; always dark-on-light so every camera reads it. */
-function PayQr({ text, label }: { text: string; label: string }) {
+export function PayQr({ text, label }: { text: string; label: string }) {
   const t = useTheme();
   const { size, d } = useMemo(() => {
     const { size, data } = QRCode.create(text, { errorCorrectionLevel: "M" }).modules;

@@ -1,6 +1,6 @@
 import * as SecureStore from "expo-secure-store";
 import { Fragment, useEffect, useState, type ReactNode } from "react";
-import { ActivityIndicator, Modal, Pressable, Share, View } from "react-native";
+import { ActivityIndicator, Modal, Pressable, Share, View, BackHandler } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { Address } from "viem";
 import { Avatar, Band, ErrorText, Field, IconTile, Row, Text, TextInput, useInputStyle } from "@/components/ui";
@@ -241,4 +241,12 @@ export function OldPots({ me, jars }: { me?: Address; jars: boolean }) {
       <ErrorText>{error}</ErrorText>
     </>
   );
+}
+
+/** Android back button runs `fn` (e.g. close a create form back to its list) instead of leaving the screen. */
+export function useBack(fn: () => void) {
+  useEffect(() => {
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => (fn(), true));
+    return () => sub.remove();
+  }, [fn]);
 }

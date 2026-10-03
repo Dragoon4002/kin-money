@@ -137,7 +137,7 @@ function NewCircle({ me, onCancel }: { me?: Address; onCancel: () => void }) {
           </div>
         ))}
         <div className="flex items-end gap-2">
-          <div className="flex-1"><PersonPicker key={pickerKey} label="Add a friend" onPick={setPicked} /></div>
+          <div className="min-w-0 flex-1"><PersonPicker key={pickerKey} label="Add a friend" onPick={setPicked} /></div>
           <button onClick={add} disabled={!picked || members.length >= 20} className="h-14 rounded-full bg-brand-soft px-5 font-semibold text-brand disabled:opacity-40">Add</button>
         </div>
       </div>

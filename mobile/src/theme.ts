@@ -1,4 +1,5 @@
-import { useColorScheme } from "react-native";
+import * as SecureStore from "expo-secure-store";
+import { Appearance, useColorScheme } from "react-native";
 
 // Same token values as app/src/app/globals.css (light, dark).
 const light = {
@@ -43,3 +44,19 @@ export const fonts = {
 export function useTheme(): Theme {
   return useColorScheme() === "light" ? light : dark;
 }
+
+// Settings → Appearance. Stored per phone; "system" follows the phone.
+export type ThemePref = "system" | "light" | "dark";
+export function getThemePref(): ThemePref {
+  try {
+    const v = SecureStore.getItem("kin.theme");
+    return v === "light" || v === "dark" ? v : "system";
+  } catch {
+    return "system";
+  }
+}
+export function setThemePref(p: ThemePref) {
+  SecureStore.setItem("kin.theme", p);
+  Appearance.setColorScheme(p === "system" ? "unspecified" : p);
+}
+if (getThemePref() !== "system") Appearance.setColorScheme(getThemePref() as "light" | "dark");

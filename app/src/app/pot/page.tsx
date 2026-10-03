@@ -78,7 +78,7 @@ function People({ list, set, me, label, max = 20 }: { list: Address[]; set: (l: 
         </span>
       ))}
       <div className="flex w-full items-end gap-2">
-        <div className="flex-1"><PersonPicker key={pickerKey} label={label} onPick={setPicked} /></div>
+        <div className="min-w-0 flex-1"><PersonPicker key={pickerKey} label={label} onPick={setPicked} /></div>
         <button onClick={add} disabled={!picked || list.length >= max} className="h-14 rounded-full bg-brand-soft px-5 font-semibold text-brand disabled:opacity-40">Add</button>
       </div>
     </>

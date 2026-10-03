@@ -83,3 +83,12 @@ export const listContacts = () => api<Phonebook>("/api/contacts");
 
 /** Save someone with a nickname ("Mum"). */
 export const addContact = (p: Person, label = "") => api<{ ok: true }>("/api/contacts", "POST", { address: p.address, label });
+
+// ---------- money requests (/api/requests), same shapes as web ----------
+
+export type MoneyRequest = { id: string; from: Person; to: Person; amount: string; note: string; status: "open" | "paid" | "declined"; at: number; due: number | null; remindedAt: number | null };
+export const listRequests = () => api<{ incoming: MoneyRequest[]; outgoing: MoneyRequest[] }>("/api/requests");
+export const createRequest = (to: Address, amount: bigint, note: string, due: number | null = null) =>
+  api<{ id: string }>("/api/requests", "POST", { to, amount: amount.toString(), note, due });
+/** Nudge the payer of my open request (server allows once per 12h). */
+export const remindRequest = (id: string) => api<{ ok: true }>("/api/requests", "POST", { action: "remind", id });

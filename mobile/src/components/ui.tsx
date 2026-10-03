@@ -113,11 +113,12 @@ export function IconTile({ icon: Icon, size = 48, brand }: { icon: LucideIcon; s
 }
 
 /** Small pill label (web Chip). */
-export function Chip({ children, good }: { children: ReactNode; good?: boolean }) {
+export function Chip({ children, good, tone = good ? "good" : undefined }: { children: ReactNode; good?: boolean; tone?: "good" | "brand" | "warn" | "bad" }) {
   const t = useTheme();
+  const fg = tone ? t[tone] : t.muted;
   return (
-    <View style={{ alignSelf: "flex-start", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, backgroundColor: good ? `${t.good}26` : t.surface2 }}>
-      <Text style={{ color: good ? t.good : t.muted, fontSize: 12, fontWeight: "600" }}>{children}</Text>
+    <View style={{ alignSelf: "flex-start", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, backgroundColor: tone ? `${fg}26` : t.surface2 }}>
+      <Text style={{ color: fg, fontSize: 12, fontWeight: "600" }}>{children}</Text>
     </View>
   );
 }

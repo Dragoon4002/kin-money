@@ -64,7 +64,7 @@ export function PersonPicker({ label = "To", onPick, recents: showRecents = true
     <div className="flex min-w-0 flex-col gap-3">
       <span className="text-sm font-medium text-muted">{label}</span>
       {recents.length > 0 && (
-        <div className="flex gap-4 overflow-x-auto pb-1 [scrollbar-width:none]" aria-label="Recent people">
+        <div className="flex flex-wrap gap-x-4 gap-y-3" aria-label="Recent people">
           <button
             type="button"
             onClick={() => setTyping((t) => !t)}

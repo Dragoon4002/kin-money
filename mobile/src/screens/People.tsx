@@ -14,8 +14,7 @@ import { useTheme } from "@/theme";
 
 const pay = (p: Person) => router.push({ pathname: "/send", params: { to: p.name } });
 const message = (p: Person) => router.push({ pathname: "/chat", params: { with: p.address } });
-// ponytail: web /request has its own person picker; open it rather than port the request flow.
-const request = () => openKin("/request");
+const request = (p: Person) => openKin(p.name ? `/request?to=${encodeURIComponent(p.name)}` : "/request");
 
 export default function People() {
   const t = useTheme();
@@ -204,7 +203,7 @@ function PersonRow({ p, title, sub, action }: { p: Person; title: string; sub?: 
       </Pressable>
       {action ?? (
         <>
-          <Pressable onPress={request} accessibilityRole="button" accessibilityLabel={`Request from ${title}`} style={({ pressed }) => [icon, { backgroundColor: pressed ? t.surface2 : "transparent" }]}>
+          <Pressable onPress={() => request(p)} accessibilityRole="button" accessibilityLabel={`Request from ${title}`} style={({ pressed }) => [icon, { backgroundColor: pressed ? t.surface2 : "transparent" }]}>
             <HandCoins color={t.muted} size={22} />
           </Pressable>
           <Pressable onPress={() => message(p)} accessibilityRole="button" accessibilityLabel={`Message ${title}`} style={({ pressed }) => [icon, { backgroundColor: pressed ? t.surface2 : "transparent" }]}>
