@@ -1,4 +1,4 @@
-import { createPublicClient, http, type Address } from "viem";
+import { createPublicClient, fallback, http, type Address } from "viem";
 import { monadTestnet } from "viem/chains";
 
 export const chain = {
@@ -6,9 +6,13 @@ export const chain = {
   blockExplorers: { default: { name: "MonadVision", url: "https://testnet.monadvision.com" } },
 };
 
+// Public testnet RPCs answer bursts with 429: batch parallel reads into one request, retry with backoff,
+// then fall back to other public testnet endpoints (all checked: batch + CORS + chain 10143).
+const rpc = (url?: string) => http(url, { batch: { wait: 16 }, retryCount: 4, retryDelay: 250 });
+const BACKUP_RPCS = ["https://rpc.ankr.com/monad_testnet", "https://monad-testnet.drpc.org"];
 export const publicClient = createPublicClient({
   chain,
-  transport: http(process.env.NEXT_PUBLIC_RPC_URL),
+  transport: fallback([rpc(process.env.NEXT_PUBLIC_RPC_URL), ...BACKUP_RPCS.map(rpc)]),
 });
 
 const env = (v: string | undefined) => (v || "0x0000000000000000000000000000000000000000") as Address;

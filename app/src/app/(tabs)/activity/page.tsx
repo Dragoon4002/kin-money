@@ -3,13 +3,14 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import type { Address } from "viem";
 import { ActivityRow } from "@/components/core/ActivityRow";
-import { Band, Button, ErrorText, Ico, IconTile, Row, Screen, Tabs, funBg } from "@/components/ui";
+import { Band, Button, Chip, ErrorText, Ico, IconTile, Row, Screen, Tabs, funBg } from "@/components/ui";
 import { useRequireAccount } from "@/lib/account";
 import { ago, loadActivity, type Item } from "@/lib/activity";
 import { categoryOf } from "@/lib/categories";
 import { forgetLink, myLinkIds, readLink, refundLink } from "@/lib/claimLink";
 import { humanError } from "@/lib/errors";
 import { formatMoney } from "@/lib/money";
+import { usePrivate } from "@/lib/privacy";
 
 type Pending = { id: bigint; amount: bigint; expired: boolean; when: string };
 type Filter = "all" | "out" | "in";
@@ -41,6 +42,10 @@ function Moment({ item }: { item: Item }) {
     </Link>
   );
 }
+
+// ponytail: rough bank-wire cost (3% + $5 per transfer) — an estimate, labelled as such in the UI.
+const WIRE_FLAT = 5_000_000n; // $5 in base units
+const wireSavings = (sent: bigint[]) => sent.reduce((a, v) => a + (v * 3n) / 100n + WIRE_FLAT, 0n);
 
 export default function Activity() {
   const { profile } = useRequireAccount();
@@ -76,6 +81,8 @@ export default function Activity() {
     }
   }
 
+  const hide = usePrivate();
+  const saved = items ? wireSavings(items.filter((i) => i.dir === "out").map((i) => i.amount)) : 0n;
   const shown = items?.filter((i) => filter === "all" || i.dir === filter) ?? [];
   const moments = items?.slice(0, 8) ?? [];
 
@@ -84,6 +91,12 @@ export default function Activity() {
       <Screen wide title="Activity" action={
         <Link href="/spends" className="grid h-11 place-items-center rounded-full bg-surface-2 px-4 text-sm font-semibold active:scale-95">Spends</Link>
       }>
+        {saved > 0n && !hide && (
+          <div className="flex flex-col items-start gap-1 px-5">
+            <Chip tone="good">You saved about {formatMoney(saved)} vs a bank wire</Chip>
+            <p className="px-1 text-xs text-muted">Estimate: banks often charge 3% + $5 per transfer.</p>
+          </div>
+        )}
         {moments.length > 0 && (
           <section className="flex flex-col gap-3">
             <h2 className="px-5 font-display text-2xl">Moments</h2>

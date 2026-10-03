@@ -15,11 +15,35 @@ export const graphEnabled = () => Boolean(NEO4J_URI && NEO4J_USER && NEO4J_PASSW
 let driver: Driver | null = null;
 let ready: Promise<unknown> | null = null;
 
+/**
+ * Rate limit shared by every server instance (fixed window, one Rate node per key). The in-memory `allow`
+ * only sees one instance, so anything that costs relayer gas also goes through this. Fails open when the
+ * graph is off or down (the in-memory limit still applies).
+ */
+export async function allowShared(key: string, max: number, windowMs: number): Promise<boolean> {
+  if (!graphEnabled()) return true;
+  const bucket = Math.floor(Date.now() / windowMs);
+  try {
+    const [r] = await q<{ n: number }>(
+      `MERGE (r:Rate {key: $key}) ON CREATE SET r.bucket = $bucket, r.n = 0
+       SET r.n = CASE WHEN r.bucket = $bucket THEN r.n + 1 ELSE 1 END, r.bucket = $bucket
+       RETURN r.n AS n`,
+      { key, bucket },
+    );
+    return (r?.n ?? 0) <= max;
+  } catch {
+    return true;
+  }
+}
+
 /** Run parameterised Cypher; rows as plain objects. */
 export async function q<T = Record<string, unknown>>(cypher: string, params: Record<string, unknown> = {}): Promise<T[]> {
   if (!driver) {
     driver = neo4j.driver(NEO4J_URI!, neo4j.auth.basic(NEO4J_USER!, NEO4J_PASSWORD!), { disableLosslessIntegers: true });
-    ready = driver.executeQuery("CREATE CONSTRAINT person_address IF NOT EXISTS FOR (p:Person) REQUIRE p.address IS UNIQUE");
+    ready = Promise.all([
+      driver.executeQuery("CREATE CONSTRAINT person_address IF NOT EXISTS FOR (p:Person) REQUIRE p.address IS UNIQUE"),
+      driver.executeQuery("CREATE CONSTRAINT rate_key IF NOT EXISTS FOR (r:Rate) REQUIRE r.key IS UNIQUE"),
+    ]);
   }
   await ready;
   const { records } = await driver.executeQuery(cypher, params);

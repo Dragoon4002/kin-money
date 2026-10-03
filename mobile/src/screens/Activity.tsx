@@ -1,7 +1,7 @@
 import { ArrowDownLeft, Shapes } from "lucide-react-native";
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, RefreshControl, ScrollView, View } from "react-native";
-import { Avatar, Serif, Text } from "@/components/ui";
+import { Avatar, Chip, Serif, Text } from "@/components/ui";
 import { useAccount } from "@/lib/account";
 import { categoryOf, loadFeed, type Item } from "@/lib/activity";
 import { openKin } from "@/lib/nav";
@@ -55,10 +55,15 @@ function Row({ item }: { item: Item }) {
   );
 }
 
+// ponytail: rough bank-wire cost (3% + $5 per transfer) — an estimate, labelled as such in the UI.
+const WIRE_FLAT = 5_000_000n; // $5 in base units
+const wireSavings = (sent: bigint[]) => sent.reduce((a, v) => a + (v * 3n) / 100n + WIRE_FLAT, 0n);
+
 export default function Activity() {
   const t = useTheme();
   const me = useAccount().profile?.address;
   const [items, setItems] = useState<Item[] | null>(null);
+  const saved = items ? wireSavings(items.filter((i) => i.dir === "out").map((i) => i.amount)) : 0n;
   const [filter, setFilter] = useState<Filter>("all");
   const [busy, setBusy] = useState(false);
 
@@ -90,6 +95,12 @@ export default function Activity() {
         ))}
       </View>
 
+      {saved > 0n && (
+        <View style={{ gap: 4, paddingHorizontal: 20, alignItems: "flex-start" }}>
+          <Chip good>You saved about {formatMoney(saved)} vs a bank wire</Chip>
+          <Text style={{ color: t.muted, fontSize: 12, paddingHorizontal: 4 }}>Estimate: banks often charge 3% + $5 per transfer.</Text>
+        </View>
+      )}
       {moments.length > 0 && (
         <View style={{ gap: 12 }}>
           <View style={{ paddingHorizontal: 20 }}><Serif size={26}>Moments</Serif></View>

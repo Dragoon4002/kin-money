@@ -1,6 +1,7 @@
 import { isAddress, isHex, parseAbi, type Address, type Hex } from "viem";
 import { KinForwarderAbi } from "@/lib/abi";
 import { addr } from "@/lib/chain";
+import { allowShared } from "@/lib/server/graph";
 import { GAS_CAP, allow, clientIp, once, submit } from "@/lib/server/relayer";
 
 const ausdAbi = parseAbi([
@@ -17,13 +18,16 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const ip = clientIp(req);
   if (!allow(`ip:${ip}`, 30)) return bad("slow down", 429);
+  // Every relayed call spends relayer gas: cap per network across all instances (generous — a venue shares one IP).
+  if (!(await allowShared(`relay:${ip}`, 600, 3_600_000))) return bad("slow down", 429);
   const now = Math.floor(Date.now() / 1000);
   try {
     if (body?.kind === "3009") {
       const { auth: a, signature } = body;
       if (![a?.from, a?.to].every((x) => isAddress(x)) || !isHex(a.nonce) || !isHex(signature)) return bad("invalid");
-      if (![a.value, a.validAfter, a.validBefore].every(uint)) return bad("invalid");
+      if (![a.value, a.validAfter, a.validBefore].every(uint) || BigInt(a.value) === 0n) return bad("invalid"); // a $0 transfer only burns relayer gas
       if (!allow(`from:${a.from.toLowerCase()}`, 10)) return bad("slow down", 429);
+      if (!(await allowShared(`relay-from:${a.from.toLowerCase()}`, 200, 86_400_000))) return bad("slow down", 429);
       if (!once(`3009:${a.from.toLowerCase()}:${a.nonce}`)) return bad("duplicate", 409);
       const hash = await submit(
         {
@@ -42,6 +46,7 @@ export async function POST(req: Request) {
       if (BigInt(r.gas) > (GAS_CAP * 63n) / 80n) return bad("too expensive");
       if (Number(r.deadline) > now + MAX_DEADLINE_S) return bad("invalid");
       if (!allow(`from:${r.from.toLowerCase()}`, 10)) return bad("slow down", 429);
+      if (!(await allowShared(`relay-from:${r.from.toLowerCase()}`, 200, 86_400_000))) return bad("slow down", 429);
       if (!once(`2771:${r.signature.toLowerCase()}`)) return bad("duplicate", 409);
       const hash = await submit({
         address: addr.forwarder, abi: KinForwarderAbi, functionName: "execute",

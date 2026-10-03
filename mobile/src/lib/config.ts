@@ -1,4 +1,4 @@
-import { createPublicClient, http, type Address } from "viem";
+import { createPublicClient, fallback, http, type Address } from "viem";
 import { monadTestnet } from "viem/chains";
 
 // Same rpId as the PWA → same passkey → same account on web and phone.
@@ -8,7 +8,11 @@ export const API_BASE = "https://kin-money.vercel.app";
 export const PUSHER = { key: "33b8e385c82424d3cc1e", cluster: "ap2" } as const;
 
 export const chain = monadTestnet;
-export const publicClient = createPublicClient({ chain, transport: http("https://testnet-rpc.monad.xyz") });
+// Public testnet RPCs answer bursts with 429: batch parallel reads into one request, retry with backoff,
+// then fall back to other public testnet endpoints (all checked: batch + CORS + chain 10143).
+const rpc = (url?: string) => http(url, { batch: { wait: 16 }, retryCount: 4, retryDelay: 250 });
+const BACKUP_RPCS = ["https://rpc.ankr.com/monad_testnet", "https://monad-testnet.drpc.org"];
+export const publicClient = createPublicClient({ chain, transport: fallback(["https://testnet-rpc.monad.xyz", ...BACKUP_RPCS].map(rpc)) });
 
 // From contracts/deployments/10143.json.
 export const addr = {

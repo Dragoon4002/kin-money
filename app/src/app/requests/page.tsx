@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Avatar, Button, Chip, ErrorText, Ico, IconTile, Screen } from "@/components/ui";
+import { Avatar, Button, Card, Chip, ErrorText, Ico, IconTile, Screen } from "@/components/ui";
+import { unlock, useAccount } from "@/lib/account";
 import { Bubble, SkeletonRows, useSignedIn } from "@/components/social/bits";
 import { listRequests, recordPayment, remindRequest, settleRequest, type MoneyRequest } from "@/lib/contacts";
 import { humanError } from "@/lib/errors";
@@ -33,14 +34,15 @@ function DueChip({ r }: { r: MoneyRequest }) {
 /** #24 Collect: pay or decline what people asked you for; track what you asked. */
 export default function RequestsPage() {
   useSignedIn();
+  const { canRead } = useAccount();
   const [lists, setLists] = useState<Lists | null>(null);
   const [err, setErr] = useState("");
   const [paying, setPaying] = useState<string | null>(null);
   const [slow, setSlow] = useState(false);
 
   useEffect(() => {
-    listRequests().then(setLists, (e) => setErr(humanError(e)));
-  }, []);
+    if (canRead) listRequests().then(setLists, (e) => setErr(humanError(e)));
+  }, [canRead]);
 
   async function remind(r: MoneyRequest) {
     setErr("");
@@ -102,7 +104,13 @@ export default function RequestsPage() {
       }
     >
       <ErrorText>{err}</ErrorText>
-      {!lists && !err && <SkeletonRows />}
+      {!canRead && (
+        <Card className="mx-5 flex flex-col items-center gap-3 text-center">
+          <p className="font-semibold">Your requests are private</p>
+          <Button onClick={() => unlock().catch((e) => setErr(humanError(e)))}>Confirm with Face ID</Button>
+        </Card>
+      )}
+      {canRead && !lists && !err && <SkeletonRows />}
 
       {lists && !lists.incoming.length && !lists.outgoing.length && (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
