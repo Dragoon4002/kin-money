@@ -18,7 +18,7 @@ export function PayQr({ text, label, svgRef }: { text: string; label: string; sv
   const { profile } = useAccount();
   const look = useAvatarLook(profile?.name);
   const { size, dots, eyes, c, logo } = useMemo(() => qrArt(text), [text]);
-  const k = logo * 0.86;
+  const k = logo * 0.96;
   const box = size + 2 * QUIET;
   return (
     <Svg ref={svgRef} viewBox={`${-QUIET} ${-QUIET} ${box} ${box}`} width="100%" style={{ aspectRatio: 1 }} accessibilityLabel={label}>
@@ -33,7 +33,7 @@ export function PayQr({ text, label, svgRef }: { text: string; label: string; sv
       ))}
       <Circle cx={c} cy={c} r={logo / 2} fill={QR_BG} />
       <G clipPath="url(#kin-qr-badge)">
-        <G transform={`translate(${c - k / 2} ${c - k / 2}) scale(${k / 156}) translate(-22 -10)`}>
+        <G transform={`translate(${c - k / 2} ${c - k / 2}) scale(${k / 160}) translate(-20 16)`}>
           <KinkoArt look={look} />
         </G>
       </G>

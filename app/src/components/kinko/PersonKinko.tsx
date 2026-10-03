@@ -5,7 +5,7 @@ import { useAccount } from "@/lib/account";
 import { useAvatarLook } from "@/lib/kinko";
 import { Kinko, type Mood } from "./Kinko";
 
-type Props = { size?: number; mood?: Mood; avatar?: boolean };
+type Props = { size?: number; mood?: Mood; avatar?: boolean; viewBox?: string };
 
 /** A person's own Kinko: theirs from this phone if it's me, else their published look, else the stable default. */
 export function PersonKinko({ name, ...rest }: Props & { name?: string }) {

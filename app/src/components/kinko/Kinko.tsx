@@ -163,7 +163,8 @@ const star = "M0 -12 Q2 -2 12 0 Q2 2 0 12 Q-2 2 -12 0 Q-2 -2 0 -12 Z";
 
 /** Kin's mascot. `mood` overrides the face (sad, celebrate = arms up + sparkles). */
 /** `avatar`: head-and-shoulders crop, no animation — for small profile pictures in lists. */
-export function Kinko({ look = DEFAULT_LOOK, mood = "happy", size = 120, avatar = false }: { look?: Look; mood?: Mood; size?: number; avatar?: boolean }) {
+/** `viewBox`: custom crop (e.g. the QR badge needs room above the head for hats). */
+export function Kinko({ look = DEFAULT_LOOK, mood = "happy", size = 120, avatar = false, viewBox }: { look?: Look; mood?: Mood; size?: number; avatar?: boolean; viewBox?: string }) {
   const skin = SKINS[look.skin] ?? SKINS.classic;
   const party = mood === "celebrate";
   const face = mood === "sad" || party ? mood : look.expression;
@@ -181,7 +182,7 @@ export function Kinko({ look = DEFAULT_LOOK, mood = "happy", size = 120, avatar 
     <>
       {/* Outside <svg> so React 19 hoists it to <head> once instead of per character. */}
       <style href="kinko" precedence="default">{CSS}</style>
-    <svg viewBox={avatar ? "22 10 156 156" : "-12 -16 224 222"} width={size} height={size} style={style} role="img" aria-label="Kinko" className={`shrink-0 ${avatar ? "" : "overflow-visible"}`}>
+    <svg viewBox={viewBox ?? (avatar ? "22 10 156 156" : "-12 -16 224 222")} width={size} height={size} style={style} role="img" aria-label="Kinko" className={`shrink-0 ${avatar ? "" : "overflow-visible"}`}>
       <ellipse cx={100} cy={196} rx={50} ry={7} fill={INK} opacity={0.12} />
       <g className={avatar ? undefined : party ? "kinko-hop" : "kinko-bob"}>
         {arm(26, 1)}

@@ -9,7 +9,7 @@ export const QUIET = 4; // quiet zone, modules
 export function qrArt(text: string) {
   const { size, data } = QRCode.create(text, { errorCorrectionLevel: "H" }).modules;
   const c = size / 2;
-  const logo = size * 0.22; // badge diameter
+  const logo = size * 0.26; // badge diameter
   const eyes: [number, number][] = [[0, 0], [size - 7, 0], [0, size - 7]];
   const inEye = (x: number, y: number) => eyes.some(([ex, ey]) => x >= ex && x < ex + 7 && y >= ey && y < ey + 7);
   const r = 0.46;

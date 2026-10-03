@@ -6,7 +6,7 @@ import { QR_BG, QR_INK, QUIET, qrArt } from "@/lib/qrArt";
 /** Kin's one payment QR: round dots, rounded eyes, my Kinko in the middle. Always dark-on-light so every camera reads it. */
 export function PayQr({ text, label, svgRef }: { text: string; label: string; svgRef?: Ref<SVGSVGElement> }) {
   const { size, dots, eyes, c, logo } = qrArt(text);
-  const k = logo * 0.86;
+  const k = logo * 0.96;
   return (
     <svg ref={svgRef} viewBox={`${-QUIET} ${-QUIET} ${size + 2 * QUIET} ${size + 2 * QUIET}`} role="img" aria-label={label} className="block aspect-square w-full">
       <rect x={-QUIET} y={-QUIET} width={size + 2 * QUIET} height={size + 2 * QUIET} fill={QR_BG} />
@@ -21,7 +21,7 @@ export function PayQr({ text, label, svgRef }: { text: string; label: string; sv
       <clipPath id="kin-qr-badge"><circle cx={c} cy={c} r={logo / 2} /></clipPath>
       <g clipPath="url(#kin-qr-badge)">
         <g transform={`translate(${c - k / 2} ${c - k / 2})`}>
-          <MyKinko avatar size={k} />
+          <MyKinko avatar viewBox="20 -16 160 160" size={k} />
         </g>
       </g>
     </svg>
