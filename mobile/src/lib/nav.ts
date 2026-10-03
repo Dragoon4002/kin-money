@@ -41,6 +41,7 @@ export const NATIVE: Record<string, string> = {
   "/allowance": "/allowance",
   "/allowance/[id]": "/allowance/[id]",
   "/chores": "/chores",
+  "/chores/[id]": "/chores/[id]",
   "/autopay": "/autopay",
   "/autopay/[id]": "/autopay/[id]",
   "/earmark": "/earmark",

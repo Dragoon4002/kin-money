@@ -28,7 +28,7 @@ export function POST(req: Request) {
       const e = await publicClient.readContract({ address: addr.escrow, abi: KinEscrowAbi, functionName: "escrows", args: [id] });
       const [from, unlockAt, , , settled, to, , , amount] = e;
       if (!isAddressEqual(from, me) || unlockAt !== 1 || settled || !has(addresses, to)) return bad("forbidden", 403);
-      tell = [{ to, title: `${who} gave you a chore`, body: `Do it and earn ${formatMoney(amount, "USD")}.`, url: "/chores" }];
+      tell = [{ to, title: `${who} gave you a chore`, body: `Do it and earn ${formatMoney(amount, "USD")}.`, url: `/chores/${id}` }];
     } else {
       const members =
         kind === "pot"

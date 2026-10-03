@@ -132,7 +132,7 @@ export async function messageFor(log: RpcLog, ctx: Ctx): Promise<{ to: Address; 
     const kid = await who(topicAddr(t2), "Someone");
     const to = same(e.approver, ZERO) ? e.from : e.approver;
     const t = `escrow-${topicNum(t1)}`;
-    if (e.unlockAt === 1) return { to, msg: { title: `${kid} says the chore is done`, body: "Take a look and OK it.", url: "/chores", tag: t } };
+    if (e.unlockAt === 1) return { to, msg: { title: `${kid} says the chore is done`, body: "Take a look and OK it.", url: `/chores/${topicNum(t1)}`, tag: t } };
     if (same(e.approver, e.from)) return { to, msg: { title: `${kid} is asking for emergency money`, body: "Tap to OK it.", url: "/allowance", tag: t } };
     return { to, msg: { title: `${kid} is asking you to OK a payment`, body: "Tap to take a look.", url: "/activity", tag: t } };
   }

@@ -42,7 +42,7 @@ assert.equal(await messageFor(log(ausd, [T, pad(kid), pad(kid)], usd(1)), ctx), 
 // Escrow pings
 const R = toEventSelector("Requested(uint256,address)");
 m = await messageFor(log(escrow, [R, id(1), pad(kid)]), ctx);
-assert.deepEqual([m?.to, m?.msg.title, m?.msg.url], [mum, "@kid says the chore is done", "/chores"]);
+assert.deepEqual([m?.to, m?.msg.title, m?.msg.url], [mum, "@kid says the chore is done", "/chores/1"]);
 m = await messageFor(log(escrow, [R, id(2), pad(kid)]), ctx);
 assert.deepEqual([m?.to, m?.msg.title, m?.msg.url], [mum, "@kid is asking for emergency money", "/allowance"]);
 m = await messageFor(log(escrow, [R, id(3), pad(nameless)]), ctx);

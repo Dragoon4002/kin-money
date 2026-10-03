@@ -1,15 +1,16 @@
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { Fragment, useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, View } from "react-native";
 import type { Address } from "viem";
 import { Caption, Delivered } from "@/components/allowance/bits";
 import { Kinko } from "@/components/Kinko";
 import { PersonPicker, type Person } from "@/components/PersonPicker";
-import { Choice, Empty, Loading, MoneyInput, Status, Who, getMeta, setMeta, share, useAction, useLoad, useMe, useNow, useBack } from "@/components/programs/kit";
+import { Choice, Empty, Loading, MoneyInput, Status, Who, share, useAction, useLoad, useMe, useBack } from "@/components/programs/kit";
+import { dueLabel, keepChoreMeta, saveChoreMeta, useChore, useChoreMeta, type ChoreMeta } from "@/components/programs/chores";
 import { Band, Button, Chip, ErrorText, Field, Footer, IconTile, Label, Row, Screen, Serif, Text, TextInput, useInputStyle } from "@/components/ui";
 import { KinEscrowAbi } from "@/lib/abi";
 import { addr, API_BASE } from "@/lib/config";
-import { api, recordPayment } from "@/lib/contacts";
+import { api } from "@/lib/contacts";
 import { ICON } from "@/lib/icons";
 import { useKinko } from "@/lib/kinko";
 import { formatMoney, fromLocal } from "@/lib/money";
@@ -19,11 +20,8 @@ import { useTheme } from "@/theme";
 
 // Port of app/src/app/chores/page.tsx. Family chores: parent holds the reward (to = kid, approver = parent,
 // unlockAt = CHORE_MARK, 30-day exit). Kid taps "I did it!" (ping) → parent checks and pays (approve).
-// Titles aren't onchain: they live on each phone under kin.chore.<id> and travel in the share link (/chores?c=&t=&d=).
+// Titles aren't onchain: the poster saves them via /api/chores (plus a copy on each phone, and in the share link /chores?c=&t=&d=).
 
-type Meta = { t: string; due: number };
-const metaKey = (id: bigint | string) => `kin.chore.${id}`;
-const titleOf = (id: bigint) => getMeta<Meta>(metaKey(id))?.t || "A chore";
 const DAY = 86_400;
 const IDEAS = ["Dishes", "Made bed", "Homework", "Walk the dog", "Tidy room"];
 
@@ -37,7 +35,7 @@ export default function ChoresPage() {
 
   // Kid opened the parent's link: remember the chore's title on this phone.
   useEffect(() => {
-    if (q.c && /^\d+$/.test(q.c) && q.t) setMeta(metaKey(q.c), { t: q.t.slice(0, 40), due: Number(q.d) || 0 });
+    if (q.c && /^\d+$/.test(q.c) && q.t) keepChoreMeta(q.c, { t: q.t.slice(0, 40), due: Number(q.d) || 0 });
   }, [q.c, q.t, q.d]);
 
   // Parent sees "done" taps without a refresh.
@@ -46,9 +44,11 @@ export default function ChoresPage() {
     return () => clearInterval(i);
   }, [reload]);
 
+  const all = data?.escrows ?? [];
+  const metaOf = useChoreMeta(all.map((e) => e.id));
+
   if (creating) return <NewChore me={me} onClose={() => { setCreating(false); reload(); }} />;
 
-  const all = data?.escrows ?? [];
   // ponytail: "done" = a recent ask in the log window (~15 min); older asks fall back to "To do". Add an indexer if that bites.
   const done = (e: Escrow) => (data?.pinged.get(e.id) ?? 0) > 0;
   const check = all.filter((e) => same(e.from, me) && !e.settled && done(e));
@@ -72,13 +72,13 @@ export default function ChoresPage() {
       {check.length > 0 && (
         <>
           <Band>Done — check it</Band>
-          {check.map((e) => <Chore key={String(e.id)} e={e} me={me} done onDone={reload} />)}
+          {check.map((e) => <Chore key={String(e.id)} e={e} me={me} meta={metaOf(e.id)} done onDone={reload} />)}
         </>
       )}
       {todo.length > 0 && (
         <>
           <Band>To do</Band>
-          {todo.map((e) => <Chore key={String(e.id)} e={e} me={me} done={done(e)} onDone={reload} />)}
+          {todo.map((e) => <Chore key={String(e.id)} e={e} me={me} meta={metaOf(e.id)} done={done(e)} onDone={reload} />)}
         </>
       )}
       {paid.length > 0 && (
@@ -87,8 +87,9 @@ export default function ChoresPage() {
           {paid.map((e) => (
             <Row
               key={String(e.id)}
+              onPress={() => router.push(`/chores/${e.id}`)}
               icon={<IconTile icon={ICON.check} />}
-              title={titleOf(e.id)}
+              title={metaOf(e.id).t}
               sub={same(e.to, me) ? <>From <Who a={e.from} me={me} /></> : <Who a={e.to} me={me} />}
               trail={<Serif size={24} color={t.good}>+{formatMoney(e.amount)}</Serif>}
             />
@@ -113,42 +114,22 @@ function Pill({ title, onPress, brand, disabled }: { title: string; onPress: () 
   );
 }
 
-function Chore({ e, me, done, onDone }: { e: Escrow; me?: Address; done: boolean; onDone: () => void }) {
+function Chore({ e, me, meta, done, onDone }: { e: Escrow; me?: Address; meta: ChoreMeta; done: boolean; onDone: () => void }) {
   const t = useTheme();
-  const now = useNow(30_000);
-  const { busy, status, error, run } = useAction();
-  const [asked, setAsked] = useState(false);
-  const iDo = same(e.to, me);
-  const iCheck = same(e.from, me);
-  const due = getMeta<Meta>(metaKey(e.id))?.due;
-  const expired = now >= e.expiresAt;
-
-  async function act(fn: "ping" | "approve" | "refund") {
-    const ok = await run(async (say) => {
-      await call(addr.escrow, KinEscrowAbi, fn, [e.id]);
-      if (fn === "approve") say("Paying…");
-      return true;
-    });
-    if (!ok) return;
-    if (fn === "approve") void recordPayment(e.to, e.amount);
-    if (fn === "ping") setAsked(true);
-    onDone();
-  }
+  const { busy, status, error, step, act, iDo } = useChore(e, me, done, onDone);
 
   let trail;
   if (busy) trail = <ActivityIndicator color={t.brand} />;
-  else if (iCheck && expired) trail = <Pill title="Take it back" onPress={() => act("refund")} />;
-  else if (iCheck && done) trail = <Pill title="Looks good — pay" brand onPress={() => act("approve")} />;
-  else if (iDo && (done || asked)) trail = <Chip>Waiting for OK</Chip>;
-  else if (iDo && !expired) trail = <Pill title="I did it!" brand onPress={() => act("ping")} />;
-  else trail = <Chip>Not done yet</Chip>;
+  else if (step.fn) trail = <Pill title={step.label} brand={step.brand} onPress={act} />;
+  else trail = <Chip tone={step.tone}>{step.label}</Chip>;
 
-  const dueText = due ? ` · due ${dueLabel(due)}` : "";
+  const dueText = meta.due ? ` · due ${dueLabel(meta.due)}` : "";
   return (
     <Fragment>
       <Row
+        onPress={() => router.push(`/chores/${e.id}`)}
         icon={<IconTile icon={ICON.chores} />}
-        title={<>{titleOf(e.id)} · {formatMoney(e.amount)}</>}
+        title={<>{meta.t} · {formatMoney(e.amount)}</>}
         sub={busy ? status : iDo ? <>From <Who a={e.from} me={me} />{dueText}</> : <><Who a={e.to} me={me} />{dueText}</>}
         trail={trail}
       />
@@ -156,11 +137,6 @@ function Chore({ e, me, done, onDone }: { e: Escrow; me?: Address; done: boolean
     </Fragment>
   );
 }
-
-const dueLabel = (t: number) => {
-  const d = Math.round((new Date(t * 1000).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86_400_000);
-  return d <= 0 ? "today" : d === 1 ? "tomorrow" : new Date(t * 1000).toLocaleDateString(undefined, { weekday: "long" });
-};
 
 const DUE = [
   { value: 0, label: "Today" },
@@ -189,7 +165,7 @@ function NewChore({ me, onClose }: { me?: Address; onClose: () => void }) {
       const hash = await call(addr.escrow, KinEscrowAbi, "create", [kid.address, ZERO, me, CHORE_MARK, expiryAfter(nowSec()), 0], { fund: value });
       say("Posting the chore…");
       const id = await createdId(hash, KinEscrowAbi, "Created");
-      setMeta(metaKey(id), { t, due });
+      saveChoreMeta(id, { t, due });
       void api("/api/notify-added", "POST", { kind: "chore", id: id.toString(), addresses: [kid.address] }).catch(() => {});
       setPosted({ id, due });
     });

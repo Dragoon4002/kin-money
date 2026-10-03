@@ -17,20 +17,21 @@ export default function JarDetail() {
   const t = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const me = useMe();
+  const valid = /^\d{1,30}$/.test(id ?? "");
   const { data, error, reload } = useLoad(async () => {
-    const [pot, adds] = await Promise.all([getPot(BigInt(id)), potAdds(BigInt(id))]);
+    const [pot, adds] = await Promise.all([getPot(BigInt(id)), potAdds(BigInt(id)).catch(() => [])]);
     return { pot, adds };
-  }, id && /^\d+$/.test(id) ? id : undefined);
+  }, valid ? id : undefined);
   const [amount, setAmount] = useState("");
   const [sheet, setSheet] = useState<"" | "add" | "break">("");
   const [party, setParty] = useState(0n);
   const { busy, status, error: actionError, run } = useAction();
 
-  if (!data) return <Screen title="Savings jar" back>{error ? <ErrorText>{error}</ErrorText> : <Loading />}</Screen>;
+  const missing = <Screen title="Savings jar" back><ErrorText>We couldn&apos;t find this jar.</ErrorText></Screen>;
+  if (!valid) return missing;
+  if (!data || !me) return <Screen title="Savings jar" back>{error ? <ErrorText>{error}</ErrorText> : <Loading />}</Screen>;
   const { pot, adds } = data;
-  if (!pot.target || !isJar(pot) || !same(pot.beneficiaries[0], me)) {
-    return <Screen title="Savings jar" back><ErrorText>We couldn&apos;t find this jar.</ErrorText></Screen>;
-  }
+  if (!pot.target || !isJar(pot) || !same(pot.beneficiaries[0], me)) return missing;
   const { name, icon } = jarMeta(pot.id);
   const pct = pot.closed ? 0 : Number(pot.balance) / Number(pot.target);
   const left = pot.target - pot.balance;

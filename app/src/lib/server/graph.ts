@@ -43,6 +43,7 @@ export async function q<T = Record<string, unknown>>(cypher: string, params: Rec
     ready = Promise.all([
       driver.executeQuery("CREATE CONSTRAINT person_address IF NOT EXISTS FOR (p:Person) REQUIRE p.address IS UNIQUE"),
       driver.executeQuery("CREATE CONSTRAINT rate_key IF NOT EXISTS FOR (r:Rate) REQUIRE r.key IS UNIQUE"),
+      driver.executeQuery("CREATE CONSTRAINT chore_id IF NOT EXISTS FOR (c:Chore) REQUIRE c.id IS UNIQUE"),
     ]);
   }
   await ready;
