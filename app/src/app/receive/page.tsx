@@ -8,6 +8,7 @@ import { useRequireAccount } from "@/lib/account";
 import { formatMoney, fromLocal } from "@/lib/money";
 import { useCurrencySymbol } from "@/lib/useCurrencySymbol";
 import { payLink } from "@/lib/payLink";
+import { shortAddr } from "@/lib/names";
 import { walletUri } from "@/lib/walletUri";
 
 const SCAN_LINE = "Scan with Kin or any wallet app";
@@ -41,6 +42,7 @@ export default function Receive() {
   const handle = profile?.name;
   const [amount, setAmount] = useState("");
   const [copied, setCopied] = useState(false);
+  const [addrCopied, setAddrCopied] = useState(false);
   const qrRef = useRef<SVGSVGElement>(null);
   const symbol = useCurrencySymbol();
   const units = /^\d{1,9}(\.\d{0,2})?$/.test(amount) && Number(amount) > 0 ? fromLocal(amount) : 0n;
@@ -66,6 +68,12 @@ export default function Receive() {
     if ((await share(shareText, url)) === "copied") setCopied(true);
   }
 
+  // Some wallets show the scanned address instead of a pay screen: let people copy it to compare or paste.
+  async function copyAddress() {
+    if (!profile) return;
+    await navigator.clipboard?.writeText(profile.address).then(() => setAddrCopied(true), () => {});
+  }
+
   async function copyLink() {
     await navigator.clipboard?.writeText(url).then(() => setCopied(true), () => {});
   }
@@ -86,6 +94,12 @@ export default function Receive() {
               {qr && url ? <PayQr svgRef={qrRef} text={qr} label={`QR code to pay @${handle}`} /> : <div className="aspect-square w-full animate-pulse rounded-3xl bg-surface-2" />}
             </div>
             <p className="mt-3 text-sm text-muted">{SCAN_LINE}</p>
+            {profile && (
+              <button type="button" onClick={copyAddress} className="mt-2 flex min-h-11 flex-col items-center rounded-full px-4 py-1 active:bg-brand-soft">
+                <span className="text-sm font-semibold text-brand">{addrCopied ? "Copied ✓" : "Copy wallet address"}</span>
+                <span className="font-mono text-xs text-muted">{shortAddr(profile.address)}</span>
+              </button>
+            )}
           </section>
           <Field label="Ask for an amount (optional)">
             <div className="relative">

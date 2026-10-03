@@ -2,12 +2,12 @@ import * as Clipboard from "expo-clipboard";
 import { File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import { type Ref, useMemo, useRef, useState } from "react";
-import { Linking, Platform, Share, ToastAndroid, View } from "react-native";
+import { Linking, Platform, Pressable, Share, ToastAndroid, View } from "react-native";
 import Svg, { Circle, ClipPath, Defs, G, Path, Rect } from "react-native-svg";
 import { KinkoArt } from "@/components/Kinko";
 import { Button, Label, Screen, Serif, Text, TextInput, useInputStyle } from "@/components/ui";
 import { useAccount } from "@/lib/account";
-import { useAvatarLook } from "@/lib/names";
+import { shortAddr, useAvatarLook } from "@/lib/names";
 import { currencySymbol, formatMoney, fromLocal } from "@/lib/money";
 import { payLink, walletUri } from "@/lib/payLink";
 import { QR_BG, QR_INK, QUIET, qrArt } from "@/lib/qrArt";
@@ -50,6 +50,7 @@ export default function Receive() {
   const handle = profile?.name ?? "";
   const [amount, setAmount] = useState("");
   const [linkCopied, setLinkCopied] = useState(false);
+  const [addrCopied, setAddrCopied] = useState(false);
   // Amount is optional: with it, the payer's screen opens pre-filled with this exact amount.
   const units = /^\d{1,9}(\.\d{0,2})?$/.test(amount) && Number(amount) > 0 ? fromLocal(amount) : 0n;
   const url = handle ? payLink(handle, units) : "";
@@ -92,6 +93,17 @@ export default function Receive() {
           {url && qr ? <PayQr svgRef={qrRef} text={qr} label={`QR code to pay @${handle}`} /> : null}
         </View>
         <Text style={{ color: t.muted, textAlign: "center", marginTop: 8 }}>{SCAN_LINE}</Text>
+        {/* Some wallets show the scanned address instead of a pay screen: let people copy it to compare or paste. */}
+        {profile && (
+          <Pressable accessibilityRole="button" style={{ minHeight: 44, alignItems: "center", justifyContent: "center", paddingHorizontal: 16 }}
+            onPress={() => void Clipboard.setStringAsync(profile.address).then(() => {
+              if (Platform.OS === "android") ToastAndroid.show("Copied", ToastAndroid.SHORT);
+              setAddrCopied(true);
+            })}>
+            <Text style={{ color: t.brand, fontWeight: "600" }}>{addrCopied ? "Copied ✓" : "Copy wallet address"}</Text>
+            <Text style={{ color: t.muted, fontSize: 12, fontFamily: "monospace" }}>{shortAddr(profile.address)}</Text>
+          </Pressable>
+        )}
       </View>
       <Label>Ask for an amount (optional)</Label>
       <View style={{ justifyContent: "center" }}>
