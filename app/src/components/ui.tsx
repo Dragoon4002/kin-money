@@ -10,7 +10,7 @@ import { usePrivate } from "@/lib/privacy";
 
 export function Screen({ title, back, children, action, wide }: { title?: ReactNode; back?: string; children: ReactNode; action?: ReactNode; wide?: boolean }) {
   return (
-    <main className={`flex flex-1 flex-col pb-[max(7rem,calc(env(safe-area-inset-bottom)+6rem))] pt-[max(1rem,env(safe-area-inset-top))] ${wide ? "" : "px-5"}`}>
+    <main className={`flex flex-1 flex-col pb-[max(1.25rem,calc(env(safe-area-inset-bottom)+1rem))] pt-[max(1rem,env(safe-area-inset-top))] ${wide ? "" : "px-5"}`}>
       {(title || back || action) && (
         <header className={`mb-5 flex min-h-11 items-center gap-3 ${wide ? "px-5" : ""}`}>
           {back && (

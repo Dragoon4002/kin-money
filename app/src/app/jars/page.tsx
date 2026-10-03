@@ -2,7 +2,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { Address } from "viem";
-import { Empty, Loading, MoneyInput, Pad, Status, jarKey, jarMeta, setMeta, useAction, useLoad, useMe } from "@/components/programs/kit";
+import { Empty, Loading, MoneyInput, Pad, Status, jarKey, jarMeta, setMeta, useAction, useLoad, useMe, OldPots } from "@/components/programs/kit";
 import { Amount, Band, Button, Chip, ErrorText, Field, Ico, IconTile, Ring, Row, Screen, inputClass } from "@/components/ui";
 import type { IconName } from "@/lib/icons";
 import { KinPotAbi } from "@/lib/abi";
@@ -50,6 +50,7 @@ export default function JarsPage() {
           />
         );
       })}
+      <OldPots me={me} jars={true} />
       <Pad className="mt-auto pt-4">
         <Button onClick={() => setCreating(true)}>New jar</Button>
       </Pad>

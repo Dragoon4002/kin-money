@@ -6,7 +6,8 @@ import { GAS_CAP, allow, clientIp, once, submit } from "@/lib/server/relayer";
 const ausdAbi = parseAbi([
   "function transferWithAuthorization(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce,bytes signature)",
 ]);
-const KIN = new Set([addr.names, addr.escrow, addr.stream, addr.pot, addr.circle, addr.mandate, addr.giftlink].map((a) => a.toLowerCase()));
+const OLD_POT = "0x58ab4Da1575758be9d4Fe53bdB79fabe8F4C2caD"; // pre-redeploy KinPot (lib/programs.ts OLD_POT): only close() is used
+const KIN = new Set([addr.names, addr.escrow, addr.stream, addr.pot, addr.circle, addr.mandate, addr.giftlink, OLD_POT].map((a) => a.toLowerCase()));
 const MAX_DEADLINE_S = 3600;
 
 const bad = (error: string, status = 400) => Response.json({ error }, { status });

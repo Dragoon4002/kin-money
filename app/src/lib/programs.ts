@@ -184,6 +184,28 @@ export async function getPot(id: bigint): Promise<Pot & { mine: Map<Address, big
   return { id, beneficiaries: [...beneficiaries], toAll, target, balance, round, closed, members: [...members], creator: ZERO, mine: new Map(members.map((m, i) => [m, amounts[i]])) };
 }
 
+// ponytail: pots and jars made before the 2026-10-03 KinPot redeploy live in the old contract.
+// Only close() is needed (receiver takes the balance); drop this once those pots are empty.
+export const OLD_POT: Address = "0x58ab4Da1575758be9d4Fe53bdB79fabe8F4C2caD";
+export const OldPotAbi = [
+  { type: "function", name: "count", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+  { type: "function", name: "pots", stateMutability: "view", inputs: [{ type: "uint256" }], outputs: [{ type: "address" }, { type: "uint96" }, { type: "uint96" }, { type: "uint64" }, { type: "bool" }] },
+  { type: "function", name: "membersOf", stateMutability: "view", inputs: [{ type: "uint256" }], outputs: [{ type: "address[]" }] },
+  { type: "function", name: "close", stateMutability: "nonpayable", inputs: [{ name: "id", type: "uint256" }], outputs: [] },
+] as const;
+export type OldPot = { id: bigint; target: bigint; balance: bigint; jar: boolean };
+
+/** Old pots that pay out to me and still hold money. Jar = I'm also the only member. */
+export async function listOldPots(me: Address): Promise<OldPot[]> {
+  type Row = readonly [Address, bigint, bigint, bigint, boolean];
+  const rows = await scan<Row>(OLD_POT, OldPotAbi as unknown as Kin, "pots", ([to, , bal, , closed]) => same(to, me) && !closed && bal > 0n);
+  const members = await publicClient.multicall({
+    contracts: rows.map(([id]) => ({ address: OLD_POT, abi: OldPotAbi, functionName: "membersOf", args: [id] }) as const),
+    allowFailure: false,
+  });
+  return rows.map(([id, [, target, balance]], i) => ({ id, target, balance, jar: members[i].length === 1 && same(members[i][0], me) }));
+}
+
 export async function listPots(me: Address): Promise<Pot[]> {
   type Row = readonly [bigint, bigint, bigint, boolean, boolean];
   const rows = await scan<Row>(addr.pot, KinPotAbi, "pots", () => true);

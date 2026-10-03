@@ -2,7 +2,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { Address } from "viem";
-import { Choice, Empty, Loading, MoneyInput, Pad, PotFor, Status, Who, WhoAvatar, useAction, useLoad, useMe } from "@/components/programs/kit";
+import { Choice, Empty, Loading, MoneyInput, Pad, PotFor, Status, Who, WhoAvatar, useAction, useLoad, useMe, OldPots } from "@/components/programs/kit";
 import { PersonPicker, type Person } from "@/components/PersonPicker";
 import { Band, Button, Chip, ErrorText, Ico, IconTile, Ring, Row, Screen } from "@/components/ui";
 import { KinPotAbi } from "@/lib/abi";
@@ -49,6 +49,7 @@ export default function PotPage() {
           />
         );
       })}
+      <OldPots me={me} jars={false} />
       <Pad className="mt-auto pt-4">
         <Button onClick={() => setCreating(true)}>Start a pot</Button>
       </Pad>

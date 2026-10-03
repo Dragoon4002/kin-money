@@ -5,7 +5,8 @@ import { NavBar } from "@/components/core/NavBar";
 export default function TabsLayout({ children }: LayoutProps<"/">) {
   return (
     <>
-      {children}
+      {/* room for the floating nav; screens outside tabs keep only the safe-area gap, so bottom buttons sit low */}
+      <div className="flex flex-1 flex-col pb-[5.75rem]">{children}</div>
       <NavBar />
     </>
   );
