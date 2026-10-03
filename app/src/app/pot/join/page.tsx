@@ -146,7 +146,7 @@ export default function JoinPot() {
         {phase !== "joined" && info && !blocked && !profile && (
           <>
             <Button onClick={() => setPhase("signup")}>Create free account to join</Button>
-            <p className="text-center text-xs text-muted">Takes 20 seconds. Just your name and Face ID.</p>
+            <p className="text-center text-xs text-muted">Takes 20 seconds. Just your name and an Identity check.</p>
           </>
         )}
         {info && blocked && (

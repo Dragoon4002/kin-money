@@ -206,7 +206,7 @@ function Emergency({ s, me, reserve, asked, isPayer, onDone }: { s: Stream; me?:
         <div>
           <p className="flex items-center gap-2 font-semibold"><Ico name="emergency" /> Emergency fund</p>
           <p className="text-sm text-muted">
-            Put some aside that <Who a={s.payee} me={me} /> can ask for in a pinch. You send it with one Face ID. Unused, it comes back to you in 30 days.
+            Put some aside that <Who a={s.payee} me={me} /> can ask for in a pinch. You send it with one Identity check. Unused, it comes back to you in 30 days.
           </p>
         </div>
         <MoneyInput label="Amount" value={amount} onChange={setAmount} />

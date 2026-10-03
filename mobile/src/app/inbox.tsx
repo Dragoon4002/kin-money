@@ -47,7 +47,7 @@ export default function Inbox() {
       {!canRead && (
         <View style={{ alignItems: "center", gap: 12, borderRadius: 24, borderWidth: 1, borderColor: t.line, backgroundColor: t.surface, padding: 20 }}>
           <Text style={{ color: t.ink, fontWeight: "600" }}>Your notifications are private</Text>
-          <Button title="Confirm with Face ID" onPress={() => unlock().catch((e) => setErr(humanError(e)))} />
+          <Button title="Confirm with Identity check" onPress={() => unlock().catch((e) => setErr(humanError(e)))} />
         </View>
       )}
       <ErrorText>{err}</ErrorText>

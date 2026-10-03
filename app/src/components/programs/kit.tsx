@@ -50,7 +50,7 @@ export function useAction() {
   async function run<T>(fn: (say: (s: string) => void) => Promise<T>): Promise<T | undefined> {
     setBusy(true);
     setError("");
-    setStatus(isUnlocked() ? "Working on it…" : "Confirm with Face ID…");
+    setStatus(isUnlocked() ? "Working on it…" : "Confirm with Identity check…");
     try {
       return await fn(setStatus);
     } catch (e) {

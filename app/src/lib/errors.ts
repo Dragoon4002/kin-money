@@ -4,9 +4,9 @@ import { isMeraError } from "@category-labs/mera";
 export function humanError(e: unknown): string {
   if (isMeraError(e)) {
     switch (e.code) {
-      case "PASSKEY_OPERATION_FAILED": return "Face ID was cancelled. Try again.";
+      case "PASSKEY_OPERATION_FAILED": return "Identity check was cancelled. Try again.";
       case "PRF_UNAVAILABLE": return "This device can't hold a Kin account. Use your phone's built-in password manager.";
-      case "SESSION_ENDED": return "Locked for safety. Confirm with Face ID.";
+      case "SESSION_ENDED": return "Locked for safety. Confirm with Identity check.";
     }
   }
   const msg = e instanceof Error ? e.message : String(e);

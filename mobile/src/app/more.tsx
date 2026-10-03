@@ -45,7 +45,7 @@ export default function More() {
       setPay(next);
     };
     // ponytail: limit editable on web only (Me → When I pay); phone keeps its own, default $50.
-    Alert.alert("When I pay", "When Kin is locked, every payment asks for Face ID. Kin still locks after 5 minutes of no use.", [
+    Alert.alert("When I pay", "When Kin is locked, every payment asks for an Identity check. Kin still locks after 5 minutes of no use.", [
       { text: "Ask every time", onPress: pick("always") },
       { text: over, onPress: pick("over") },
       { text: "Don’t ask again while unlocked", onPress: pick("unlocked") },
@@ -63,7 +63,7 @@ export default function More() {
 
   function remove() {
     const extra = accounts.length > 1 ? " Accounts you added from other wallets are forgotten too: you’ll need their recovery phrase to add them again." : "";
-    Alert.alert("Remove Kin from this phone?", `Your money stays safe. Unlock again any time with Face ID.${extra}`, [
+    Alert.alert("Remove Kin from this phone?", `Your money stays safe. Unlock again any time with an Identity check.${extra}`, [
       { text: "Cancel", style: "cancel" },
       { text: "Remove", style: "destructive", onPress: () => void signOut().then(() => (router.dismissAll(), router.replace("/onboard"))) },
     ]);

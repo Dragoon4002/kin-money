@@ -127,10 +127,10 @@ export function Onboard({ onDone, start = "name" }: { onDone: () => void; start?
       <Field label="First name">
         <input className={inputClass} value={first} onChange={(e) => setFirst(e.target.value)} autoComplete="given-name" maxLength={40} autoFocus />
       </Field>
-      <p className="text-sm text-muted">No password, no forms. Your phone&apos;s Face ID keeps your account safe.</p>
+      <p className="text-sm text-muted">No password, no forms. Your phone&apos;s Identity check keeps your account safe.</p>
       <ErrorText>{err}</ErrorText>
       <div className="mt-auto">
-        <Button type="submit" busy={busy} disabled={!first.trim()}>Create with Face ID</Button>
+        <Button type="submit" busy={busy} disabled={!first.trim()}>Create with Identity check</Button>
       </div>
     </form>
   );

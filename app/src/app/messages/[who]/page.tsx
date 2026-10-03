@@ -175,7 +175,7 @@ export default function ChatPage() {
         {!canRead && (
           <Card className="m-auto flex flex-col items-center gap-3 text-center">
             <p className="font-semibold">Your messages are private</p>
-            <Button onClick={() => unlock().catch((e) => setErr(humanError(e)))}>Confirm with Face ID</Button>
+            <Button onClick={() => unlock().catch((e) => setErr(humanError(e)))}>Confirm with Identity check</Button>
           </Card>
         )}
         {canRead && !msgs && !missing && <div className="m-auto size-6 animate-spin rounded-full border-2 border-muted border-t-transparent" aria-label="Loading" />}

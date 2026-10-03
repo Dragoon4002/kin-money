@@ -3,7 +3,7 @@ import { Amount, Button, Chip, ErrorText, Ico, IconTile } from "@/components/ui"
 import type { IconName } from "@/lib/icons";
 
 const STEPS: [IconName, string, string][] = [
-  ["safe", "Make your account with Face ID", "No passwords, no forms. Ready in seconds."],
+  ["safe", "Make your account with an Identity check", "No passwords, no forms. Ready in seconds."],
   ["qr", "Send by @name or QR", "Pick someone you love. They get it in a second."],
   ["sparkle", "Money that behaves", "Allowances that grow, pots that pay, jars that save."],
 ];
@@ -27,8 +27,8 @@ const WHO: [IconName, string, string][] = [
 
 const FAQ: [string, string][] = [
   ["Is it really free?", "Yes. Sending money to family costs nothing."],
-  ["Is my money safe?", "Only you can move it. Every payment needs your Face ID."],
-  ["What if I lose my phone?", "Your account is saved in your phone's password manager. Sign in on your new phone with Face ID."],
+  ["Is my money safe?", "Only you can move it. Every payment needs an Identity check."],
+  ["What if I lose my phone?", "Your account is saved in your phone's password manager. Sign in on your new phone with an Identity check."],
   ["Who can I send to?", "Anyone, anywhere. If they're not on Kin yet, send them a link."],
 ];
 
@@ -57,7 +57,7 @@ export function Landing({ onStart, onUnlock, busy, err }: { onStart: () => void;
           <h1 className="font-display text-[3.4rem] leading-[1.02] tracking-tight md:text-7xl">
             Money for the people you <span className="text-brand">love</span>, anywhere.
           </h1>
-          <p className="max-w-md text-lg text-muted">Send dollars home in a second. Free, with just Face ID. Then set it to save, share and grow on its own.</p>
+          <p className="max-w-md text-lg text-muted">Send dollars home in a second. Free, with just an Identity check. Then set it to save, share and grow on its own.</p>
           <ErrorText>{err}</ErrorText>
           <div className="flex flex-col gap-2 md:max-w-xs">
             <Button onClick={onStart}>Get started</Button>
@@ -134,7 +134,7 @@ export function Landing({ onStart, onUnlock, busy, err }: { onStart: () => void;
           Your money is yours. No passwords, no fees, delivered in a second.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
-          <Chip><span className="inline-flex items-center gap-1.5"><Ico name="safe" size={14} />Face ID only</span></Chip>
+          <Chip><span className="inline-flex items-center gap-1.5"><Ico name="safe" size={14} />Identity check only</span></Chip>
           <Chip><span className="inline-flex items-center gap-1.5"><Ico name="dollar" size={14} />Free to send</span></Chip>
           <Chip><span className="inline-flex items-center gap-1.5"><Ico name="check" size={14} />Delivered ✓✓</span></Chip>
         </div>

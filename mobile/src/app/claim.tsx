@@ -101,7 +101,7 @@ export default function Claim() {
           ) : (
             <>
               <Button title="Create free account to collect" onPress={() => router.push("/onboard")} />
-              <Text style={{ color: t.muted, fontSize: 12, textAlign: "center" }}>Takes 20 seconds. Just your name and Face ID.</Text>
+              <Text style={{ color: t.muted, fontSize: 12, textAlign: "center" }}>Takes 20 seconds. Just your name and an Identity check.</Text>
             </>
           )}
         </Footer>

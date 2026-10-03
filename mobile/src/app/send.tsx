@@ -98,7 +98,7 @@ export default function Send() {
   async function send() {
     if (!ready || !person) return;
     setErr("");
-    setStatus(isUnlocked() ? "Sending…" : "Confirm with Face ID");
+    setStatus(isUnlocked() ? "Sending…" : "Confirm with Identity check");
     const slow = setTimeout(() => setStatus("Almost there…"), 2500);
     try {
       const account = await getAccount();

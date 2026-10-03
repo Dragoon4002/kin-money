@@ -121,12 +121,12 @@ export default function Onboard() {
         <Serif size={40} color={t.brand}>kin</Serif>
         <View style={{ flex: 1, justifyContent: "center", gap: 16 }}>
           <Serif size={52}>Money for the people you <Text style={{ color: t.brand }}>love</Text>, anywhere.</Serif>
-          <Text style={{ color: t.muted, fontSize: 18 }}>Send dollars home in a second. Free, with just Face ID.</Text>
+          <Text style={{ color: t.muted, fontSize: 18 }}>Send dollars home in a second. Free, with just an Identity check.</Text>
         </View>
         <ErrorText>{err}</ErrorText>
         <Button title="Create my account" onPress={() => setStep("name")} disabled={busy} />
         <Pressable onPress={haveKin} disabled={busy} style={{ height: 48, alignItems: "center", justifyContent: "center" }}>
-          <Text style={{ color: t.muted, fontWeight: "600" }}>{busy ? "Opening Face ID…" : "Already have Kin?"}</Text>
+          <Text style={{ color: t.muted, fontWeight: "600" }}>{busy ? "Opening Identity check…" : "Already have Kin?"}</Text>
         </Pressable>
       </Screen>
     );
@@ -164,10 +164,10 @@ export default function Onboard() {
         <Label>First name</Label>
         <TextInput style={input} value={first} onChangeText={setFirst} autoComplete="given-name" maxLength={40} autoFocus
           onSubmitEditing={() => first.trim() && createAccount()} />
-        <Text style={{ color: t.muted }}>No password, no forms. Your phone&apos;s Face ID keeps your account safe.</Text>
+        <Text style={{ color: t.muted }}>No password, no forms. Your phone&apos;s Identity check keeps your account safe.</Text>
         <ErrorText>{err}</ErrorText>
         <View style={{ marginTop: "auto" }}>
-          <Button title="Create with Face ID" onPress={createAccount} busy={busy} disabled={!first.trim()} />
+          <Button title="Create with Identity check" onPress={createAccount} busy={busy} disabled={!first.trim()} />
         </View>
       </Screen>
     </KeyboardAvoidingView>

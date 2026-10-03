@@ -144,7 +144,7 @@ export default function JoinPot() {
           <>
             {/* ponytail: onboarding lands on Home; reopen the link after. Add a `next` param to /onboard if that hurts. */}
             <Button title="Create free account to join" onPress={() => router.push("/onboard")} />
-            <Text style={{ ...muted, fontSize: 12 }}>Takes 20 seconds. Just your name and Face ID.</Text>
+            <Text style={{ ...muted, fontSize: 12 }}>Takes 20 seconds. Just your name and an Identity check.</Text>
           </>
         )}
         {!!info && !!blocked && openKin}

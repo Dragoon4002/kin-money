@@ -156,7 +156,7 @@ export default function OpenGiftLink() {
         {!!info && !info.settled && !isBound(info) && !profile && (
           <>
             <Button title="Create free account to accept" onPress={() => router.push("/onboard")} />
-            <Text style={[center, { color: t.muted, fontSize: 12 }]}>Takes 20 seconds. Just your name and Face ID.</Text>
+            <Text style={[center, { color: t.muted, fontSize: 12 }]}>Takes 20 seconds. Just your name and an Identity check.</Text>
           </>
         )}
         {mine && !info.settled && !locked && <Button title="Open gift" busy={phase === "opening"} onPress={open} />}

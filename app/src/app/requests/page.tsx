@@ -107,7 +107,7 @@ export default function RequestsPage() {
       {!canRead && (
         <Card className="mx-5 flex flex-col items-center gap-3 text-center">
           <p className="font-semibold">Your requests are private</p>
-          <Button onClick={() => unlock().catch((e) => setErr(humanError(e)))}>Confirm with Face ID</Button>
+          <Button onClick={() => unlock().catch((e) => setErr(humanError(e)))}>Confirm with Identity check</Button>
         </Card>
       )}
       {canRead && !lists && !err && <SkeletonRows />}

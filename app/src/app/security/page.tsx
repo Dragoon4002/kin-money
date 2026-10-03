@@ -102,7 +102,7 @@ function Warn({ onBack, onShown }: { onBack: () => void; onShown: (s: Secrets) =
       </label>
       <ErrorText>{err}</ErrorText>
       <div className="mt-auto">
-        <Button disabled={!ok} busy={busy} onClick={reveal}>Show with Face ID</Button>
+        <Button disabled={!ok} busy={busy} onClick={reveal}>Show with Identity check</Button>
       </div>
     </Screen>
   );
@@ -198,7 +198,7 @@ function Add({ kinAddress, onDone }: { kinAddress?: string; onDone: () => void }
 
   return (
     <Screen title="Add an account" action={<BackBtn onClick={onDone} />}>
-      <p className="text-sm text-muted">Paste the 12 or 24-word recovery phrase, or the private key, from your other wallet. It stays locked on this phone behind your Face ID.</p>
+      <p className="text-sm text-muted">Paste the 12 or 24-word recovery phrase, or the private key, from your other wallet. It stays locked on this phone behind your Identity check.</p>
       <textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} aria-label="Recovery phrase or private key"
         autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck={false} placeholder="word word word…"
         className="w-full rounded-2xl border border-line bg-surface p-4 text-base text-ink outline-none placeholder:text-muted focus:border-brand" />
@@ -211,7 +211,7 @@ function Add({ kinAddress, onDone }: { kinAddress?: string; onDone: () => void }
       ) : null}
       <ErrorText>{err}</ErrorText>
       <div className="mt-auto">
-        <Button disabled={!address || mine} busy={busy} onClick={add}>Add with Face ID</Button>
+        <Button disabled={!address || mine} busy={busy} onClick={add}>Add with Identity check</Button>
       </div>
     </Screen>
   );

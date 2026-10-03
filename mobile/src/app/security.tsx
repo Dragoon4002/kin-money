@@ -101,7 +101,7 @@ function Warn({ onBack, onShown }: { onBack: () => void; onShown: (s: Secrets) =
       </Pressable>
       <ErrorText>{err}</ErrorText>
       <View style={{ marginTop: "auto", gap: 8 }}>
-        <Button title="Show with Face ID" disabled={!ok} busy={busy} onPress={reveal} />
+        <Button title="Show with Identity check" disabled={!ok} busy={busy} onPress={reveal} />
         <Button title="Cancel" variant="ghost" onPress={onBack} />
       </View>
     </Screen>
@@ -204,7 +204,7 @@ function Add({ kinAddress, onDone }: { kinAddress?: string; onDone: () => void }
 
   return (
     <Screen title="Add an account" scroll>
-      <Text style={{ color: t.muted }}>Paste the 12 or 24-word recovery phrase, or the private key, from your other wallet. It stays locked on this phone behind your Face ID.</Text>
+      <Text style={{ color: t.muted }}>Paste the 12 or 24-word recovery phrase, or the private key, from your other wallet. It stays locked on this phone behind your Identity check.</Text>
       <TextInput value={text} onChangeText={setText} multiline accessibilityLabel="Recovery phrase or private key"
         autoComplete="off" autoCorrect={false} autoCapitalize="none" spellCheck={false} importantForAutofill="no"
         placeholder="word word word…" placeholderTextColor={t.muted}
@@ -218,7 +218,7 @@ function Add({ kinAddress, onDone }: { kinAddress?: string; onDone: () => void }
       ) : null}
       <ErrorText>{err}</ErrorText>
       <View style={{ marginTop: "auto", gap: 8 }}>
-        <Button title="Add with Face ID" disabled={!address || mine} busy={busy} onPress={add} />
+        <Button title="Add with Identity check" disabled={!address || mine} busy={busy} onPress={add} />
         <Button title="Cancel" variant="ghost" onPress={onDone} />
       </View>
     </Screen>

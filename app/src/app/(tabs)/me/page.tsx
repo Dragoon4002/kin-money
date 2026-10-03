@@ -27,7 +27,7 @@ const CURRENCY_NAME: Record<string, string> = {
 };
 const THEMES = [["system", "System"], ["light", "Light"], ["dark", "Dark"]] as const;
 const PAY_MODES: [PayCheck["mode"], string, string][] = [
-  ["always", "Ask every time", "Face ID for every payment"],
+  ["always", "Ask every time", "Identity check for every payment"],
   ["over", "Ask for bigger payments", "Small ones go straight through while Kin is unlocked"],
   ["unlocked", "Don’t ask again while unlocked", "Kin still locks after 5 minutes of no use"],
 ];
@@ -156,7 +156,7 @@ export default function Me() {
               onBlur={() => setLimitDraft(null)} />
           </label>
         )}
-        <p className="px-5 pb-3 text-xs text-muted">When Kin is locked, every payment asks for Face ID. Nothing that can spend your money is saved on this phone.</p>
+        <p className="px-5 pb-3 text-xs text-muted">When Kin is locked, every payment asks for an Identity check. Nothing that can spend your money is saved on this phone.</p>
 
         <Band>Notifications</Band>
         <label className="flex min-h-16 items-center gap-4 px-5">
@@ -190,7 +190,7 @@ export default function Me() {
 
         <Band>Backup</Band>
         <p className="px-5 py-4 text-sm text-muted">
-          {"Your account is backed up with your phone’s Face ID and password manager (iCloud Keychain or Google Password Manager). On a new phone, open Kin and tap “Already have Kin on another phone?”."}
+          {"Your account is backed up with your phone’s screen lock and password manager (iCloud Keychain or Google Password Manager). On a new phone, open Kin and tap “Already have Kin on another phone?”."}
         </p>
         <Row href="/security" icon={<IconTile name="safe" size={44} />} title="Security" sub="Recovery phrase, other accounts" trail={<Chev />} />
 
@@ -198,7 +198,7 @@ export default function Me() {
           <Button variant="ghost" onClick={() => (lock(), router.replace("/"))}>Lock now</Button>
           {confirmOut ? (
             <Card className="flex flex-col gap-3 text-sm">
-              <p>Remove Kin from this phone? Your money stays safe — come back anytime with Face ID.{accounts.length > 1 && " Accounts you added from other wallets are forgotten too: you’ll need their recovery phrase to add them again."}</p>
+              <p>Remove Kin from this phone? Your money stays safe — come back anytime with an Identity check.{accounts.length > 1 && " Accounts you added from other wallets are forgotten too: you’ll need their recovery phrase to add them again."}</p>
               <div className="grid grid-cols-2 gap-2">
                 <Button variant="ghost" onClick={() => setConfirmOut(false)}>Keep</Button>
                 <Button onClick={() => (signOut(), router.replace("/"))}>Remove</Button>

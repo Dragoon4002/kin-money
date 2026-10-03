@@ -169,7 +169,7 @@ export default function OpenGiftLink() {
         {info && !info.settled && !isBound(info) && !profile && (
           <>
             <Button onClick={() => setPhase("signup")}>Create free account to accept</Button>
-            <p className="text-center text-xs text-muted">Takes 20 seconds. Just your name and Face ID.</p>
+            <p className="text-center text-xs text-muted">Takes 20 seconds. Just your name and an Identity check.</p>
           </>
         )}
         {mine && !info.settled && !locked && <Button busy={phase === "opening"} onClick={open}>Open gift</Button>}

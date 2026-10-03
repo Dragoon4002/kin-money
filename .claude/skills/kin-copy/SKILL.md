@@ -13,7 +13,7 @@ Voice: warm, short, family-chat. Sentences ≤10 words on buttons/toasts. Senten
 | wallet / address / 0x… | account / @name / phone |
 | AUSD / token / stablecoin / USDC | dollars / money / balance |
 | gas / fee (network) | — (don't mention; it's free) |
-| sign / signature / approve | confirm with Face ID |
+| sign / signature / approve | confirm with Identity check |
 | transaction / tx / hash / block | payment / transfer / receipt |
 | confirmed / finalized | delivered ✓✓ |
 | mint / claim tokens | get money / collect |
@@ -26,9 +26,9 @@ Voice: warm, short, family-chat. Sentences ≤10 words on buttons/toasts. Senten
 ## Errors (map every failure)
 | Source | Copy |
 |---|---|
-| Mera `PASSKEY_OPERATION_FAILED` | "Face ID was cancelled. Try again." |
+| Mera `PASSKEY_OPERATION_FAILED` | "Identity check was cancelled. Try again." |
 | Mera `PRF_UNAVAILABLE` | "This device can't hold a Kin account. Use your phone's built-in password manager." |
-| Mera `SESSION_ENDED` | "Locked for safety. Confirm with Face ID." |
+| Mera `SESSION_ENDED` | "Locked for safety. Confirm with Identity check." |
 | insufficient balance | "Not enough in your balance. Add money first." |
 | relay 4xx/5xx, RPC timeout | "Couldn't send right now. Your money is safe — try again." |
 | name not found | "No one on Kin with that name yet. Send a link instead?" |

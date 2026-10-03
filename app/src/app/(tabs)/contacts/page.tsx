@@ -83,7 +83,7 @@ export default function ContactsPage() {
       {!canRead && (
         <Card className="mx-5 flex flex-col items-center gap-3 text-center">
           <p className="font-semibold">Your people are private</p>
-          <p className="text-sm text-muted">Confirm with Face ID to see them.</p>
+          <p className="text-sm text-muted">Confirm with Identity check to see them.</p>
           <Button onClick={() => unlock().catch((e) => setErr(humanError(e)))}>Show my people</Button>
         </Card>
       )}

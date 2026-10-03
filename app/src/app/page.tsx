@@ -81,7 +81,7 @@ export default function Welcome() {
           ) : (
             <>
               <h1 className="font-display text-[3.4rem] leading-[1.02] tracking-tight">Money for the people you <span className="text-brand">love</span>, anywhere.</h1>
-              <p className="text-lg text-muted">Send dollars home in a second. Free, with just Face ID.</p>
+              <p className="text-lg text-muted">Send dollars home in a second. Free, with just an Identity check.</p>
             </>
           )}
         </div>
@@ -89,7 +89,7 @@ export default function Welcome() {
         {ready && (
           <div className="mt-4 flex flex-col gap-2">
             {profile ? (
-              <Button busy={busy} onClick={doUnlock}>Unlock with Face ID</Button>
+              <Button busy={busy} onClick={doUnlock}>Unlock with Identity check</Button>
             ) : (
               <>
                 <Button onClick={() => setOnboard("name")}>Create my account</Button>

@@ -9,15 +9,15 @@ const passkeyCode = (e: unknown): string | undefined => {
 /** Map any failure to human copy (kin-copy skill). Never show err.message. */
 export function humanError(e: unknown): string {
   switch (passkeyCode(e)) {
-    case "UserCancelled": return "Face ID was cancelled. Try again.";
+    case "UserCancelled": return "Identity check was cancelled. Try again.";
     case "NoCredentials": return "No Kin account on this phone yet. Create one instead.";
-    case "RequestFailed": return "Face ID isn't ready for Kin on this phone. Try again soon.";
+    case "RequestFailed": return "Identity check isn't ready for Kin on this phone. Try again soon.";
   }
   if (isMeraError(e)) {
     switch (e.code) {
-      case "PASSKEY_OPERATION_FAILED": return "Face ID was cancelled. Try again.";
+      case "PASSKEY_OPERATION_FAILED": return "Identity check was cancelled. Try again.";
       case "PRF_UNAVAILABLE": return "This device can't hold a Kin account. Use your phone's built-in password manager.";
-      case "SESSION_ENDED": return "Locked for safety. Confirm with Face ID.";
+      case "SESSION_ENDED": return "Locked for safety. Confirm with Identity check.";
     }
   }
   const msg = e instanceof Error ? e.message : String(e);

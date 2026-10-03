@@ -115,7 +115,7 @@ export default function Chat() {
     if (!m.req || !me) return;
     setErr("");
     setPaying(m.ref);
-    setPayNote(isUnlocked() ? "Sending…" : "Confirm with Face ID");
+    setPayNote(isUnlocked() ? "Sending…" : "Confirm with Identity check");
     const slow = setTimeout(() => setPayNote(`Delivering to ${name}…`), 2500);
     try {
       const units = BigInt(m.req.amount);
@@ -183,7 +183,7 @@ export default function Chat() {
           {!canRead && (
             <View style={{ margin: "auto", alignItems: "center", gap: 12, borderRadius: 24, borderWidth: 1, borderColor: t.line, backgroundColor: t.surface, padding: 20 }}>
               <Text style={{ color: t.ink, fontWeight: "600" }}>Your messages are private</Text>
-              <Button title="Confirm with Face ID" onPress={() => unlock().catch((e) => setErr(humanError(e)))} />
+              <Button title="Confirm with Identity check" onPress={() => unlock().catch((e) => setErr(humanError(e)))} />
             </View>
           )}
           {canRead && !msgs && !missing && <ActivityIndicator color={t.muted} style={{ margin: "auto" }} />}

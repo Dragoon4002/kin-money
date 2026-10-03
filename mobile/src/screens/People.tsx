@@ -93,7 +93,7 @@ export default function People() {
         <Card>
           <View style={{ alignItems: "center", gap: 6 }}>
             <Text style={{ color: t.ink, fontWeight: "600" }}>Your people are private</Text>
-            <Text style={{ color: t.muted, fontSize: 14 }}>Confirm with Face ID to see them.</Text>
+            <Text style={{ color: t.muted, fontSize: 14 }}>Confirm with Identity check to see them.</Text>
           </View>
           <Button title="Show my people" onPress={() => unlock().catch((e) => setErr(humanError(e)))} />
         </Card>

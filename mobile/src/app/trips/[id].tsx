@@ -143,7 +143,7 @@ export default function TripPage() {
     setErr("");
     for (const [i, x] of list.entries()) {
       const step = list.length > 1 ? ` ${i + 1} of ${list.length}` : "";
-      setProgress(isUnlocked() ? `Paying ${nameOf(x.to)}…${step}` : "Confirm with Face ID…");
+      setProgress(isUnlocked() ? `Paying ${nameOf(x.to)}…${step}` : "Confirm with Identity check…");
       try {
         const hash = await sendDollars(x.to as Address, x.amount);
         setProgress(`Updating the trip…${step}`);

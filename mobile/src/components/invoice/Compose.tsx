@@ -88,7 +88,7 @@ export function Compose({ me, onClose }: { me?: Address; onClose: () => void }) 
       {ready && (
         <Card>
           <Text style={{ color: t.muted, fontSize: 14 }}>
-            Your client pays {formatMoney(total)} with Face ID. It&apos;s held safely and reaches you when they OK each part — or automatically after {days} quiet days.
+            Your client pays {formatMoney(total)} with an Identity check. It&apos;s held safely and reaches you when they OK each part — or automatically after {days} quiet days.
           </Text>
         </Card>
       )}
