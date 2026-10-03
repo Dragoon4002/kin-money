@@ -5,7 +5,7 @@ import { Button, ErrorText, Screen, Text } from "@/components/ui";
 import { unlock, useAccount } from "@/lib/account";
 import { humanError } from "@/lib/errors";
 import { ago, listInbox, markInboxRead, onLive, type Notice } from "@/lib/live";
-import { openPath } from "@/lib/push";
+import { openKin } from "@/lib/nav";
 import { useTheme } from "@/theme";
 
 /** Notification center: everything Kin told you, newest first. */
@@ -27,7 +27,7 @@ export default function Inbox() {
       setItems((xs) => xs && xs.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
       void markInboxRead([n.id]);
     }
-    openPath(n.url || "/home");
+    openKin(n.url || "/home");
   }
 
   function readAll() {

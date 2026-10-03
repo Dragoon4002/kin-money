@@ -8,7 +8,7 @@ import { getBalance, loadActivity } from "@/lib/activity";
 import { API_BASE, publicClient } from "@/lib/config";
 import { humanError } from "@/lib/errors";
 import { formatMoney, getCurrency } from "@/lib/money";
-import { openPath } from "@/lib/push";
+import { openKin } from "@/lib/nav";
 import { useTheme } from "@/theme";
 
 // Native port of app/src/app/(tabs)/money/page.tsx. Pockets open their web page (no native screens yet).
@@ -109,7 +109,7 @@ export default function Money() {
       </View>
       <ErrorText>{err}</ErrorText>
 
-      <Row title="Cash out to bank" sub="Arrives in 1–2 days · no fee" onPress={() => openPath("/cashout")} />
+      <Row title="Cash out to bank" sub="Arrives in 1–2 days · no fee" onPress={() => openKin("/cashout")} />
       {saved > 0n && (
         <View style={{ gap: 4 }}>
           <Chip good>You saved about {formatMoney(saved)} vs a bank wire</Chip>
@@ -120,7 +120,7 @@ export default function Money() {
       <Text style={{ marginTop: 8, color: t.muted, fontSize: 12, fontWeight: "600", letterSpacing: 1.5, textTransform: "uppercase" }}>Pockets</Text>
       <View style={{ gap: 12 }}>
         {POCKETS.map(([title, href, idle, icon]) => (
-          <Row key={href} title={title} sub={idle} icon={icon} onPress={() => openPath(href)} />
+          <Row key={href} title={title} sub={idle} icon={icon} onPress={() => openKin(href)} />
         ))}
       </View>
     </Screen>

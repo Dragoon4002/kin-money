@@ -1,13 +1,13 @@
 import { CameraView, scanFromURLAsync, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
 import { router, type Href } from "expo-router";
-import * as WebBrowser from "expo-web-browser";
 import { Flashlight } from "lucide-react-native";
 import { useRef, useState } from "react";
 import type { Address } from "viem";
 import { Pressable, Vibration, View } from "react-native";
 import { Button, ErrorText, Screen, Text } from "@/components/ui";
 import { API_BASE } from "@/lib/config";
+import { openKin } from "@/lib/nav";
 import { kinTarget, parseWalletUri } from "@/lib/scan";
 import { useTheme } from "@/theme";
 
@@ -28,9 +28,7 @@ export default function Scan() {
     if (!path) return setErr("That's not a Kin code. Ask them to open My QR in Kin.");
     done.current = true;
     Vibration.vibrate(30);
-    if (path.startsWith("/send")) return router.replace(path as Href);
-    await WebBrowser.openBrowserAsync(API_BASE + path);
-    router.back();
+    openKin(path, { replace: true });
   }
 
   // Pick a screenshot/photo of a QR (no camera permission needed for the photo library on Android 13+).

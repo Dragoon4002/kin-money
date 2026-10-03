@@ -1,12 +1,11 @@
 import { router } from "expo-router";
-import * as WebBrowser from "expo-web-browser";
 import { Bell, ChevronDown, ChevronUp, MessageCircle, ScanLine } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { Avatar, Button, IconButton, Keypad, MeButton, Screen, Serif, TabHeader, Text } from "@/components/ui";
 import { useAccount } from "@/lib/account";
 import { getBalance } from "@/lib/activity";
-import { API_BASE } from "@/lib/config";
+import { openKin } from "@/lib/nav";
 import { recentPeople, type Person } from "@/lib/contacts";
 import { useUnread } from "@/lib/live";
 import { currencySymbol, formatMoney } from "@/lib/money";
@@ -95,7 +94,7 @@ export default function Home() {
 
       <View style={{ flexDirection: "row", gap: 12 }}>
         <View style={{ flex: 1 }}>
-          <Button title="Request" variant="soft" onPress={() => WebBrowser.openBrowserAsync(`${API_BASE}/request${hasAmount ? `?amount=${amount}` : ""}`)} />
+          <Button title="Request" variant="soft" onPress={() => openKin(`/request${hasAmount ? `?amount=${amount}` : ""}`)} />
         </View>
         <View style={{ flex: 1 }}>
           <Button title="Send" onPress={() => send()} />

@@ -1,18 +1,16 @@
-import * as WebBrowser from "expo-web-browser";
 import { ArrowDownLeft, Shapes } from "lucide-react-native";
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, RefreshControl, ScrollView, View } from "react-native";
 import { Avatar, Serif, Text } from "@/components/ui";
 import { useAccount } from "@/lib/account";
 import { categoryOf, loadFeed, type Item } from "@/lib/activity";
-import { API_BASE } from "@/lib/config";
+import { openKin } from "@/lib/nav";
 import { isActive } from "@/lib/live";
 import { formatMoney } from "@/lib/money";
 import { useTheme } from "@/theme";
 
 // ponytail: no native receipt/spends/requests screens yet — open the web pages in the in-app browser.
-const openWeb = (path: string) => void WebBrowser.openBrowserAsync(API_BASE + path);
-const receipt = (i: Item) => openWeb(`/details?tx=${i.hash}`);
+const receipt = (i: Item) => openKin(`/details?tx=${i.hash}`);
 
 type Filter = "all" | "out" | "in";
 const FILTERS = [["all", "All"], ["out", "Sent"], ["in", "Received"]] as const;
@@ -86,7 +84,7 @@ export default function Activity() {
       <View style={{ minHeight: 44, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 20 }}>
         <Text style={{ flex: 1, color: t.ink, fontSize: 20, fontWeight: "700" }}>Activity</Text>
         {([["/requests", "Requests"], ["/spends", "Spends"]] as const).map(([path, label]) => (
-          <Pressable key={path} onPress={() => openWeb(path)} accessibilityRole="button" style={({ pressed }) => [chip(false), { height: 44, borderRadius: 22, transform: [{ scale: pressed ? 0.95 : 1 }] }]}>
+          <Pressable key={path} onPress={() => openKin(path)} accessibilityRole="button" style={({ pressed }) => [chip(false), { height: 44, borderRadius: 22, transform: [{ scale: pressed ? 0.95 : 1 }] }]}>
             <Text style={{ color: t.ink, fontSize: 14, fontWeight: "600" }}>{label}</Text>
           </Pressable>
         ))}

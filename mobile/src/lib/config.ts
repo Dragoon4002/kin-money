@@ -19,4 +19,7 @@ export const addr = {
   stream: "0xaF989d7acE5a015875Fb5f28b22a091D441e41DB",
   pot: "0xd039f1D113ACd4E89d1f52Ca792D8F54F177a8bA",
   circle: "0x0b467a32E1A38b999134da4941caD136390c9B41",
+  mandate: "0xe770eCfBf2D2D6b8B9c1B210B7a42B92bbA8fd53",
+  giftlink: "0x7ad1C20D0B96BaE5aE72462137384A1924e36BDb",
 } as const satisfies Record<string, Address>;
+export const explorerTx = (hash: string) => `https://testnet.monadvision.com/tx/${hash}`;

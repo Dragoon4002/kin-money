@@ -1,11 +1,10 @@
 import { router } from "expo-router";
-import * as WebBrowser from "expo-web-browser";
 import { HandCoins, MessageCircle, Users } from "lucide-react-native";
 import { useEffect, useState, type ReactNode } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { Avatar, Button, ErrorText, IconButton, Label, Text, TextInput, useInputStyle } from "@/components/ui";
 import { unlock, useAccount } from "@/lib/account";
-import { API_BASE } from "@/lib/config";
+import { openKin } from "@/lib/nav";
 import { addContact, listContacts, type Person, type Phonebook } from "@/lib/contacts";
 import { humanError } from "@/lib/errors";
 import { useUnread } from "@/lib/live";
@@ -16,7 +15,7 @@ import { useTheme } from "@/theme";
 const pay = (p: Person) => router.push({ pathname: "/send", params: { to: p.name } });
 const message = (p: Person) => router.push({ pathname: "/chat", params: { with: p.address } });
 // ponytail: web /request has its own person picker; open it rather than port the request flow.
-const request = () => void WebBrowser.openBrowserAsync(`${API_BASE}/request`);
+const request = () => openKin("/request");
 
 export default function People() {
   const t = useTheme();

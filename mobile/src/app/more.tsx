@@ -1,11 +1,10 @@
 import { router } from "expo-router";
-import * as WebBrowser from "expo-web-browser";
 import { Bell, ChevronRight, Fingerprint, Lock, type LucideIcon, MessageCircle, QrCode, ShieldCheck, Smile, SunMoon, Trash2 } from "lucide-react-native";
 import { useState } from "react";
 import { Alert, Pressable, View } from "react-native";
 import { Screen, Text } from "@/components/ui";
 import { getPayCheck, lock, setPayCheck, signOut, switchAccount, useAccount, type PayCheck } from "@/lib/account";
-import { API_BASE } from "@/lib/config";
+import { openKin } from "@/lib/nav";
 import { formatMoney } from "@/lib/money";
 import { shortAddr } from "@/lib/names";
 import { useTheme } from "@/theme";
@@ -81,7 +80,7 @@ export default function More() {
       <Row icon={MessageCircle} label="Messages" onPress={() => router.push("/messages")} />
       <Row icon={Bell} label="Notifications" onPress={() => router.push("/inbox")} />
       <Row icon={Smile} label="Kinko" onPress={() => router.push("/closet")} />
-      <Row icon={SunMoon} label="Currency, looks & more" onPress={() => void WebBrowser.openBrowserAsync(API_BASE + "/me")} />
+      <Row icon={SunMoon} label="Currency, looks & more" onPress={() => openKin("/settings")} />
       <Band>Safety</Band>
       <Row icon={Fingerprint} label={`When I pay: ${payLabel}`} onPress={choosePay} />
       <Row icon={ShieldCheck} label="Security" onPress={() => router.push("/security")} />

@@ -143,6 +143,50 @@ export function TabHeader({ title, children }: { title: ReactNode; children?: Re
   );
 }
 
+/** Section label strip, full-bleed inside <Screen> (web Band). */
+export function Band({ children, action }: { children: ReactNode; action?: ReactNode }) {
+  const t = useTheme();
+  return (
+    <View style={{ marginHorizontal: -20, paddingHorizontal: 20, paddingVertical: 10, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: t.surface2 }}>
+      <Text style={{ color: t.muted, fontSize: 12, fontWeight: "600", letterSpacing: 1.5, textTransform: "uppercase" }}>{children}</Text>
+      {action}
+    </View>
+  );
+}
+
+/** List row, full-bleed inside <Screen> (web Row): icon, title/sub, trailing. Pressable when `onPress`. */
+export function Row({ icon, title, sub, trail, onPress }: { icon?: ReactNode; title: ReactNode; sub?: ReactNode; trail?: ReactNode; onPress?: () => void }) {
+  const t = useTheme();
+  return (
+    <Pressable onPress={onPress} disabled={!onPress} accessibilityRole={onPress ? "button" : undefined}
+      style={({ pressed }) => ({ marginHorizontal: -20, paddingHorizontal: 20, paddingVertical: 12, minHeight: 64, flexDirection: "row", alignItems: "center", gap: 16, backgroundColor: pressed ? t.surface2 : "transparent" })}>
+      {icon}
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text numberOfLines={1} style={{ color: t.ink, fontSize: 16, fontWeight: "600" }}>{title}</Text>
+        {!!sub && <Text numberOfLines={1} style={{ color: t.muted, fontSize: 14 }}>{sub}</Text>}
+      </View>
+      {trail}
+    </Pressable>
+  );
+}
+
+/** Labelled form field (web Field). */
+export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+  const t = useTheme();
+  return (
+    <View style={{ gap: 6 }}>
+      <Label>{label}</Label>
+      {children}
+      {!!hint && <Text style={{ color: t.muted, fontSize: 12 }}>{hint}</Text>}
+    </View>
+  );
+}
+
+/** Primary action(s) pinned to the bottom of <Screen> (safe area comes from Screen). Last child of Screen. */
+export function Footer({ children }: { children: ReactNode }) {
+  return <View style={{ marginTop: "auto", paddingTop: 8, gap: 12 }}>{children}</View>;
+}
+
 /** Text input style using tokens. */
 export function useInputStyle(): TextStyle {
   const t = useTheme();

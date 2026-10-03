@@ -1,12 +1,9 @@
 import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
-import { router, type Href } from "expo-router";
-import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
 import { Platform } from "react-native";
 import { api } from "./contacts";
-import { API_BASE } from "./config";
-import { goTab, type Tab } from "@/components/NavBar";
+import { openKin } from "./nav";
 
 // Push: Expo push token → signed POST /api/push/subscribe. Android delivery needs FCM V1 creds on EAS (see PUSH_SETUP.md).
 // Every step degrades silently: no permission / no token / server down = no pushes, never a crash.
@@ -61,30 +58,11 @@ export function usePush(unlocked: boolean) {
   return { ask: state === "ask", allow, dismiss: () => setState("no") };
 }
 
-const NATIVE = ["/send", "/inbox", "/messages", "/receive", "/scan"];
-const ALIAS: Record<string, string> = { "/kinko": "/closet", "/me": "/more" };
-const TAB: Record<string, Tab> = { "/money": "Money", "/explore": "Explore", "/home": "Home", "/contacts": "People", "/activity": "Activity" };
-
-/** Open a Kin url (notification `data.url`, inbox item): native screen if we have one, else the web app in a Custom Tab. */
-export function openPath(url: unknown) {
-  if (typeof url !== "string" || !url) return;
-  // ponytail: string parse, RN's URL polyfill is partial. Only our own pages; anything else is ignored.
-  const path = url.startsWith(API_BASE + "/") ? url.slice(API_BASE.length) : url.startsWith("/") && !url.startsWith("//") ? url : null;
-  if (!path) return;
-  const chat = path.split("?")[0].match(/^\/messages\/([^/]+)$/);
-  const bare = path.split("?")[0];
-  if (chat) router.push({ pathname: "/chat", params: { with: decodeURIComponent(chat[1]) } });
-  else if (TAB[bare]) goTab(TAB[bare]);
-  else if (ALIAS[bare]) router.push(ALIAS[bare] as Href);
-  else if (NATIVE.includes(bare)) router.push(path as Href);
-  else void WebBrowser.openBrowserAsync(API_BASE + path);
-}
-
 const seen = new Set<string>();
 function handle(r: Notifications.NotificationResponse | null | undefined) {
   if (!r || seen.has(r.notification.request.identifier)) return;
   seen.add(r.notification.request.identifier);
-  openPath(r.notification.request.content.data?.url);
+  openKin(r.notification.request.content.data?.url);
 }
 
 /** Route notification taps (incl. the one that cold-started the app). Mount once on a screen inside the navigator. */

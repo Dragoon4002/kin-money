@@ -4,7 +4,7 @@ import { Kinko } from "@/components/Kinko";
 import { IconTile, MeButton, Screen, Serif, TabHeader, Text } from "@/components/ui";
 import { useAccount } from "@/lib/account";
 import { useAvatarLook } from "@/lib/names";
-import { openPath } from "@/lib/push";
+import { openKin } from "@/lib/nav";
 import { useTheme } from "@/theme";
 
 // Native port of app/src/app/(tabs)/explore/page.tsx. [title, sub, href, icon (null = my Kinko), wide].
@@ -37,7 +37,7 @@ export default function Explore() {
       <Serif size={36}>Money that behaves.</Serif>
       <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 12 }}>
         {TILES.map(([title, sub, href, icon, wide]) => (
-          <Pressable key={href} onPress={() => openPath(href)} accessibilityRole="button" accessibilityLabel={title}
+          <Pressable key={href} onPress={() => openKin(href)} accessibilityRole="button" accessibilityLabel={title}
             style={({ pressed }) => ({
               width: wide ? "100%" : "48.2%", gap: 12, borderRadius: 24, borderWidth: 1, borderColor: t.line, backgroundColor: t.surface, padding: 16,
               ...(wide ? { minHeight: 96, flexDirection: "row", alignItems: "center" } : { minHeight: 128, justifyContent: "space-between" }),
