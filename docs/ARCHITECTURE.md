@@ -73,3 +73,9 @@ See `app/.env.example`, `contracts/.env.example`. Testnet AUSD `0xa9012a055bd4e0
 - **Desktop PRF** only with iCloud Keychain / Google Password Manager / 1Password. Bitwarden/Dashlane → `PRF_UNAVAILABLE`.
 - **Monad charges gas limit.** Always explicit `gas` = estimate × 1.2.
 - **Relayer nonce** under concurrent serverless calls — single-flight queue; acceptable for demo.
+
+## Known gaps (accepted for testnet; fix before real money)
+- **Sybil accounts spend relayer gas.** Limits are per IP (relay 600/h, faucet 20/day) and per account (relay 200/day, faucet 2/week), but new accounts are free and unlimited, so a script can rotate accounts and drain relayer MON. Fix: captcha or device attestation (Play Integrity / App Attest) at signup, plus a global daily gas budget.
+- **`PUSHER_SECRET` must be rotated** before mainnet (it was exposed in a chat session on Oct 3). Rotate in Pusher → update `app/.env.local` + Vercel env.
+- **Read APIs trust signed headers only.** Anyone holding a valid EIP-191 header for an address can read that address's payment graph (who paid whom). Money moves still need a fresh user signature + onchain checks. Fix: short-lived session tokens everywhere, per-route authz review, body signing, encrypt notes/messages at rest.
+- **Cash-out is a preview.** No offramp partner wired yet; nothing moves on the cash-out screen.
