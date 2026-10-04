@@ -14,3 +14,9 @@ contracts/broadcast/*/31337/
 
 # Private planning notes (kept local)
 /tasks/
+
+# Envio HyperIndex (indexer/) generated + runtime output
+indexer/.envio/
+indexer/generated/
+indexer/build/
+indexer/logs/

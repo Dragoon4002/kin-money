@@ -4,8 +4,8 @@ import { monadTestnet } from "viem/chains";
 
 // Full log history for Kin contracts + AUSD Transfers since deploy, served by /api/history.
 // No relative imports and no "server-only" so scripts/check-history.mts can run it under plain node.
-// With ENVIO_API_TOKEN, history comes from Envio HyperSync (whole range in one paged query); without it,
-// or if HyperSync fails, it falls back to chunked eth_getLogs.
+// Sources, first that works wins: ENVIO_GRAPHQL_URL → Envio HyperIndex (indexer/, typed Activity rows);
+// ENVIO_API_TOKEN → Envio HyperSync (whole range in one paged query); else chunked eth_getLogs.
 // Chunked eth_getLogs (public RPCs cap 100 blocks). Scanned logs + the covered block range are PERSISTED in
 // Neo4j (HistLog / HistCursor), so every serverless instance starts from the full history instead of
 // rescanning from zero: a cold instance loads them, then only scans new blocks since the saved cursor.
@@ -197,10 +197,62 @@ async function scanHypersync(fresh: RpcLog[]): Promise<boolean> {
   }
 }
 
+// ---------- Envio HyperIndex (indexer/, GraphQL) ----------
+// Activity rows carry the raw topics + data, so they rebuild the exact logs the other sources return.
+type IdxRow = { contract: Hex; topics: string; rawData: Hex; blockNumber: number; timestamp: number; txHash: Hex; logIndex: number };
+const IDX_PAGE = 1000;
+
+async function gql<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
+  const res = await fetch(process.env.ENVIO_GRAPHQL_URL!, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ query, variables }), signal: AbortSignal.timeout(BUDGET_MS) });
+  const j = (await res.json()) as { data?: T; errors?: unknown };
+  if (!res.ok || j.errors || !j.data) throw new Error(`index ${res.status}`);
+  return j.data;
+}
+
+/** Logs in (after, head] from the HyperIndex GraphQL, head = the indexer's progress block. */
+async function indexed(after: bigint): Promise<{ logs: RpcLog[]; head: bigint }> {
+  const { _meta } = await gql<{ _meta: { chainId: number; progressBlock: number } | { chainId: number; progressBlock: number }[] }>("{ _meta { chainId progressBlock } }");
+  const head = BigInt([_meta].flat().find((m) => m.chainId === monadTestnet.id)?.progressBlock ?? -1);
+  const want = new Set(Object.values(contracts()).filter(Boolean));
+  const out = new Map<string, RpcLog>(); // rows are per involved account → dedupe to one log
+  for (let offset = 0; offset < 100 * IDX_PAGE; offset += IDX_PAGE) {
+    const { Activity: rows } = await gql<{ Activity: IdxRow[] }>(
+      `query($after: Int!, $head: Int!, $offset: Int!) { Activity(where: {blockNumber: {_gt: $after, _lte: $head}}, order_by: [{blockNumber: asc}, {logIndex: asc}, {id: asc}], limit: ${IDX_PAGE}, offset: $offset) { contract topics rawData blockNumber timestamp txHash logIndex } }`,
+      { after: Number(after), head: Number(head), offset },
+    );
+    for (const r of rows) {
+      if (!want.has(r.contract.toLowerCase())) continue; // e.g. the retired pot, not read by the app
+      const [topic0, topic1, topic2, topic3] = JSON.parse(r.topics) as Hex[];
+      // ponytail: transaction_index isn't indexed (no consumer reads it).
+      const log = toRpcLog({ block_number: r.blockNumber, log_index: r.logIndex, transaction_index: 0, transaction_hash: r.txHash, address: r.contract, data: r.rawData, topic0, topic1, topic2, topic3 }, r.timestamp);
+      out.set(keyOf(log), log);
+    }
+    if (rows.length < IDX_PAGE) break;
+  }
+  return { logs: [...out.values()], head };
+}
+
+/** HyperIndex path (when ENVIO_GRAPHQL_URL is set). False → caller falls through to HyperSync, then RPC. */
+async function scanIndex(fresh: RpcLog[]): Promise<boolean> {
+  if (!process.env.ENVIO_GRAPHQL_URL) return false;
+  try {
+    const { logs: got, head } = await indexed(hi < 0n || lo > DEPLOY ? DEPLOY - 1n : hi);
+    if (head < DEPLOY || head < hi) return false; // indexer still syncing / behind our cache
+    const known = new Set(logs.map(keyOf));
+    const add = got.filter((l) => !known.has(keyOf(l)));
+    logs = [...logs, ...add].sort(byPos);
+    fresh.push(...add);
+    [lo, hi] = [DEPLOY, head];
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function scan() {
   await warm();
   const viaEnvio: RpcLog[] = [];
-  if (await scanHypersync(viaEnvio)) return save(viaEnvio);
+  if ((await scanIndex(viaEnvio)) || (await scanHypersync(viaEnvio))) return save(viaEnvio);
   const deadline = Date.now() + BUDGET_MS;
   const latest = await clients[0].getBlockNumber().catch(() => clients[1].getBlockNumber());
   if (hi < 0n) [lo, hi] = [latest + 1n, latest];

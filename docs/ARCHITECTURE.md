@@ -21,7 +21,7 @@
 | Relayer | Next.js route handler, key in `RELAYER_PRIVATE_KEY` | No extra service. Holds only MON for gas, never user funds. |
 | Names | `KinNames` onchain `@handle → address` | No database; judges see it's real. |
 | Phonebook | Neo4j Aura Free via `/api/contacts`, `/api/requests` | Graph fits who-knows/pays-whom: frequent payees, friends-of-friends suggestions, request bubbles. Holds names/addresses/edges only — never keys or balances. |
-| Indexing | Direct `getLogs` from viem first | Envio only if time (bonus $1k). |
+| Indexing | Envio HyperIndex (`indexer/`, `ENVIO_GRAPHQL_URL`) → Envio HyperSync (`ENVIO_API_TOKEN`) → `eth_getLogs` | Typed `Activity` rows per person; each source falls through to the next (`app/src/lib/server/history.ts`). |
 | Scheduling | Pull-based (claimable after time) | No keeper needed. CRE only if time (bonus $3k). |
 
 ## Contracts (`contracts/src`)

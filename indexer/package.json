@@ -1,0 +1,23 @@
+{
+  "name": "kin-indexer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "codegen": "envio codegen",
+    "dev": "envio dev",
+    "start": "envio start",
+    "test": "node --experimental-strip-types --no-warnings test/handlers.test.mts",
+    "check-real": "node --experimental-strip-types --no-warnings test/real-slice.mts"
+  },
+  "dependencies": {
+    "envio": "3.12.1",
+    "viem": "2.54.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0",
+    "@types/node": "^24.0.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

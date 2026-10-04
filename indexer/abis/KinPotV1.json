@@ -1,0 +1,100 @@
+[
+  {
+    "name": "PotCreated",
+    "type": "event",
+    "inputs": [
+      {
+        "type": "uint256",
+        "name": "id",
+        "indexed": true
+      },
+      {
+        "type": "address",
+        "name": "creator",
+        "indexed": true
+      },
+      {
+        "type": "address",
+        "name": "beneficiary",
+        "indexed": true
+      },
+      {
+        "type": "uint256",
+        "name": "target"
+      },
+      {
+        "type": "address[]",
+        "name": "members"
+      }
+    ]
+  },
+  {
+    "name": "Contributed",
+    "type": "event",
+    "inputs": [
+      {
+        "type": "uint256",
+        "name": "id",
+        "indexed": true
+      },
+      {
+        "type": "address",
+        "name": "member",
+        "indexed": true
+      },
+      {
+        "type": "uint256",
+        "name": "round",
+        "indexed": true
+      },
+      {
+        "type": "uint256",
+        "name": "amount"
+      }
+    ]
+  },
+  {
+    "name": "PotClosed",
+    "type": "event",
+    "inputs": [
+      {
+        "type": "uint256",
+        "name": "id",
+        "indexed": true
+      },
+      {
+        "type": "address",
+        "name": "beneficiary",
+        "indexed": true
+      },
+      {
+        "type": "uint256",
+        "name": "amount"
+      }
+    ]
+  },
+  {
+    "name": "PotPaid",
+    "type": "event",
+    "inputs": [
+      {
+        "type": "uint256",
+        "name": "id",
+        "indexed": true
+      },
+      {
+        "type": "address",
+        "name": "beneficiary",
+        "indexed": true
+      },
+      {
+        "type": "uint256",
+        "name": "round"
+      },
+      {
+        "type": "uint256",
+        "name": "amount"
+      }
+    ]
+  }
+]

@@ -1,0 +1,24 @@
+# A Kin user (created by KinNames.NameClaimed).
+type Account {
+  id: ID! # lowercase address
+  name: String
+}
+
+# One row per (log, involved account), so `where: {account: {_eq: "0x…"}}, order_by: {blockNumber: desc}` is the feed.
+type Activity {
+  id: ID! # txHash-logIndex-account
+  kind: String! @index # transfer | pot | circle | escrow | stream | mandate | gift | name
+  contract: String! # emitting contract (lowercase)
+  event: String!
+  account: String! @index
+  counterparty: String
+  amount: BigInt
+  token: String
+  blockNumber: Int! @index
+  timestamp: Int!
+  txHash: String!
+  logIndex: Int!
+  data: String! # decoded args as JSON (bigints as strings)
+  topics: String! # raw log topics as JSON array (lets consumers rebuild the exact log)
+  rawData: String! # raw log data hex
+}

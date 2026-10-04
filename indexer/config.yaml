@@ -1,0 +1,95 @@
+# yaml-language-server: $schema=./node_modules/envio/evm.schema.json
+# Kin activity index: every Kin contract event + AUSD Transfers touching a Kin account/contract.
+name: kin-indexer
+description: Kin activity feed on Monad testnet
+handlers: ./src
+address_format: lowercase
+contracts:
+  - name: KinNames
+    abi_file_path: ./abis/KinNames.json
+    events:
+      - event: NameClaimed
+  - name: KinEscrow
+    abi_file_path: ./abis/KinEscrow.json
+    events:
+      - event: Approved
+      - event: Created
+      - event: Refunded
+      - event: Released
+      - event: Requested
+  - name: KinStream
+    abi_file_path: ./abis/KinStream.json
+    events:
+      - event: Cancelled
+      - event: StreamCreated
+      - event: Withdrawn
+  - name: KinPot
+    abi_file_path: ./abis/KinPot.json
+    events:
+      - event: Contributed
+      - event: InviteKeySet
+      - event: Joined
+      - event: PotClosed
+      - event: PotCreated
+      - event: PotPaid
+  - name: KinPotV1
+    abi_file_path: ./abis/KinPotV1.json
+    events:
+      - event: Contributed
+      - event: PotClosed
+      - event: PotCreated
+      - event: PotPaid
+  - name: KinCircle
+    abi_file_path: ./abis/KinCircle.json
+    events:
+      - event: CircleCreated
+      - event: Defaulted
+      - event: DepositReturned
+      - event: Forfeited
+      - event: ForfeitShared
+      - event: InviteKeySet
+      - event: Joined
+      - event: Left
+      - event: Paid
+      - event: PaidOut
+      - event: SeatClaimed
+      - event: Started
+  - name: KinMandate
+    abi_file_path: ./abis/KinMandate.json
+    events:
+      - event: Cancelled
+      - event: Collected
+      - event: MandateCreated
+  - name: KinGiftLink
+    abi_file_path: ./abis/KinGiftLink.json
+    events:
+      - event: Bound
+      - event: Created
+      - event: Opened
+      - event: Refunded
+  - name: AUSD
+    abi_file_path: ./abis/AUSD.json
+    events:
+      - event: Transfer
+chains:
+  - id: 10143 # Monad testnet (HyperSync: https://10143.hypersync.xyz)
+    start_block: 67103075 # first Kin deploy
+    contracts:
+      - name: KinNames
+        address: "0x1cA367edbCf73A357Fe60651cFE6af27cfCA8476"
+      - name: KinEscrow
+        address: "0x2F2e58b1B33B30756fa0653672B4ba10cF93a55e"
+      - name: KinStream
+        address: "0xaF989d7acE5a015875Fb5f28b22a091D441e41DB"
+      - name: KinPot
+        address: "0xd039f1D113ACd4E89d1f52Ca792D8F54F177a8bA"
+      - name: KinPotV1 # pre-redeploy pot, older event shapes
+        address: "0x58ab4Da1575758be9d4Fe53bdB79fabe8F4C2caD"
+      - name: KinCircle
+        address: "0x0b467a32E1A38b999134da4941caD136390c9B41"
+      - name: KinMandate
+        address: "0xe770eCfBf2D2D6b8B9c1B210B7a42B92bbA8fd53"
+      - name: KinGiftLink
+        address: "0x7ad1C20D0B96BaE5aE72462137384A1924e36BDb"
+      - name: AUSD
+        address: "0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC"
