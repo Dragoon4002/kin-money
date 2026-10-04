@@ -46,5 +46,5 @@ Every payment's proof: **Activity tab → tap the payment → Details → Proof 
 - Signing up from an invite/gift link lands on Home — reopen the link to finish.
 
 ## Traction evidence
-- [ ] 5+ user tests (names/roles, device, completed flow Y/N, quote)
+- [ ] 5+ user tests (names/roles, device, completed flow Y/N, quote) — draft with the verified on-chain facts in `docs/user-tests/README.md`; still needs roles, devices, outcomes and quotes
 - [ ] Distribution plan: next 100 users — which groups, which channel
