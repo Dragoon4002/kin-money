@@ -10,9 +10,13 @@ export const chain = {
 // then fall back to other public testnet endpoints (all checked: batch + CORS + chain 10143).
 const rpc = (url?: string) => http(url, { batch: { wait: 16 }, retryCount: 4, retryDelay: 250 });
 const BACKUP_RPCS = ["https://rpc.ankr.com/monad_testnet", "https://monad-testnet.drpc.org"];
+// Alchemy node (Alchemy bounty): first in line when NEXT_PUBLIC_ALCHEMY_KEY is set, public RPCs stay as fallback.
+// The key is public by design (browser reads); lock it to the Kin domain in the Alchemy dashboard.
+const ALCHEMY_KEY = process.env.NEXT_PUBLIC_ALCHEMY_KEY;
+const alchemy = (net: "testnet" | "mainnet") => (ALCHEMY_KEY ? [`https://monad-${net}.g.alchemy.com/v2/${ALCHEMY_KEY}`] : []);
 export const publicClient = createPublicClient({
   chain,
-  transport: fallback([rpc(process.env.NEXT_PUBLIC_RPC_URL), ...BACKUP_RPCS.map(rpc)]),
+  transport: fallback([...alchemy("testnet").map(rpc), rpc(process.env.NEXT_PUBLIC_RPC_URL), ...BACKUP_RPCS.map(rpc)]),
 });
 
 const env = (v: string | undefined) => (v || "0x0000000000000000000000000000000000000000") as Address;
@@ -28,6 +32,7 @@ export const addr = {
   circle: env(process.env.NEXT_PUBLIC_KIN_CIRCLE),
   mandate: env(process.env.NEXT_PUBLIC_KIN_MANDATE),
   giftlink: env(process.env.NEXT_PUBLIC_KIN_GIFTLINK),
+  cashout: env(process.env.NEXT_PUBLIC_KIN_CASHOUT),
 };
 
 export const explorerTx = (hash: string) => `${chain.blockExplorers.default.url}/tx/${hash}`;
@@ -45,7 +50,7 @@ export const networks: Record<Mode, Network> = {
     mode: "main",
     chain: monad,
     ausd: "0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a" as Address,
-    client: createPublicClient({ chain: monad, transport: fallback(MAIN_RPCS.map(rpc)) }) as PublicClient,
+    client: createPublicClient({ chain: monad, transport: fallback([...alchemy("mainnet"), ...MAIN_RPCS].map(rpc)) }) as PublicClient,
     explorer: "https://monadvision.com",
   },
 };

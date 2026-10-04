@@ -97,8 +97,8 @@ export default function Money() {
 
         <Link href="/cashout" className="flex min-h-16 items-center gap-4 rounded-[24px] border border-line bg-surface p-4 transition active:scale-[0.98]">
           <span className="min-w-0 flex-1">
-            <span className="block font-semibold">Cash out to bank</span>
-            <span className="block text-sm text-muted">Arrives in 1–2 days · no fee</span>
+            <span className="block font-semibold">Cash out to UPI</span>
+            <span className="block text-sm text-muted">Rupees in minutes · fixed price</span>
           </span>
           <Ico name="chevron" className="text-muted" />
         </Link>
