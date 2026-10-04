@@ -8,28 +8,41 @@ import { MyKinko } from "@/components/kinko/PersonKinko";
 import { Amount, Band, Button, Card, Chip, Ico, IconTile, Row, Screen } from "@/components/ui";
 import { useRequireAccount } from "@/lib/account";
 import { CATEGORIES, categoryOf, setCategory, noteOf } from "@/lib/categories";
-import { addr, explorerTx, publicClient } from "@/lib/chain";
+import { money as moneyNet, networks, type Network } from "@/lib/chain";
 import { savedLook } from "@/lib/kinko";
 import { formatMoney } from "@/lib/money";
 import { shareCard, warmCard, type CardParams } from "@/lib/shareCard";
 import { describe, isKinContract } from "@/lib/counterparty";
 import { nameOf, shortAddr } from "@/lib/names";
 
-type Receipt = { amount: bigint; from: string; to: string; fromA?: Address; toA?: Address; out: boolean; at: Date; block: bigint; ok: boolean };
+type Receipt = { net: Network; amount: bigint; from: string; to: string; fromA?: Address; toA?: Address; out: boolean; at: Date; block: bigint; ok: boolean };
 
 // Not on Kin (no @name) → short address; the full one is copyable below.
 const label = (n: string, a?: Address) => (n ? `@${n}` : a ? shortAddr(a) : "someone");
 
 async function load(hash: Hex, me?: Address): Promise<Receipt> {
-  const r = await publicClient.getTransactionReceipt({ hash });
-  const block = await publicClient.getBlock({ blockNumber: r.blockNumber });
-  const transfers = parseEventLogs({ abi: erc20Abi, eventName: "Transfer", logs: r.logs }).filter((l) => isAddressEqual(l.address, addr.ausd));
+  // Current mode's network first, then the other one (a practice receipt opened in real-money mode, or vice versa).
+  const first = moneyNet();
+  const nets = [first, first.mode === "main" ? networks.test : networks.main];
+  let found: { net: Network; r: Awaited<ReturnType<Network["client"]["getTransactionReceipt"]>> } | null = null;
+  for (const net of nets) {
+    const r = await net.client.getTransactionReceipt({ hash }).catch(() => null);
+    if (r) {
+      found = { net, r };
+      break;
+    }
+  }
+  if (!found) throw new Error("receipt not found");
+  const { net, r } = found;
+  const block = await net.client.getBlock({ blockNumber: r.blockNumber });
+  const transfers = parseEventLogs({ abi: erc20Abi, eventName: "Transfer", logs: r.logs }).filter((l) => isAddressEqual(l.address, net.ausd));
   const t = transfers.find((l) => me && (isAddressEqual(l.args.from, me) || isAddressEqual(l.args.to, me))) ?? transfers[0];
   // A Kin contract on either side → describe what it was for ("Chore for @b"), else the person's @name.
   const side = async (a: Address, dir: "in" | "out") =>
     isKinContract(a) && me ? describe(hash, a, dir, me) : label(await nameOf(a).catch(() => ""), a);
   const [from, to] = t ? await Promise.all([side(t.args.from, "in"), side(t.args.to, "out")]) : [label(""), label("")];
   return {
+    net,
     amount: t?.args.value ?? 0n,
     from,
     to,
@@ -225,7 +238,7 @@ export function Proof() {
           </p>
           <p className="text-xs text-muted">Block {r.block.toString()}</p>
           <code className="break-all rounded-2xl bg-surface-2 p-3 font-mono text-xs">{hash}</code>
-          <a href={explorerTx(hash)} target="_blank" rel="noreferrer"
+          <a href={`${(r?.net ?? moneyNet()).explorer}/tx/${hash}`} target="_blank" rel="noreferrer"
             className="grid h-14 place-items-center rounded-full border border-line font-semibold active:bg-surface-2">
             Verify on the public explorer ↗
           </a>

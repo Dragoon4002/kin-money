@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useMode } from "@/lib/mode";
 import { Amount, Band, Ico, IconTile, Screen } from "@/components/ui";
 import { useRequireAccount } from "@/lib/account";
 import { loadActivity, type Item } from "@/lib/activity";
@@ -45,12 +46,13 @@ const monthKey = (d: Date) => d.getFullYear() * 12 + d.getMonth();
 export default function Spends() {
   const { profile } = useRequireAccount();
   const me = profile?.address;
+  const mode = useMode();
   const [items, setItems] = useState<Item[] | null>(null);
   const [month, setMonth] = useState(() => monthKey(new Date()));
 
   useEffect(() => {
     if (me) loadActivity(me).then(setItems).catch(() => setItems([]));
-  }, [me]);
+  }, [me, mode]);
 
   const year = Math.floor(month / 12);
   const m = month % 12;

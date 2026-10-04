@@ -5,6 +5,7 @@ import { MeButton } from "@/components/core/NavBar";
 import { MyKinko } from "@/components/kinko/PersonKinko";
 import { IconTile, Screen } from "@/components/ui";
 import { useRequireAccount } from "@/lib/account";
+import { useMode } from "@/lib/mode";
 import { listRequests } from "@/lib/contacts";
 import type { IconName } from "@/lib/icons";
 
@@ -44,6 +45,7 @@ const SECTIONS: { title?: string; rows: Row[] }[] = [
 
 export default function Explore() {
   const { profile, canRead } = useRequireAccount();
+  const mode = useMode();
   const [waiting, setWaiting] = useState(0);
   // Only with a read session: the count must never trigger Face ID on its own.
   useEffect(() => {
@@ -89,6 +91,9 @@ export default function Explore() {
         <h1 className="flex-1 text-xl font-bold">Explore</h1>
         <MeButton name={profile?.name} />
       </header>
+      {mode === "main" && (
+        <p className="rounded-[20px] bg-surface-2 px-4 py-3 text-sm text-muted">These use practice money for now. Turn off Real money in Me to try them.</p>
+      )}
       <p className="font-display text-4xl leading-tight">Money that behaves.</p>
       <div className="flex flex-col gap-6">
         {SECTIONS.map(({ title, rows }) => (

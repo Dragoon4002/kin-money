@@ -1,6 +1,6 @@
 import { after } from "next/server";
 import { isAddress } from "viem";
-import { history, sync, type Kind, warm } from "@/lib/server/history";
+import { history, mainTransfers, sync, type Kind, warm } from "@/lib/server/history";
 import { allow, clientIp } from "@/lib/server/relayer";
 
 const KINDS = new Set<Kind>(["transfers", "escrow", "pot", "circle", "stream", "mandate", "giftlink"]);
@@ -13,6 +13,12 @@ export async function GET(req: Request) {
   const kind = q.get("kind") as Kind;
   const address = q.get("address") ?? "";
   if (!KINDS.has(kind) || (kind === "transfers" && !isAddress(address))) return Response.json({ error: "bad request" }, { status: 400 });
+  if (q.get("net") === "main") {
+    if (kind !== "transfers") return Response.json({ error: "bad request" }, { status: 400 });
+    const body = await mainTransfers(address).catch(() => null);
+    if (!body) return Response.json({ error: "unavailable" }, { status: 503 });
+    return Response.json(body, { headers: { "cache-control": "public, s-maxage=5" } });
+  }
   // Persisted history first (fast DB read), then answer within ~1.5s while new blocks are scanned.
   await warm();
   const s = sync().catch(() => {});

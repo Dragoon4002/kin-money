@@ -9,6 +9,7 @@ import { AmountInput, Bubble, useSignedIn } from "@/components/social/bits";
 import { Button, Card, Delivered, ErrorText, Field, Ico, Screen, Tabs, inputClass } from "@/components/ui";
 import { createRequest } from "@/lib/contacts";
 import { humanError } from "@/lib/errors";
+import { useMode } from "@/lib/mode";
 import { formatMoney, fromLocal } from "@/lib/money";
 import { payLink } from "@/lib/payLink";
 import { walletUri } from "@/lib/walletUri";
@@ -31,6 +32,7 @@ export default function RequestPage() {
 /** #18 Request as message: "Need $50 for books 📚". `?amount=` prefills (local currency). */
 function RequestForm() {
   const profile = useSignedIn();
+  const moneyMode = useMode();
   const handle = profile?.name;
   const [mode, setMode] = useState<"person" | "link">("person");
   const [copied, setCopied] = useState(false);
@@ -129,7 +131,7 @@ function RequestForm() {
         <Card className="flex flex-col items-center gap-2 text-center">
           <p className="font-semibold">Pay to @{handle}</p>
           <div className="w-full max-w-56 overflow-hidden rounded-2xl">
-            <PayQr text={walletUri(profile.address, units)} label={`QR code to pay @${handle} ${formatMoney(units)}`} />
+            <PayQr text={walletUri(profile.address, units, moneyMode)} label={`QR code to pay @${handle} ${formatMoney(units)}`} />
           </div>
           <p className="font-semibold tabular">{formatMoney(units)}{note.trim() ? ` for ${note.trim()}` : ""}</p>
           <p className="text-sm text-muted">Scan with Kin or any wallet app</p>

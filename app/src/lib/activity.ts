@@ -1,6 +1,6 @@
 "use client";
-import { erc20Abi, isAddressEqual, parseEventLogs, type Address, type Hex } from "viem";
-import { addr, publicClient } from "./chain";
+import { erc20Abi, formatLog, isAddressEqual, parseEventLogs, type Address, type Hex, type RpcLog } from "viem";
+import { addr, getMode, money } from "./chain";
 import { describe, isKinContract } from "./counterparty";
 import { nameOf, shortAddr } from "./names";
 import { history } from "./programs";
@@ -19,8 +19,17 @@ export type Item = {
   when: string; // "5 min ago"
 };
 
+/** Balance in the current mode (practice or real money). */
 export function getBalance(me: Address): Promise<bigint> {
-  return publicClient.readContract({ address: addr.ausd, abi: erc20Abi, functionName: "balanceOf", args: [me] });
+  const net = money();
+  return net.client.readContract({ address: net.ausd, abi: erc20Abi, functionName: "balanceOf", args: [me] });
+}
+
+/** Real money: this person's dollar transfers on mainnet (server HyperSync query). */
+async function mainHistory(me: Address) {
+  const r = await fetch(`/api/history?kind=transfers&net=main&address=${me}`);
+  if (!r.ok) throw new Error("history unavailable");
+  return ((await r.json()) as { logs: RpcLog[] }).logs.map((l) => formatLog(l));
 }
 
 const names = new Map<string, Promise<string>>();
@@ -49,7 +58,7 @@ const inflight = new Map<string, Promise<Item[]>>();
 
 /** Newest-first payments to/from `me`. Safe to poll; concurrent calls share one scan. */
 export function loadActivity(me: Address): Promise<Item[]> {
-  const k = me.toLowerCase();
+  const k = `${getMode()}:${me.toLowerCase()}`;
   if (!inflight.has(k)) inflight.set(k, scan(me).finally(() => inflight.delete(k)));
   return inflight.get(k)!;
 }
@@ -57,9 +66,10 @@ export function loadActivity(me: Address): Promise<Item[]> {
 const last = new Map<string, Item[]>();
 
 async function scan(me: Address): Promise<Item[]> {
-  const k = me.toLowerCase();
+  const main = getMode() === "main";
+  const k = `${main ? "main" : "test"}:${me.toLowerCase()}`;
   try {
-    const logs = parseEventLogs({ abi: erc20Abi, eventName: "Transfer", logs: await history(addr.ausd, me) });
+    const logs = parseEventLogs({ abi: erc20Abi, eventName: "Transfer", logs: main ? await mainHistory(me) : await history(addr.ausd, me) });
     const found = logs.flatMap((log) => {
       const { from, to, value } = log.args;
       const out = isAddressEqual(from, me);

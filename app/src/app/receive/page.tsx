@@ -5,6 +5,7 @@ import { PayQr, qrImage } from "@/components/core/PayQr";
 import { share } from "@/components/core/share";
 import { Button, Card, Field, Screen, inputClass } from "@/components/ui";
 import { useRequireAccount } from "@/lib/account";
+import { useMode } from "@/lib/mode";
 import { formatMoney, fromLocal } from "@/lib/money";
 import { useCurrencySymbol } from "@/lib/useCurrencySymbol";
 import { payLink } from "@/lib/payLink";
@@ -39,6 +40,7 @@ async function qrCardFile(svg: SVGSVGElement, handle: string, line: string): Pro
 
 export default function Receive() {
   const { profile } = useRequireAccount();
+  const mode = useMode();
   const handle = profile?.name;
   const [amount, setAmount] = useState("");
   const [copied, setCopied] = useState(false);
@@ -49,7 +51,7 @@ export default function Receive() {
   // Amount is optional: with it, the payer's screen opens pre-filled with this exact amount.
   // The link reaches people without an app; the QR is the standard payment code Kin and other apps both read.
   const url = handle && typeof location !== "undefined" ? payLink(handle, units) : "";
-  const qr = profile ? walletUri(profile.address, units) : "";
+  const qr = profile ? walletUri(profile.address, units, mode) : "";
 
   const shareText = units ? `Pay me ${formatMoney(units)} on Kin: @${handle}` : `Pay me on Kin: @${handle}`;
 

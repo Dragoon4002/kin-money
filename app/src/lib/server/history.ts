@@ -304,3 +304,40 @@ export function history(kind: Kind, who?: string) {
   const out = pick(logs, kind, who);
   return { logs: kind === "transfers" ? out.slice(-200) : out, from: lo.toString(), to: hi.toString(), complete: lo <= DEPLOY };
 }
+
+// ---------- Real money (mainnet): one person's AUSD transfers via HyperSync ----------
+// ponytail: no persistence/cache — a real-money account has few transfers; query per request.
+const MAIN_HYPERSYNC = "https://143.hypersync.xyz";
+const MAIN_AUSD = "0x00000000efe302beaa2b3e6e1b18d08d69a9012a";
+
+/** AUSD Transfer logs from/to `me` on Monad mainnet, oldest first, plus the last block covered. */
+export async function mainTransfers(me: string): Promise<{ logs: RpcLog[]; to: string; complete: boolean }> {
+  const token = process.env.ENVIO_API_TOKEN;
+  if (!token) throw new Error("hypersync token missing");
+  const t = pad(me.toLowerCase() as Hex);
+  const out: RpcLog[] = [];
+  let next = 0;
+  let height = 0;
+  for (let page = 0; page < 20; page++) {
+    const body = {
+      from_block: next,
+      logs: [
+        { address: [MAIN_AUSD], topics: [[TRANSFER], [t]] },
+        { address: [MAIN_AUSD], topics: [[TRANSFER], [], [t]] },
+      ],
+      field_selection: {
+        log: ["block_number", "log_index", "transaction_index", "transaction_hash", "address", "data", "topic0", "topic1", "topic2", "topic3"],
+        block: ["number", "timestamp"],
+      },
+    };
+    const res = await fetch(`${MAIN_HYPERSYNC}/query`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
+    if (!res.ok) throw new Error(`hypersync ${res.status}`);
+    const j = (await res.json()) as HsPage;
+    const times = new Map(j.data?.flatMap((d) => d.blocks ?? []).map((b) => [b.number, b.timestamp]));
+    out.push(...(j.data?.flatMap((d) => d.logs ?? []) ?? []).map((l) => toRpcLog(l, times.get(l.block_number))));
+    next = j.next_block;
+    height = j.archive_height;
+    if (next >= height) break;
+  }
+  return { logs: out.sort(byPos), to: String(Math.min(next, height + 1) - 1), complete: next >= height };
+}

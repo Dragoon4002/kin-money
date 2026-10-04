@@ -1,5 +1,5 @@
-import { createPublicClient, fallback, http, type Address } from "viem";
-import { monadTestnet } from "viem/chains";
+import { createPublicClient, fallback, http, type Address, type Chain, type PublicClient } from "viem";
+import { monad, monadTestnet } from "viem/chains";
 
 export const chain = {
   ...monadTestnet,
@@ -31,3 +31,41 @@ export const addr = {
 };
 
 export const explorerTx = (hash: string) => `${chain.blockExplorers.default.url}/tx/${hash}`;
+
+// ---------- Practice / Real money ----------
+// Everything above is the practice network (testnet): programs, names, links. Real money (mainnet) covers
+// only balance, send, receive, activity and cash-out — those paths read `money()`, everything else is unchanged.
+// ponytail: @names resolve from the testnet KinNames (same address on both networks); deploy KinNames on mainnet later.
+export type Mode = "test" | "main";
+const MAIN_RPCS = ["https://rpc.monad.xyz", "https://rpc1.monad.xyz"];
+export type Network = { mode: Mode; chain: Chain; ausd: Address; client: PublicClient; explorer: string };
+export const networks: Record<Mode, Network> = {
+  test: { mode: "test", chain, ausd: addr.ausd, client: publicClient as PublicClient, explorer: chain.blockExplorers.default.url },
+  main: {
+    mode: "main",
+    chain: monad,
+    ausd: "0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a" as Address,
+    client: createPublicClient({ chain: monad, transport: fallback(MAIN_RPCS.map(rpc)) }) as PublicClient,
+    explorer: "https://monadvision.com",
+  },
+};
+
+const MODE_KEY = "kin.mode";
+const modeListeners = new Set<() => void>();
+export function getMode(): Mode {
+  try {
+    return typeof localStorage !== "undefined" && localStorage.getItem(MODE_KEY) === "main" ? "main" : "test";
+  } catch {
+    return "test";
+  }
+}
+export function setMode(m: Mode) {
+  try {
+    localStorage.setItem(MODE_KEY, m);
+  } catch {}
+  modeListeners.forEach((l) => l());
+}
+export const subscribeMode = (l: () => void) => (modeListeners.add(l), () => modeListeners.delete(l));
+
+/** Network for money paths in the current mode. */
+export const money = (): Network => networks[getMode()];
