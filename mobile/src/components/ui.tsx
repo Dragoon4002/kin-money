@@ -3,6 +3,7 @@ import { ChevronLeft, Delete, type LucideIcon } from "lucide-react-native";
 import type { ReactNode } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text as RNText, TextInput as RNTextInput, View, type StyleProp, type TextInputProps, type TextProps, type TextStyle } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { Kinko } from "@/components/Kinko";
 import { useAvatarLook } from "@/lib/names";
 import { fonts, useTheme } from "@/theme";
@@ -197,6 +198,18 @@ export function useInputStyle(): TextStyle {
 export function Label({ children }: { children: ReactNode }) {
   const t = useTheme();
   return <Text style={{ color: t.muted, fontSize: 14, fontWeight: "600" }}>{children}</Text>;
+}
+
+/** Kin logo mark (brand/kin-mark-*.svg). */
+export function KinMark({ size = 28, color }: { size?: number; color: string }) {
+  return (
+    <Svg viewBox="0 0 480 480" width={size} height={size} fill={color}>
+      <Circle cx="115" cy="115" r="115" />
+      <Rect x="0" y="251" width="229" height="229" rx="10" />
+      <Path d="M251 10Q251 0 261 0H469Q479 0 479 10A228 228 0 0 1 261 228Q251 228 251 218Z" />
+      <Path d="M251 262Q251 252 261 252A228 228 0 0 1 479 470Q479 480 469 480H261Q251 480 251 470Z" />
+    </Svg>
+  );
 }
 
 export function Serif({ children, size = 40, color }: { children: ReactNode; size?: number; color?: string }) {

@@ -2,6 +2,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Onboard } from "@/components/core/Onboard";
+import { KinMark } from "@/components/KinMark";
 import { MyKinko } from "@/components/kinko/PersonKinko";
 import { Landing } from "@/components/landing/Landing";
 import { Button, ErrorText, Screen } from "@/components/ui";
@@ -67,7 +68,7 @@ export default function Welcome() {
   return (
     <Screen>
       <div className="flex flex-1 flex-col">
-        <p className="font-display text-4xl leading-none text-brand">kin</p>
+        <p className="flex items-center gap-2 font-display text-4xl leading-none text-brand"><KinMark />kin</p>
         <div className="flex flex-1 flex-col justify-center gap-5">
           <div className="relative w-fit">
             <div aria-hidden className="absolute inset-0 scale-150 rounded-full bg-brand/20 blur-3xl" />

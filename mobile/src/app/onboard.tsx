@@ -1,7 +1,7 @@
 import { router } from "expo-router";
 import { useRef, useState } from "react";
 import { KeyboardAvoidingView, Pressable, View, ActivityIndicator } from "react-native";
-import { Button, ErrorText, Label, Screen, Serif, Text, TextInput, useInputStyle } from "@/components/ui";
+import { Button, ErrorText, KinMark, Label, Screen, Serif, Text, TextInput, useInputStyle } from "@/components/ui";
 import { KinNamesAbi } from "@/lib/abi";
 import { setName, signUp, unlock, useAccount } from "@/lib/account";
 import { addr, API_BASE } from "@/lib/config";
@@ -118,7 +118,10 @@ export default function Onboard() {
   if (step === "welcome") {
     return (
       <Screen>
-        <Serif size={40} color={t.brand}>kin</Serif>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <KinMark color={t.brand} />
+          <Serif size={40} color={t.brand}>kin</Serif>
+        </View>
         <View style={{ flex: 1, justifyContent: "center", gap: 16 }}>
           <Serif size={52}>Money for the people you <Text style={{ color: t.brand }}>love</Text>, anywhere.</Serif>
           <Text style={{ color: t.muted, fontSize: 18 }}>Send dollars home in a second. Free, with just an Identity check.</Text>

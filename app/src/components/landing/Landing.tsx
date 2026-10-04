@@ -1,3 +1,4 @@
+import { KinMark } from "@/components/KinMark";
 import { Kinko } from "@/components/kinko/Kinko";
 import { Amount, Button, Chip, ErrorText, Ico, IconTile } from "@/components/ui";
 import type { IconName } from "@/lib/icons";
@@ -47,7 +48,7 @@ export function Landing({ onStart, onUnlock, busy, err }: { onStart: () => void;
     // ponytail: 100vw breakout; adds ~15px horizontal overflow on desktops with classic scrollbars unless body has overflow-x: clip.
     <main className="relative ml-[calc(50%-50vw)] w-screen bg-bg pb-[max(2rem,env(safe-area-inset-bottom))] text-ink">
       <header className={`${wrap} flex h-16 items-center justify-between pt-[env(safe-area-inset-top)]`}>
-        <span className="font-display text-4xl leading-none text-brand">kin</span>
+        <span className="flex items-center gap-2 font-display text-4xl leading-none text-brand"><KinMark />kin</span>
         {unlock}
       </header>
 

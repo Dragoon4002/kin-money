@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 import type { ReactNode } from "react";
+import { KinMark } from "@/components/KinMark";
 import { FX, formatMoney } from "@/lib/money";
 import { parseCard, type Card } from "./params";
 
@@ -131,7 +132,7 @@ export async function GET(req: Request) {
           {sub && <div style={{ marginTop: 20, fontSize: 40, color: C.muted, textAlign: "center" }}>{sub}</div>}
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 40, fontSize: 34 }}>
-          <span style={{ color: C.brand, fontFamily: serif, fontSize: 64 }}>Kin</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 14, color: C.brand, fontFamily: serif, fontSize: 64 }}><KinMark size={48} />Kin</span>
           <span style={{ color: C.muted }}>kin-money.vercel.app</span>
         </div>
       </div>
