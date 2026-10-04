@@ -34,4 +34,9 @@ assert.equal(walletTarget("0x1234"), null);
 assert.equal(walletTarget("@sounak"), null);
 assert.equal(walletTarget(`${O}/send?to=sounak`), null);
 assert.equal(kinTarget(walletUri(ME, 1n), O), null); // Kin parser leaves wallet codes alone
+// Real money (mainnet AUSD, chain 143)
+const MAIN = "0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a";
+assert.equal(walletUri(ME, 2n, "main"), `ethereum:${MAIN}@143/transfer?address=${ME}&uint256=2`);
+assert.equal(walletTarget(walletUri(ME, 2n, "main")), `/send?to=${ME.toLowerCase()}&amt=2`);
+assert.equal(walletTarget(`ethereum:${AUSD}@143/transfer?address=${ME}&uint256=1`), "other"); // testnet token on mainnet
 console.log("scan ok");

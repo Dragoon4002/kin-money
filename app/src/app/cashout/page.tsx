@@ -1,49 +1,119 @@
 "use client";
-import { useState } from "react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 import { AmountInput, useSignedIn } from "@/components/social/bits";
-import { Button, Card, Chip, Screen } from "@/components/ui";
-import { formatMoney } from "@/lib/money";
+import { Button, Card, Chip, Delivered, ErrorText, Field, Screen, inputClass } from "@/components/ui";
+import { getBalance } from "@/lib/activity";
+import { cashOut, inr, quote, UPI_RE, type Quote } from "@/lib/cashout";
+import { humanError } from "@/lib/errors";
+import { useMode } from "@/lib/mode";
+import { formatMoney, fromLocal } from "@/lib/money";
 
-// #8 Cash-out preview. ponytail: no bank partner yet — nothing moves; wire a real offramp here later.
-const BANKS = ["HDFC Bank", "State Bank of India", "BDO Unibank", "BBVA México", "Access Bank", "Emirates NBD"];
-
+// Amount → UPI ID → live quote (Agora fixed price) → Identity check → settled. Practice money only for now.
 export default function CashOut() {
-  useSignedIn();
-  const [bank, setBank] = useState("");
+  const me = useSignedIn()?.address;
+  const mode = useMode();
   const [amount, setAmount] = useState("");
-  const [tried, setTried] = useState(false);
+  const [upi, setUpi] = useState("");
+  const [q, setQ] = useState<Quote | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [done, setDone] = useState<{ hash: string; q: Quote; upi: string } | null>(null);
+
+  const units = Number(amount) > 0 ? fromLocal(amount) : 0n;
+  const upiOk = UPI_RE.test(upi.trim());
+
+  // Re-quote as the amount changes (debounced); the quote is the live fixed price on Agora's settlement pair.
+  useEffect(() => {
+    if (units === 0n || mode === "main") return;
+    let live = true;
+    const t = setTimeout(() => quote(units).then((x) => live && setQ(x), () => live && setQ(null)), 300);
+    return () => {
+      live = false;
+      clearTimeout(t);
+    };
+  }, [units, mode]);
+  const shown = q && q.units === units ? q : null;
+
+  async function submit() {
+    if (!me || !shown) return;
+    setBusy(true);
+    setErr("");
+    try {
+      if ((await getBalance(me)) < shown.units) throw new Error("insufficient balance");
+      const hash = await cashOut(shown, upi);
+      setDone({ hash, q: shown, upi: upi.trim() });
+    } catch (e) {
+      setErr(humanError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (done) {
+    return (
+      <Screen title="Cash out" back="/money">
+        <Delivered title={`${inr(done.q.inr)} on its way`} subtitle={`To ${done.upi} · usually within minutes`}>
+          <Card className="flex flex-col gap-2 text-left text-sm">
+            <Chip tone="warn">Practice cash-out</Chip>
+            <p className="text-muted">
+              Your {formatMoney(done.q.units, "USD")} was settled at a fixed price through Agora. No real rupees move with practice money.
+            </p>
+          </Card>
+          <Link href={`/details?tx=${done.hash}`} className="mt-4 block text-center text-sm font-semibold text-brand">Proof of payment</Link>
+        </Delivered>
+      </Screen>
+    );
+  }
 
   return (
-    <Screen title="Cash out to bank" back="/money">
-      <Card className="flex items-center gap-3">
-        <Chip tone="warn">Coming soon</Chip>
-        <p className="text-sm text-muted">Cash out is coming soon. Nothing moves yet.</p>
-      </Card>
-
-      <AmountInput label="How much?" value={amount} onChange={setAmount} />
-
-      <fieldset className="flex flex-col gap-2">
-        <legend className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted">To which bank?</legend>
-        {BANKS.map((b) => (
-          <label key={b} className={`flex min-h-14 items-center gap-3 rounded-[20px] border px-4 ${bank === b ? "border-brand bg-brand-soft" : "border-line bg-surface"}`}>
-            <input type="radio" name="bank" className="size-5 accent-brand" checked={bank === b} onChange={() => (setBank(b), setTried(false))} />
-            <span className="flex-1 font-medium">{b}</span>
-          </label>
-        ))}
-      </fieldset>
-
-      <p className="text-center text-sm text-muted">Arrives in 1–2 days · fee {formatMoney(0n)}</p>
-
-      <div className="mt-auto flex flex-col gap-3 pt-2">
-        {tried && (
-          <p aria-live="polite" className="text-center text-sm font-medium">
-            {"We'll let you know when cash out is ready. Your money stays in your balance."}
+    <Screen title="Cash out to UPI" back="/money">
+      {mode === "main" ? (
+        <Card className="flex flex-col gap-2">
+          <Chip tone="warn">Coming soon</Chip>
+          <p className="text-sm text-muted">
+            Cashing out real money to Indian bank accounts is coming soon. Turn off Real money in Me to try a practice cash-out.
           </p>
-        )}
-        <Button onClick={() => setTried(true)} disabled={!bank || !(Number(amount) > 0) || tried}>
-          {tried ? "Coming soon" : "Cash out"}
-        </Button>
-      </div>
+        </Card>
+      ) : (
+        <>
+          <AmountInput label="How much?" value={amount} onChange={(v) => (setAmount(v), setErr(""))} />
+
+          <Field label="Your UPI ID" hint={upi && !upiOk ? "Looks like name@bank" : undefined}>
+            <input className={inputClass} placeholder="name@okbank" value={upi} onChange={(e) => (setUpi(e.target.value), setErr(""))}
+              autoCapitalize="none" autoCorrect="off" spellCheck={false} inputMode="email" maxLength={100} />
+          </Field>
+
+          {shown && (
+            <Card className="flex flex-col gap-2 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold">You get</span>
+                <span className="font-display text-2xl">{inr(shown.inr)}</span>
+              </div>
+              <Row k={`${formatMoney(shown.units, "USD")} at ${inr(shown.rate)} / $1`} v={inr(shown.gross)} />
+              <Row k="Payout fee" v={`− ${inr(shown.fee)}`} />
+              <Row k="Tax deducted (TDS 1%)" v={`− ${inr(shown.tds)}`} />
+              <p className="pt-1 text-xs text-muted">Settled at a fixed price through Agora · Practice money</p>
+            </Card>
+          )}
+
+          <ErrorText>{err}</ErrorText>
+          <div className="mt-auto pt-2">
+            <Button onClick={submit} busy={busy} disabled={!shown || !upiOk || shown.inr <= 0}>
+              {shown ? `Cash out ${inr(shown.inr)}` : "Cash out"}
+            </Button>
+          </div>
+        </>
+      )}
     </Screen>
+  );
+}
+
+function Row({ k, v }: { k: string; v: string }) {
+  return (
+    <div className="flex items-center justify-between text-muted">
+      <span>{k}</span>
+      <span className="tabular">{v}</span>
+    </div>
   );
 }

@@ -1,6 +1,6 @@
 import { isAddress, isHex, parseAbi, type Address, type Hex } from "viem";
 import { KinForwarderAbi } from "@/lib/abi";
-import { addr } from "@/lib/chain";
+import { addr, networks } from "@/lib/chain";
 import { allowShared } from "@/lib/server/graph";
 import { GAS_CAP, allow, clientIp, once, submit } from "@/lib/server/relayer";
 
@@ -8,7 +8,7 @@ const ausdAbi = parseAbi([
   "function transferWithAuthorization(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce,bytes signature)",
 ]);
 const OLD_POT = "0x58ab4Da1575758be9d4Fe53bdB79fabe8F4C2caD"; // pre-redeploy KinPot (lib/programs.ts OLD_POT): only close() is used
-const KIN = new Set([addr.names, addr.escrow, addr.stream, addr.pot, addr.circle, addr.mandate, addr.giftlink, OLD_POT].map((a) => a.toLowerCase()));
+const KIN = new Set([addr.names, addr.escrow, addr.stream, addr.pot, addr.circle, addr.mandate, addr.giftlink, addr.cashout, OLD_POT].map((a) => a.toLowerCase()));
 const MAX_DEADLINE_S = 3600;
 
 const bad = (error: string, status = 400) => Response.json({ error }, { status });
@@ -22,19 +22,23 @@ export async function POST(req: Request) {
   if (!(await allowShared(`relay:${ip}`, 600, 3_600_000))) return bad("slow down", 429);
   const now = Math.floor(Date.now() / 1000);
   try {
+    // Real money (mainnet): plain sends only. Programs and links stay on the practice network.
+    const net = body?.net === "main" ? "main" : "test";
+    if (net === "main" && body?.kind !== "3009") return bad("not available");
     if (body?.kind === "3009") {
       const { auth: a, signature } = body;
       if (![a?.from, a?.to].every((x) => isAddress(x)) || !isHex(a.nonce) || !isHex(signature)) return bad("invalid");
       if (![a.value, a.validAfter, a.validBefore].every(uint) || BigInt(a.value) === 0n) return bad("invalid"); // a $0 transfer only burns relayer gas
       if (!allow(`from:${a.from.toLowerCase()}`, 10)) return bad("slow down", 429);
       if (!(await allowShared(`relay-from:${a.from.toLowerCase()}`, 200, 86_400_000))) return bad("slow down", 429);
-      if (!once(`3009:${a.from.toLowerCase()}:${a.nonce}`)) return bad("duplicate", 409);
+      if (!once(`3009:${net}:${a.from.toLowerCase()}:${a.nonce}`)) return bad("duplicate", 409);
       const hash = await submit(
         {
-          address: addr.ausd, abi: ausdAbi, functionName: "transferWithAuthorization",
+          address: networks[net].ausd, abi: ausdAbi, functionName: "transferWithAuthorization",
           args: [a.from as Address, a.to as Address, BigInt(a.value), BigInt(a.validAfter), BigInt(a.validBefore), a.nonce as Hex, signature as Hex],
         },
         200_000n,
+        net,
       );
       return Response.json({ hash });
     }

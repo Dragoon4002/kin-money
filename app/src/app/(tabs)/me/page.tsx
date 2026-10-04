@@ -8,6 +8,8 @@ import { getPayCheck, lock, setPayCheck, signOut, switchAccount, useRequireAccou
 import { FX, currencySymbol, fromLocal, getCurrency, toDollars } from "@/lib/money";
 import { shortAddr } from "@/lib/names";
 import { setPrivate, usePrivate } from "@/lib/privacy";
+import { setMode } from "@/lib/chain";
+import { useMode } from "@/lib/mode";
 import { disablePush, enablePush, iosNeedsInstall, pushState, type PushState } from "@/lib/push";
 import { getTheme, setTheme, type Theme } from "@/lib/theme";
 
@@ -40,6 +42,7 @@ export default function Me() {
   const [copied, setCopied] = useState(false);
   const [confirmOut, setConfirmOut] = useState(false);
   const hidden = usePrivate();
+  const moneyMode = useMode();
   const payRaw = useSyncExternalStore(subscribe, () => JSON.stringify(getPayCheck()), () => "");
   const pay = payRaw ? (JSON.parse(payRaw) as PayCheck) : null;
   const [limitDraft, setLimitDraft] = useState<string | null>(null);
@@ -119,6 +122,18 @@ export default function Me() {
         <div className="px-5 py-4">
           <Tabs value={theme} options={THEMES} onChange={(t) => (setTheme(t), notify())} />
         </div>
+
+        <Band>Money</Band>
+        <label className="flex min-h-16 items-center gap-4 px-5">
+          <span className="flex-1">
+            <span className="block font-semibold">Real money</span>
+            <span className="block text-sm text-muted">
+              {moneyMode === "main" ? "Sending and cashing out real dollars. Jars, pots and circles use practice money." : "Off: you're using practice money to try Kin"}
+            </span>
+          </span>
+          <input type="checkbox" role="switch" aria-label="Real money" className="size-6 accent-brand" checked={moneyMode === "main"}
+            onChange={(e) => setMode(e.target.checked ? "main" : "test")} />
+        </label>
 
         <Band>Privacy</Band>
         <label className="flex min-h-16 items-center gap-4 px-5">

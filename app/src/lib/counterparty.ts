@@ -10,7 +10,7 @@ import { getEscrow, getPot, getStream, isJar, ZERO, type EscrowKind } from "./pr
 // contract's own event in the same transaction: "Chore for @b", "Allowance from @mum", "Savings jar"…
 
 const KIN = (a: Address) =>
-  [addr.escrow, addr.stream, addr.pot, addr.circle, addr.mandate, addr.giftlink].some((k) => isAddressEqual(k, a));
+  [addr.escrow, addr.stream, addr.pot, addr.circle, addr.mandate, addr.giftlink, addr.cashout].some((k) => isAddressEqual(k, a));
 export const isKinContract = KIN;
 
 const names = new Map<string, Promise<string>>();
@@ -56,6 +56,7 @@ function fallback(other: Address): string {
   if (isAddressEqual(other, addr.circle)) return "Savings circle";
   if (isAddressEqual(other, addr.mandate)) return "AutoPay";
   if (isAddressEqual(other, addr.giftlink)) return "Gift link";
+  if (isAddressEqual(other, addr.cashout)) return "Cash out";
   return "Kin";
 }
 

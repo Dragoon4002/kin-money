@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { useMode } from "@/lib/mode";
 import type { Address } from "viem";
 import { ActivityRow } from "@/components/core/ActivityRow";
 import { Band, Button, Chip, ErrorText, Ico, IconTile, Row, Screen, Tabs, funBg } from "@/components/ui";
@@ -50,6 +51,7 @@ const wireSavings = (sent: bigint[]) => sent.reduce((a, v) => a + (v * 3n) / 100
 export default function Activity() {
   const { profile } = useRequireAccount();
   const me = profile?.address;
+  const mode = useMode();
   const [items, setItems] = useState<Item[] | null>(null);
   const [links, setLinks] = useState<Pending[]>([]);
   const [filter, setFilter] = useState<Filter>("all");
@@ -66,7 +68,7 @@ export default function Activity() {
     refresh();
     const t = setInterval(refresh, 4000);
     return () => clearInterval(t);
-  }, [refresh]);
+  }, [refresh, mode]); // mode: practice ↔ real money switches the list
 
   async function takeBack(id: bigint) {
     setBusy(id);

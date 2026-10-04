@@ -1,8 +1,8 @@
 "use client";
-import { encodeFunctionData, toHex, type Abi, type Address, type ContractFunctionName, type Hex } from "viem";
+import { encodeFunctionData, toHex, type Abi, type Address, type ContractFunctionName, type Hex, type PublicClient } from "viem";
 import { KinForwarderAbi } from "./abi";
 import { confirmPayment, getAccount } from "./account";
-import { addr, chain, publicClient } from "./chain";
+import { addr, chain, getMode, money, publicClient } from "./chain";
 
 // Gasless writes (see .claude/skills/gasless-relay). User signs; /api/relay pays gas.
 
@@ -19,11 +19,11 @@ const AUTH_FIELDS = [
 const now = () => BigInt(Math.floor(Date.now() / 1000));
 const randomNonce = () => toHex(crypto.getRandomValues(new Uint8Array(32)));
 
-async function relay(body: unknown): Promise<Hex> {
+async function relay(body: unknown, client: Pick<PublicClient, "waitForTransactionReceipt"> = publicClient): Promise<Hex> {
   const res = await fetch("/api/relay", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body, (_, v) => (typeof v === "bigint" ? v.toString() : v)) });
   const json = await res.json();
   if (!res.ok) throw new Error(`relay: ${json.error ?? res.status}`);
-  const receipt = await publicClient.waitForTransactionReceipt({ hash: json.hash });
+  const receipt = await client.waitForTransactionReceipt({ hash: json.hash });
   if (receipt.status !== "success") throw new Error("relay: reverted");
   return json.hash;
 }
@@ -33,8 +33,11 @@ export async function sendDollars(to: Address, value: bigint): Promise<Hex> {
   await confirmPayment(value);
   const account = await getAccount();
   const auth = { from: account.address, to, value, validAfter: 0n, validBefore: now() + 3600n, nonce: randomNonce() };
-  const signature = await account.signTypedData({ domain: AUSD_DOMAIN, types: { TransferWithAuthorization: AUTH_FIELDS }, primaryType: "TransferWithAuthorization", message: auth });
-  return relay({ kind: "3009", auth, signature });
+  // Practice or real money: same signature, the network's chain id + dollar contract (see chain.ts money()).
+  const net = money();
+  const domain = { ...AUSD_DOMAIN, chainId: net.chain.id, verifyingContract: net.ausd };
+  const signature = await account.signTypedData({ domain, types: { TransferWithAuthorization: AUTH_FIELDS }, primaryType: "TransferWithAuthorization", message: auth });
+  return relay({ kind: "3009", net: net.mode, auth, signature }, net.client);
 }
 
 /** Signed pull of `value` into `target` — the 5 trailing "fund" args every Kin fund function takes. */
@@ -56,6 +59,8 @@ export async function call<const abi extends Abi>(
   args: readonly unknown[],
   opts: { fund?: bigint } = {},
 ): Promise<Hex> {
+  // Programs + links live on the practice network only (see chain.ts). One guard for every caller.
+  if (getMode() === "main") throw new Error("practice only");
   if (opts.fund !== undefined) await confirmPayment(opts.fund);
   const account = await getAccount();
   const fullArgs = opts.fund !== undefined ? [...args, ...(await fundArgs(to, opts.fund))] : args;
