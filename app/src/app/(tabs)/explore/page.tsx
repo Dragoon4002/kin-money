@@ -15,27 +15,32 @@ const TILES: Record<string, Tile> = {
   "/earmark": { title: "Pay a bill", sub: "Money only for school, rent, doctor", icon: "bill" },
   "/split": { title: "Split a bill", sub: "Share the cost", icon: "split" },
   "/invoice": { title: "Invoices", sub: "Get paid for work", icon: "invoice" },
-  "/chores": { title: "Chores", sub: "Earn for helping", icon: "chores" },
-  "/jars": { title: "Savings jars", sub: "Save for a goal", icon: "jars" },
   "/spends": { title: "Monthly spends", sub: "Where your money went", icon: "spends" },
+  "/jars": { title: "Savings jars", sub: "Save for a goal", icon: "jars" },
   "/allowance": { title: "Live allowance", sub: "Grows every second", icon: "allowance" },
-  "/trips": { title: "Trips", sub: "Who paid what", icon: "trip" },
+  "/autopay": { title: "AutoPay", sub: "Paid every month", icon: "schedule" },
   "/circle": { title: "Circles", sub: "Save together, take turns", icon: "circle" },
   "/pot": { title: "Family pot", sub: "Chip in for home", icon: "pot" },
+  "/trips": { title: "Trips", sub: "Who paid what", icon: "trip" },
+  "/chores": { title: "Chores", sub: "Earn for helping", icon: "chores" },
   "/gift": { title: "Gifts", sub: "Opens on the day", icon: "gift" },
-  "/autopay": { title: "AutoPay", sub: "Paid every month", icon: "schedule" },
-  "/kinko": { title: "Kinko & Kin Score", sub: "Dress up your buddy", icon: "kinko" },
+  "/kinko": { title: "KinScore", sub: "Dress up your buddy", icon: "kinko" },
   "/invite": { title: "Invite & earn", sub: "You both get a Kinko treat", icon: "invite" },
 };
 
-// Bento blocks: a wide card, then two small cards stacked beside one tall card (`flip` swaps the sides).
-// Related tiles sit together: bills, trips + circles, chores + invoices, savings + spends.
-const BLOCKS: { wide: string; small: [string, string]; tall: string; flip?: boolean }[] = [
-  { wide: "/requests", small: ["/earmark", "/split"], tall: "/invoice" },
-  { wide: "/chores", small: ["/spends", "/allowance"], tall: "/jars", flip: true },
-  { wide: "/trips", small: ["/circle", "/pot"], tall: "/gift" },
+// The layout. Each row is one of:
+//   [href]                              a wide card
+//   [href, href]                        two half cards side by side
+//   { small: [href, href], tall: href } two small cards stacked beside one tall card (`flip`: tall on the left)
+// A tile only shows if it is listed here, and each link should appear once.
+type Row = [string] | [string, string] | { small: [string, string]; tall: string; flip?: boolean };
+const SECTIONS: { title?: string; rows: Row[] }[] = [
+  { rows: [["/requests"]] },
+  { title: "Pay & get paid", rows: [["/earmark", "/split"], ["/invoice"]] },
+  { title: "Money", rows: [["/spends"], ["/jars", "/allowance"], ["/autopay"]] },
+  { title: "Together", rows: [["/circle", "/pot"], ["/trips", "/chores"]] },
+  { title: "More", rows: [["/gift", "/kinko"], ["/invite"]] },
 ];
-const TAIL = ["/autopay", "/kinko", "/invite"]; // wide cards
 
 export default function Explore() {
   const { profile, canRead } = useRequireAccount();
@@ -45,20 +50,37 @@ export default function Explore() {
     if (canRead) listRequests().then((r) => setWaiting(r.incoming.filter((q) => q.status === "open").length), () => {});
   }, [canRead]);
 
-  function card(href: string, shape: "wide" | "small" | "tall", place = "") {
+  function card(href: string, shape: "wide" | "half" | "tall", place = "") {
     const t = TILES[href];
-    const sub = href === "/requests" && waiting ? `${waiting} waiting for you` : t.sub;
     const icon = t.icon === "kinko" ? <MyKinko size={shape === "tall" ? 64 : 48} /> : <IconTile name={t.icon} tone={href === "/earmark" ? "brand" : "neutral"} />;
     return (
       <Link key={href} href={href}
-        className={`flex gap-3 rounded-[24px] border border-line bg-surface p-4 transition active:scale-[0.97] ${place} ${shape === "wide" ? "min-h-24 flex-row items-center" : shape === "small" ? "min-h-28 flex-col justify-between" : "min-h-56 flex-col justify-between"}`}>
+        className={`flex gap-3 rounded-[24px] border border-line bg-surface p-4 transition active:scale-[0.97] ${place} ${shape === "wide" ? "min-h-24 flex-row items-center" : shape === "half" ? "min-h-28 flex-col justify-between" : "min-h-56 flex-col justify-between"}`}>
         {icon}
         <span className={`min-w-0 ${shape === "tall" ? "" : "flex-1"}`}>
           <span className={`block font-semibold ${shape === "tall" ? "text-lg" : ""}`}>{t.title}</span>
-          <span className="block text-xs text-muted">{sub}</span>
+          <span className="block text-xs text-muted">{t.sub}</span>
         </span>
+        {href === "/requests" && waiting > 0 && (
+          <span className="grid h-8 min-w-8 place-items-center rounded-full bg-brand px-2 text-sm font-bold text-brand-ink" aria-label={`${waiting} waiting for you`}>{waiting}</span>
+        )}
       </Link>
     );
+  }
+
+  function row(r: Row) {
+    if (!Array.isArray(r)) {
+      const { small, tall, flip } = r;
+      return (
+        <div key={tall} className="grid grid-cols-2 grid-rows-2 gap-3">
+          {card(small[0], "half", flip ? "col-start-2 row-start-1" : "col-start-1 row-start-1")}
+          {card(small[1], "half", flip ? "col-start-2 row-start-2" : "col-start-1 row-start-2")}
+          {card(tall, "tall", flip ? "col-start-1 row-span-2 row-start-1" : "col-start-2 row-span-2 row-start-1")}
+        </div>
+      );
+    }
+    if (r.length === 1) return card(r[0], "wide");
+    return <div key={r[0]} className="grid grid-cols-2 gap-3">{r.map((h) => card(h, "half"))}</div>;
   }
 
   return (
@@ -68,18 +90,13 @@ export default function Explore() {
         <MeButton name={profile?.name} />
       </header>
       <p className="font-display text-4xl leading-tight">Money that behaves.</p>
-      <div className="flex flex-col gap-3">
-        {BLOCKS.map(({ wide, small, tall, flip }) => (
-          <div key={wide} className="flex flex-col gap-3">
-            {card(wide, "wide")}
-            <div className="grid grid-cols-2 grid-rows-2 gap-3">
-              {card(small[0], "small", flip ? "col-start-2 row-start-1" : "col-start-1 row-start-1")}
-              {card(small[1], "small", flip ? "col-start-2 row-start-2" : "col-start-1 row-start-2")}
-              {card(tall, "tall", flip ? "col-start-1 row-span-2 row-start-1" : "col-start-2 row-span-2 row-start-1")}
-            </div>
-          </div>
+      <div className="flex flex-col gap-6">
+        {SECTIONS.map(({ title, rows }) => (
+          <section key={title ?? "top"} className="flex flex-col gap-3">
+            {title && <h2 className="px-1 text-xs font-semibold uppercase tracking-widest text-muted">{title}</h2>}
+            {rows.map(row)}
+          </section>
         ))}
-        {TAIL.map((href) => card(href, "wide"))}
       </div>
     </Screen>
   );
