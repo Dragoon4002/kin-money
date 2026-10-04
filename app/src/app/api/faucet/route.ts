@@ -11,8 +11,9 @@ const faucetAbi = parseAbi(["function requestFunds(address recipient)"]);
 export async function POST(req: Request) {
   const { address } = await req.json().catch(() => ({}));
   if (!isAddress(address)) return Response.json({ error: "invalid" }, { status: 400 });
-  if (!allow(`faucet:${clientIp(req)}`, 3, 3_600_000)) return Response.json({ error: "slow down" }, { status: 429 });
-  if (!(await allowShared(`faucet:${clientIp(req)}`, 20, 86_400_000))) return Response.json({ error: "slow down" }, { status: 429 });
+  // Generous per-network cap: a venue or campus shares one IP, and judges each need a starter balance. ~0.025 MON of relayer gas per drip.
+  if (!allow(`faucet:${clientIp(req)}`, 30, 3_600_000)) return Response.json({ error: "slow down" }, { status: 429 });
+  if (!(await allowShared(`faucet:${clientIp(req)}`, 100, 86_400_000))) return Response.json({ error: "slow down" }, { status: 429 });
   const bal = await publicClient.readContract({ address: addr.ausd, abi: erc20Abi, functionName: "balanceOf", args: [address] });
   if (bal >= toUnits(100) || !once(`faucet:${address.toLowerCase()}`) || !(await allowShared(`faucet-to:${address.toLowerCase()}`, 2, 7 * 86_400_000)))
     return Response.json({ skipped: true });
