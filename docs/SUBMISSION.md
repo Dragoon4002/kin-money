@@ -19,7 +19,7 @@ Deadline: **2026-10-14 09:29 IST**.
 - **Devices:** Android Chrome with a screen lock set · iPhone iOS 18+ Safari · desktop Chrome with a synced passkey (Google Password Manager / iCloud Keychain).
 - **Credentials:** none shared, by design. Passkeys can't be shared, so each judge creates their own account in ~20s — no email, no password, no recovery phrase, no extension.
 - **Test funds:** new accounts automatically receive **$10,000 in test dollars** (Agora testnet faucet, sent by our relay; skipped if the account already holds $100+).
-- **Someone to pay:** send to `TODO(team demo @name, kept online)`, or pair with another judge / a second device.
+- **Someone to pay:** send to **`@sounak`** (the founder's own account; test dollars, no value), or pair with another judge / a second device. Payments to it are visible on its Activity tab and on the explorer.
 - **Android APK:** `TODO(paste latest APK link)` — same passkey, same account as the web app.
 - **Contact:** `TODO(name + email/Telegram)`.
 
