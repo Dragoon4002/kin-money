@@ -121,6 +121,13 @@ async function batch(ranges: [bigint, bigint][]): Promise<RpcLog[]> {
 /** Load the persisted history once per instance (fast DB read). Await before answering. */
 export const warm = () => (loading ??= load());
 
+/** Logs pushed to us (Alchemy webhook): stored like scanned logs, so whichever path sees a log first sends
+ *  its notification and the other is a no-op. The cursor isn't moved; the next scan fills the range. */
+export async function ingest(fresh: RpcLog[]) {
+  await warm();
+  await save(fresh);
+}
+
 // ---------- Envio HyperSync ----------
 const HYPERSYNC = "https://10143.hypersync.xyz";
 type HsLog = { block_number: number; log_index: number; transaction_index: number; transaction_hash: Hex; address: Hex; data: Hex; topic0?: Hex | null; topic1?: Hex | null; topic2?: Hex | null; topic3?: Hex | null };
