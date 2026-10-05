@@ -1,5 +1,6 @@
 import { ArrowDownLeft, Shapes } from "lucide-react-native";
 import { useCallback, useEffect, useState } from "react";
+import { useMode } from "@/lib/config";
 import { Pressable, RefreshControl, ScrollView, View } from "react-native";
 import { Avatar, Chip, Serif, Text } from "@/components/ui";
 import { useAccount } from "@/lib/account";
@@ -60,6 +61,7 @@ const WIRE_FLAT = 5_000_000n; // $5 in base units
 const wireSavings = (sent: bigint[]) => sent.reduce((a, v) => a + (v * 3n) / 100n + WIRE_FLAT, 0n);
 
 export default function Activity() {
+  const mode = useMode();
   const t = useTheme();
   const me = useAccount().profile?.address;
   const [items, setItems] = useState<Item[] | null>(null);
@@ -77,7 +79,7 @@ export default function Activity() {
     // ponytail: 10s poll while foregrounded (web polls 4s); push a refresh from live events if it feels slow.
     const id = setInterval(() => isActive() && void refresh(), 10_000);
     return () => clearInterval(id);
-  }, [refresh]);
+  }, [refresh, mode]); // mode: practice ↔ real money switches the list
 
   const shown = items?.filter((i) => filter === "all" || i.dir === filter) ?? [];
   const moments = items?.slice(0, 8) ?? [];

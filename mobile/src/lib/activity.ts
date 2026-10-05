@@ -1,7 +1,7 @@
 import * as SecureStore from "expo-secure-store";
 import { erc20Abi, formatLog, isAddressEqual, parseAbiItem, parseEventLogs, type Address, type Hex, type Log, type RpcLog } from "viem";
 import { CATEGORIES } from "./categories";
-import { API_BASE, addr, publicClient } from "./config";
+import { API_BASE, addr, getMode, money, publicClient } from "./config";
 import { describe, isKinContract } from "./counterparty";
 import { nameOf, shortAddr } from "./names";
 
@@ -18,8 +18,10 @@ const TRANSFER = parseAbiItem("event Transfer(address indexed from, address inde
 type Raw = { hash: Hex; logIndex: number; dir: "in" | "out"; other: Address; amount: bigint; time: number };
 export type Item = Raw & { who: string; when: string };
 
+/** Balance in the current mode (practice or real money). */
 export function getBalance(me: Address): Promise<bigint> {
-  return publicClient.readContract({ address: addr.ausd, abi: erc20Abi, functionName: "balanceOf", args: [me] });
+  const net = money();
+  return net.client.readContract({ address: net.ausd, abi: erc20Abi, functionName: "balanceOf", args: [me] });
 }
 
 const LABELS: [Address, string][] = [
@@ -118,14 +120,31 @@ function feedWho(other: Address, dir: Raw["dir"], hash: Hex, me: Address): Promi
 
 /** Like loadActivity but full history via /api/history (falls back to the recent-block scan). Safe to poll. */
 export function loadFeed(me: Address): Promise<Item[]> {
-  const k = me.toLowerCase();
+  const k = `${getMode()}:${me.toLowerCase()}`;
   if (!feedInflight.has(k)) feedInflight.set(k, feedScan(me).finally(() => feedInflight.delete(k)));
   return feedInflight.get(k)!;
 }
 
 async function feedScan(me: Address): Promise<Item[]> {
-  const k = me.toLowerCase();
+  const main = getMode() === "main";
+  const k = `${main ? "main" : "test"}:${me.toLowerCase()}`;
   try {
+    if (main) {
+      // Real money: this person's mainnet dollar transfers (server HyperSync query); no practice-network tail.
+      const r = await fetch(`${API_BASE}/api/history?kind=transfers&net=main&address=${me}`);
+      if (!r.ok) throw new Error("history unavailable");
+      const { logs } = (await r.json()) as { logs: RpcLog[] };
+      const found = parseEventLogs({ abi: erc20Abi, eventName: "Transfer", logs: logs.map((l) => formatLog(l)) }).flatMap((log) => {
+        const { from: f, to, value } = log.args;
+        const out = isAddressEqual(f, me);
+        if (!out && !isAddressEqual(to, me)) return [];
+        const time = log.blockTimestamp ? Number(log.blockTimestamp) * 1000 : Date.now();
+        return [{ hash: log.transactionHash, logIndex: log.logIndex, dir: out ? "out" : "in", other: out ? to : f, amount: value, time } as Raw];
+      });
+      const items = await Promise.all(found.reverse().slice(0, KEEP).map(async (i) => ({ ...i, who: await who(i.other, i.dir), when: ago(i.time) })));
+      feedLast.set(k, items);
+      return items;
+    }
     const [res, latest] = await Promise.all([
       fetch(`${API_BASE}/api/history?kind=transfers&address=${me}`).then((r) => (r.ok ? (r.json() as Promise<{ logs: RpcLog[]; to: string }>) : Promise.reject(new Error("history unavailable")))),
       publicClient.getBlockNumber(),
@@ -150,7 +169,7 @@ async function feedScan(me: Address): Promise<Item[]> {
     return items;
   } catch {
     // ponytail: server history down or offline — last good list, else the recent-block scan.
-    return feedLast.get(k) ?? loadActivity(me);
+    return feedLast.get(k) ?? (main ? [] : loadActivity(me));
   }
 }
 

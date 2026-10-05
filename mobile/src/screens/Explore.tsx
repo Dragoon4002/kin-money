@@ -1,5 +1,6 @@
 import { ArrowDownLeft, Briefcase, CalendarClock, ChartPie, Gift, House, ListChecks, Luggage, type LucideIcon, PiggyBank, Receipt, RefreshCcw, Split, Sprout, UserPlus } from "lucide-react-native";
 import { useEffect, useState } from "react";
+import { useMode } from "@/lib/config";
 import { Pressable, View } from "react-native";
 import { Kinko } from "@/components/Kinko";
 import { IconTile, MeButton, Screen, Serif, TabHeader, Text } from "@/components/ui";
@@ -42,6 +43,7 @@ const SMALL = 120, GAP = 12;
 
 export default function Explore() {
   const t = useTheme();
+  const mode = useMode();
   const { profile, canRead } = useAccount();
   const [waiting, setWaiting] = useState(0);
   // Only with a read session: the count must never trigger Face ID on its own.
@@ -92,6 +94,11 @@ export default function Explore() {
         <MeButton name={profile?.name} />
       </TabHeader>
       <Serif size={36}>Money that behaves.</Serif>
+      {mode === "main" && (
+        <Text style={{ borderRadius: 20, backgroundColor: t.surface2, paddingHorizontal: 16, paddingVertical: 12, color: t.muted, fontSize: 14 }}>
+          These use practice money for now. Turn off Real money in Settings to try them.
+        </Text>
+      )}
       <View style={{ gap: 24 }}>
         {SECTIONS.map(({ title, rows }) => (
           <View key={title ?? "top"} style={{ gap: GAP }}>

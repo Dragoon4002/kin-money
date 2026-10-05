@@ -5,6 +5,7 @@ import { Linking, Pressable, Switch, View } from "react-native";
 import { Choice } from "@/components/programs/kit";
 import { Band, Screen, Text } from "@/components/ui";
 import { useAccount } from "@/lib/account";
+import { setMode, useMode } from "@/lib/config";
 import { FX, getCurrency, setCurrency } from "@/lib/money";
 import { usePush } from "@/lib/push";
 import { getThemePref, setThemePref, useTheme, type ThemePref } from "@/theme";
@@ -22,6 +23,7 @@ type Perm = "on" | "off" | "denied" | null;
 
 export default function Settings() {
   const t = useTheme();
+  const moneyMode = useMode();
   const { unlocked } = useAccount();
   const push = usePush(unlocked);
   const [theme, setTheme] = useState(getThemePref);
@@ -48,6 +50,18 @@ export default function Settings() {
     <Screen title="Settings" back scroll>
       <Band>Appearance</Band>
       <Choice options={THEMES} value={theme} onChange={(v) => (setThemePref(v), setTheme(v))} />
+
+      <Band>Money</Band>
+      <View style={{ minHeight: 64, flexDirection: "row", alignItems: "center", gap: 16 }}>
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: t.ink, fontWeight: "600" }}>Real money</Text>
+          <Text style={{ color: t.muted, fontSize: 14 }}>
+            {moneyMode === "main" ? "Sending and cashing out real dollars. Jars, pots and circles use practice money." : "Off: you're using practice money to try Kin"}
+          </Text>
+        </View>
+        <Switch accessibilityLabel="Real money" value={moneyMode === "main"} onValueChange={(v) => setMode(v ? "main" : "test")}
+          trackColor={{ true: t.brand, false: t.line }} thumbColor="#ffffff" />
+      </View>
 
       <Band>Notifications</Band>
       <View style={{ minHeight: 64, flexDirection: "row", alignItems: "center", gap: 16 }}>

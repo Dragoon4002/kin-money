@@ -1,4 +1,4 @@
-import { API_BASE, addr, chain } from "./config";
+import { API_BASE, money, type Network } from "./config";
 import { FX, getCurrency, toDollars } from "./money";
 import { query } from "./query";
 
@@ -23,7 +23,7 @@ export function unitsToLocal(units: bigint, currency = getCurrency()): string {
 }
 
 /** "Pay me" code for other wallets (EIP-681): dollars (AUSD) transfer on Monad, amount in base units (optional). */
-export function walletUri(to: string, units?: bigint): string {
+export function walletUri(to: string, units?: bigint, net: Network = money()): string {
   const amt = units && units > 0n ? `&uint256=${units}` : "";
-  return `ethereum:${addr.ausd}@${chain.id}/transfer?address=${to}${amt}`;
+  return `ethereum:${net.ausd}@${net.chain.id}/transfer?address=${to}${amt}`;
 }

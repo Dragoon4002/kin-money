@@ -1,6 +1,6 @@
 import { isAddressEqual, parseEventLogs, type Address, type Hex } from "viem";
 import { KinCircleAbi, KinEscrowAbi, KinGiftLinkAbi, KinMandateAbi, KinPotAbi, KinStreamAbi } from "./abi";
-import { addr, publicClient } from "./config";
+import { CASHOUT, addr, publicClient } from "./config";
 import { nameOf, shortAddr } from "./names";
 
 // Port of app/src/lib/counterparty.ts: money moving in/out of a Kin contract is a transfer to a contract
@@ -12,7 +12,7 @@ const GIFTLINK: Address = "0x7ad1C20D0B96BaE5aE72462137384A1924e36BDb";
 const ZERO = "0x0000000000000000000000000000000000000000";
 const CHORE_MARK = 1;
 
-const KIN = [addr.escrow, addr.stream, addr.pot, addr.circle, MANDATE, GIFTLINK];
+const KIN = [addr.escrow, addr.stream, addr.pot, addr.circle, MANDATE, GIFTLINK, CASHOUT];
 export const isKinContract = (a: Address) => KIN.some((k) => isAddressEqual(k, a));
 
 const names = new Map<string, Promise<string>>();
@@ -64,6 +64,7 @@ function fallback(other: Address): string {
   if (isAddressEqual(other, addr.circle)) return "Savings circle";
   if (isAddressEqual(other, MANDATE)) return "AutoPay";
   if (isAddressEqual(other, GIFTLINK)) return "Gift link";
+  if (isAddressEqual(other, CASHOUT)) return "Cash out";
   return "Kin";
 }
 

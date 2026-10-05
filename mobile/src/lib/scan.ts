@@ -1,5 +1,5 @@
 import type { Address } from "viem";
-import { addr, chain } from "./config";
+import { networks } from "./config";
 import { HANDLE_RE } from "./names";
 
 // Screens a Kin QR may open. Everything else is rejected ("That's not a Kin code").
@@ -40,11 +40,13 @@ export function parseWalletUri(text: string): { to: Address; units: bigint | nul
   const m = t.match(URI_RE);
   if (!m) return null;
   const [, target, chainId, fn, query] = m;
-  if (chainId && Number(chainId) !== chain.id) return "other";
+  // Either network: practice (testnet) or real money (mainnet) dollars.
+  const nets = Object.values(networks);
+  if (chainId && !nets.some((n) => n.chain.id === Number(chainId))) return "other";
   // ponytail: tiny query parse (values are hex/digits, nothing to decode); avoids RN URLSearchParams gaps.
   const q = new Map((query ?? "").split("&").filter(Boolean).map((kv) => kv.split("=") as [string, string]));
   if (!fn) return { to: target.toLowerCase() as Address, units: null }; // native `value` ignored — Kin pays in dollars
-  if (fn !== "transfer" || target.toLowerCase() !== addr.ausd.toLowerCase()) return "other";
+  if (fn !== "transfer" || !nets.some((n) => n.ausd.toLowerCase() === target.toLowerCase() && (!chainId || n.chain.id === Number(chainId)))) return "other";
   const to = q.get("address") ?? "";
   if (!ADDR_RE.test(to)) return null;
   const units = q.has("uint256") ? parseUint(q.get("uint256") ?? null) : null;

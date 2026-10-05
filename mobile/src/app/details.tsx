@@ -12,7 +12,7 @@ import { Band, Button, Chip, Footer, IconTile, Row, Screen, Serif, Text } from "
 import { useAccount } from "@/lib/account";
 import { categoryOf } from "@/lib/activity";
 import { CATEGORIES, setCategory } from "@/lib/categories";
-import { API_BASE, addr, explorerTx, publicClient } from "@/lib/config";
+import { API_BASE, money as moneyNet, networks, type Network } from "@/lib/config";
 import { describe, isKinContract } from "@/lib/counterparty";
 import { useKinko } from "@/lib/kinko";
 import { formatMoney } from "@/lib/money";
@@ -23,7 +23,7 @@ import { useTheme } from "@/theme";
 
 // Port of app/src/app/details/Proof.tsx. Receipt; proof of payment (public-ledger record) lives ONLY here.
 
-type Receipt = { amount: bigint; from: string; to: string; fromA?: Address; toA?: Address; out: boolean; at: Date; block: bigint; ok: boolean };
+type Receipt = { net: Network; amount: bigint; from: string; to: string; fromA?: Address; toA?: Address; out: boolean; at: Date; block: bigint; ok: boolean };
 
 // Not on Kin (no @name) → short address; the full one is copyable below.
 const label = (n: string, a?: Address) => (n ? `@${n}` : a ? shortAddr(a) : "someone");
@@ -31,15 +31,27 @@ const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) 
 const OTHER = CATEGORIES[CATEGORIES.length - 1];
 
 async function load(hash: Hex, me?: Address): Promise<Receipt> {
-  const r = await publicClient.getTransactionReceipt({ hash });
-  const block = await publicClient.getBlock({ blockNumber: r.blockNumber });
-  const transfers = parseEventLogs({ abi: erc20Abi, eventName: "Transfer", logs: r.logs }).filter((l) => isAddressEqual(l.address, addr.ausd));
+  // Current mode's network first, then the other one (a practice receipt opened in real-money mode, or vice versa).
+  const first = moneyNet();
+  let found: { net: Network; r: Awaited<ReturnType<Network["client"]["getTransactionReceipt"]>> } | null = null;
+  for (const net of [first, first.mode === "main" ? networks.test : networks.main]) {
+    const r = await net.client.getTransactionReceipt({ hash }).catch(() => null);
+    if (r) {
+      found = { net, r };
+      break;
+    }
+  }
+  if (!found) throw new Error("receipt not found");
+  const { net, r } = found;
+  const block = await net.client.getBlock({ blockNumber: r.blockNumber });
+  const transfers = parseEventLogs({ abi: erc20Abi, eventName: "Transfer", logs: r.logs }).filter((l) => isAddressEqual(l.address, net.ausd));
   const t = transfers.find((l) => me && (isAddressEqual(l.args.from, me) || isAddressEqual(l.args.to, me))) ?? transfers[0];
   // A Kin contract on either side → describe what it was for ("Chore for @b"), else the person's @name.
   const side = async (a: Address, dir: "in" | "out") =>
     isKinContract(a) && me ? describe(hash, a, dir, me) : label(await nameOf(a).catch(() => ""), a);
   const [from, to] = t ? await Promise.all([side(t.args.from, "in"), side(t.args.to, "out")]) : [label(""), label("")];
   return {
+    net,
     amount: t?.args.value ?? 0n,
     from,
     to,
@@ -227,7 +239,7 @@ export default function Details() {
         </Text>
         <Text style={{ color: t.muted, fontSize: 12 }}>Block {r.block.toString()}</Text>
         <Text selectable style={{ color: t.ink, fontSize: 12, fontFamily: "monospace", borderRadius: 16, padding: 12, backgroundColor: t.surface2 }}>{hash}</Text>
-        <Button title="Verify on the public explorer ↗" variant="soft" onPress={() => void WebBrowser.openBrowserAsync(explorerTx(hash))} />
+        <Button title="Verify on the public explorer ↗" variant="soft" onPress={() => void WebBrowser.openBrowserAsync(`${(r?.net ?? moneyNet()).explorer}/tx/${hash}`)} />
       </View>
 
       <Footer>
