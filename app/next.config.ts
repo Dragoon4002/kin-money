@@ -12,6 +12,8 @@ const nextConfig: NextConfig = {
         destination: "https://getkin.space/:path",
         permanent: false,
       },
+      // www is a different passkey hostname → always the apex.
+      { source: "/:path*", has: [{ type: "host", value: "www.getkin.space" }], destination: "https://getkin.space/:path*", permanent: true },
     ];
   },
 };
