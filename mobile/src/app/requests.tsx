@@ -70,7 +70,7 @@ export default function Requests() {
       const hash = await sendDollars(r.from.address, units);
       mark(r.id, "paid");
       void settleRequest(r.id, "paid", hash).catch(() => {});
-      void recordPayment(r.from.address, units);
+      void recordPayment(r.from.address, units, hash);
     } catch (e) {
       setErr(humanError(e));
     } finally {

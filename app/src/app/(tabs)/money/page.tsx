@@ -38,7 +38,7 @@ export default function Money() {
     const tick = () => getBalance(me).then((v) => on && setBal({ mode, v })).catch(() => {});
     tick();
     jarLine(me).then((j) => on && setJars(j), () => on && setJars(null));
-    const t = setInterval(tick, 6000);
+    const t = setInterval(() => document.visibilityState === "visible" && tick(), 6000); // hidden tabs don't poll
     return () => {
       on = false;
       clearInterval(t);

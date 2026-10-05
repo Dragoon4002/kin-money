@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { addrOf, bad, q, route, verifiedName } from "@/lib/server/graph";
+import { addrOf, allowShared, bad, q, route, verifiedName } from "@/lib/server/graph";
+import { blocked } from "@/lib/server/messages";
 import { notify } from "@/lib/server/push";
 import { loadTrip, MAX_MEMBERS, netOf } from "./data";
 
@@ -24,6 +25,8 @@ export function POST(req: Request) {
     if (unique.length > MAX_MEMBERS) return bad("too many");
     const names = await Promise.all(unique.map(verifiedName));
     if (names.some((n) => !n)) return bad("unknown member");
+    if ((await Promise.all(unique.slice(1).map((a) => blocked(me, a)))).some(Boolean)) return bad("blocked", 403);
+    if (!(await allowShared(`trips:${me}`, 10, 3_600_000))) return bad("slow down", 429); // each notifies up to 19 people
     const id = randomUUID();
     await q(
       `UNWIND $people AS person

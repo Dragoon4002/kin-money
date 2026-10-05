@@ -37,7 +37,7 @@ export default function ChoresPage() {
 
   // Parent sees "done" taps without a refresh.
   useEffect(() => {
-    const i = setInterval(reload, 8000);
+    const i = setInterval(() => document.visibilityState === "visible" && reload(), 15_000); // hidden tabs don't poll (RPC budget)
     return () => clearInterval(i);
   }, [reload]);
 

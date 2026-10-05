@@ -246,6 +246,24 @@ contract KinPotTest is KinTest {
         pot.join(id, alice, carol, s);
     }
 
+    /// @dev Audit regression: in a toAll pot, a link-joiner can't `close` straight away and take a share.
+    function test_LinkJoinerCantCloseToAllPot() public {
+        address[] memory m = new address[](2);
+        (m[0], m[1]) = (alice, bob);
+        vm.prank(alice);
+        uint256 all = pot.create(new address[](0), true, uint96(1_000 * USD), m, vm.addr(KEY_PK));
+        _contributeTo(ALICE_PK, all, 450 * USD);
+        _contributeTo(BOB_PK, all, 450 * USD);
+        address eve = makeAddr("eve");
+        pot.join(all, alice, eve, _joinSig(KEY_PK, all, alice, eve));
+        vm.expectRevert(KinPot.Unauthorized.selector);
+        vm.prank(eve);
+        pot.close(all);
+        vm.prank(bob); // an original member still can
+        pot.close(all);
+        assertEq(ausd.balanceOf(eve), 300 * USD); // ...and the joiner, now a member, shares like everyone else
+    }
+
     function test_CreateRejectsContractOrDollarAsRecipient() public {
         address[] memory m = new address[](1);
         m[0] = alice;

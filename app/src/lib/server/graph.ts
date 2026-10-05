@@ -26,7 +26,7 @@ export async function allowShared(key: string, max: number, windowMs: number): P
   try {
     const [r] = await q<{ n: number }>(
       `MERGE (r:Rate {key: $key}) ON CREATE SET r.bucket = $bucket, r.n = 0
-       SET r.n = CASE WHEN r.bucket = $bucket THEN r.n + 1 ELSE 1 END, r.bucket = $bucket
+       SET r.n = CASE WHEN r.bucket = $bucket THEN r.n + 1 ELSE 1 END, r.bucket = $bucket, r.at = timestamp()
        RETURN r.n AS n`,
       { key, bucket },
     );
@@ -70,10 +70,17 @@ export async function verifiedName(a: Address): Promise<string | null> {
   return (await nameOf(a).catch(() => "")) || null;
 }
 
+export const TOKEN_POSTS = new Set(["/api/pusher/auth", "/api/inbox", "/api/contacts/me"]);
+
 /** Caller address from `x-kin-*` headers (EIP-191 over `Kin contacts <address> <ts>`, ±300s), or null. */
 export async function authed(req: Request): Promise<Address | null> {
   const bearer = req.headers.get("authorization");
-  if (bearer) return bearer.startsWith("Bearer ") ? verifyToken(bearer.slice(7), process.env.SESSION_SECRET ?? "") : null;
+  // The read-session token is for READS only (browse without a passkey prompt). Writes need a fresh signature (audit),
+  // except POSTs that only touch the caller's own view: realtime auth, mark-read, self-register.
+  if (bearer) {
+    if (req.method !== "GET" && !TOKEN_POSTS.has(new URL(req.url).pathname)) return null;
+    return bearer.startsWith("Bearer ") ? verifyToken(bearer.slice(7), process.env.SESSION_SECRET ?? "") : null;
+  }
   const a = req.headers.get("x-kin-address") ?? "";
   const tsRaw = req.headers.get("x-kin-ts") ?? "";
   const sig = req.headers.get("x-kin-sig") ?? "";

@@ -66,7 +66,7 @@ export default function Activity() {
 
   useEffect(() => {
     refresh();
-    const t = setInterval(refresh, 4000);
+    const t = setInterval(() => document.visibilityState === "visible" && refresh(), 15_000); // hidden tabs don't poll (RPC budget)
     return () => clearInterval(t);
   }, [refresh, mode]); // mode: practice ↔ real money switches the list
 

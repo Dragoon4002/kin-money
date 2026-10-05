@@ -1,5 +1,5 @@
 import * as SecureStore from "expo-secure-store";
-import type { Address } from "viem";
+import type { Address, Hex } from "viem";
 import type { Look } from "@/components/Kinko";
 import { dropReadToken, getAccount, getProfile, readToken, ensureReadSession } from "./account";
 import { API_BASE } from "./config";
@@ -12,9 +12,12 @@ export type Person = { address: Address; name: string };
 
 let cached: { address: string; at: number; headers: Record<string, string> } | null = null;
 
-async function authHeaders(): Promise<Record<string, string>> {
+// Mirrors TOKEN_POSTS in app/src/lib/server/graph.ts: the only writes the read-session token may make.
+const TOKEN_POSTS = ["/api/pusher/auth", "/api/inbox", "/api/contacts/me"];
+
+async function authHeaders(method = "GET", path = ""): Promise<Record<string, string>> {
   const token = readToken();
-  if (token) return { authorization: `Bearer ${token}` };
+  if (token && (method === "GET" || TOKEN_POSTS.some((p) => path.endsWith(p)))) return { authorization: `Bearer ${token}` }; // other writes: fresh signature
   void ensureReadSession(); // no token yet (or it failed earlier): fetch one now so later reads skip Face ID
   if (cached && cached.address === getProfile()?.address && Date.now() - cached.at < 240_000) return cached.headers;
   const account = await getAccount();
@@ -28,7 +31,7 @@ async function authHeaders(): Promise<Record<string, string>> {
 export async function api<T>(path: string, method = "GET", body?: unknown): Promise<T> {
   const res = await fetch(API_BASE + path, {
     method,
-    headers: { "content-type": "application/json", ...(await authHeaders()) },
+    headers: { "content-type": "application/json", ...(await authHeaders(method, path)) },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (res.status === 401) {
@@ -40,8 +43,8 @@ export async function api<T>(path: string, method = "GET", body?: unknown): Prom
 }
 
 /** Upsert PAID edge after a confirmed payment. Fire-and-forget; never throws. */
-export async function recordPayment(to: Address, amount: bigint): Promise<void> {
-  await api("/api/contacts/paid", "POST", { to, amount: amount.toString() }).catch(() => {});
+export async function recordPayment(to: Address, amount: bigint, hash?: Hex): Promise<void> {
+  await api("/api/contacts/paid", "POST", { to, amount: amount.toString(), hash }).catch(() => {});
 }
 
 /** Put me in the phonebook so people can find me; also sends whose invite I came from (SecureStore `kin.ref`, server keeps the first). Never throws. */

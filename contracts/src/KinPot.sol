@@ -182,11 +182,14 @@ contract KinPot is ERC2771Context, ReentrancyGuardTransient {
         }
     }
 
-    /// @notice A recipient ends the pot; the remaining balance is split like a payout.
+    /// @notice A recipient ends the pot; the remaining balance is split like a payout. In a toAll pot only original
+    ///         members may close: someone admitted by a (possibly leaked) link can't end it and take a share at once.
     function close(uint256 id) external nonReentrant {
         Pot storage p = pots[id];
         address caller = _msgSender();
-        if (p.target == 0 || !(p.toAll ? isMember[id][caller] : isBeneficiary[id][caller])) revert Unauthorized();
+        if (p.target == 0 || !(p.toAll ? isMember[id][caller] && !joinedByLink[id][caller] : isBeneficiary[id][caller])) {
+            revert Unauthorized();
+        }
         if (p.closed) revert Closed();
         uint256 bal = p.balance;
         (p.closed, p.balance) = (true, 0);

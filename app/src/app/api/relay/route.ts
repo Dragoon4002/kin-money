@@ -12,6 +12,8 @@ const KIN = new Set([addr.names, addr.escrow, addr.stream, addr.pot, addr.circle
 const MAX_DEADLINE_S = 3600;
 const MIN_MAIN_VALUE = 10_000n; // $0.01: dust sends on mainnet only burn relayer MON (audit)
 
+export const maxDuration = 60; // a broadcast tx is awaited past the 20s queue timeout rather than dropped
+
 const bad = (error: string, status = 400) => Response.json({ error }, { status });
 const uint = (v: unknown) => (typeof v === "string" || typeof v === "number") && /^\d{1,78}$/.test(String(v));
 
@@ -33,7 +35,7 @@ export async function POST(req: Request) {
       if (net === "main" && BigInt(a.value) < MIN_MAIN_VALUE) return bad("too small");
       if (!allow(`from:${a.from.toLowerCase()}`, 10)) return bad("slow down", 429);
       if (!(await allowShared(`relay-from:${a.from.toLowerCase()}`, 200, 86_400_000))) return bad("slow down", 429);
-      const k3009 = `3009:${net}:${a.from.toLowerCase()}:${a.nonce}`;
+      const k3009 = `3009:${net}:${a.from.toLowerCase()}:${a.nonce.toLowerCase()}`; // case-insensitive: same nonce, any hex case
       if (!once(k3009) || !(await allowShared(k3009, 1, 3_600_000))) return bad("duplicate", 409);
       const hash = await submit(
         {
@@ -73,7 +75,10 @@ export async function POST(req: Request) {
     }
     return bad("unknown kind");
   } catch (e) {
-    console.error("relay failed", (e as Error).message?.slice(0, 300));
+    const msg = (e as Error).message ?? "";
+    console.error("relay failed", msg.slice(0, 300));
+    // Timed out before broadcast: nothing was sent, so retrying is safe — say "busy", not "rejected".
+    if (/relay timeout/.test(msg)) return Response.json({ error: "busy" }, { status: 503 });
     return Response.json({ error: "rejected" }, { status: 422 });
   }
 }

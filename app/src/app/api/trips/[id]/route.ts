@@ -4,7 +4,8 @@ import { addr, publicClient } from "@/lib/chain";
 import { CATEGORIES } from "@/lib/categories";
 import { formatMoney } from "@/lib/money";
 import { REMIND_GAP, validDue } from "@/lib/reminders";
-import { addrOf, bad, q, route, UPSERT_THEM, validAmount, verifiedName } from "@/lib/server/graph";
+import { addrOf, allowShared, bad, q, route, UPSERT_THEM, validAmount, verifiedName } from "@/lib/server/graph";
+import { blocked } from "@/lib/server/messages";
 import { notify } from "@/lib/server/push";
 import { shares } from "@/lib/split";
 import { loadTrip, MAX_MEMBERS, planOf } from "../data";
@@ -25,6 +26,7 @@ export async function POST(req: Request, { params }: Ctx) {
   return route(req, { ok: true }, async (me, b) => {
     const trip = await loadTrip(id, me);
     if (!trip) return bad("not found", 404);
+    if (!(await allowShared(`trip:${me}`, 120, 3_600_000))) return bad("slow down", 429); // expenses/adds notify members
     const isMember = (a: Address | null): a is Address => !!a && trip.members.some((m) => m.address === a);
     const nameOf = (a: Address) => `@${trip.members.find((m) => m.address === a)?.name || "someone"}`;
 
@@ -56,6 +58,7 @@ export async function POST(req: Request, { params }: Ctx) {
       const them = addrOf(b.address);
       if (!them) return bad();
       if (isMember(them)) return { ok: true };
+      if (await blocked(me, them)) return bad("blocked", 403);
       // ponytail: count checked before write; two simultaneous adds could reach 21. Fine for friends.
       if (trip.members.length >= MAX_MEMBERS) return bad("too many");
       const themName = await verifiedName(them);

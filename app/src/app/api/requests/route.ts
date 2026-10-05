@@ -3,7 +3,7 @@ import { erc20Abi, isAddressEqual, isHash, parseEventLogs, type Address, type He
 import { addr, publicClient } from "@/lib/chain";
 import { formatMoney } from "@/lib/money";
 import { REMIND_GAP, validDue } from "@/lib/reminders";
-import { addrOf, bad, q, route, UPSERT_ME, UPSERT_THEM, validAmount, verifiedName } from "@/lib/server/graph";
+import { addrOf, allowShared, bad, q, route, UPSERT_ME, UPSERT_THEM, validAmount, verifiedName } from "@/lib/server/graph";
 import { blocked, saveMessage } from "@/lib/server/messages";
 import { notify } from "@/lib/server/push";
 
@@ -38,6 +38,7 @@ export function POST(req: Request) {
     if (!them || them === me || !validAmount(b.amount) || due === undefined) return bad();
     const note = typeof b.note === "string" ? b.note.trim().slice(0, 140) : "";
     if (await blocked(me, them)) return bad("blocked", 403);
+    if (!(await allowShared(`requests:${me}`, 30, 3_600_000))) return bad("slow down", 429); // each one pushes + posts a card
     const id = randomUUID();
     const [meName, themName] = await Promise.all([verifiedName(me), verifiedName(them)]);
     if (!themName) return bad("That account isn't on Kin");

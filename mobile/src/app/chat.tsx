@@ -123,7 +123,7 @@ export default function Chat() {
       const hash = await sendDollars(m.from, units);
       mark(m.ref, "paid");
       void settleRequest(m.ref, "paid", hash).catch(() => {});
-      void recordPayment(m.from, units);
+      void recordPayment(m.from, units, hash);
     } catch (e) {
       setErr(humanError(e));
     } finally {

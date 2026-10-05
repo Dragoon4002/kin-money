@@ -16,8 +16,10 @@ const rpc = (url?: string) => http(url, { batch: { wait: 16 }, retryCount: 4, re
 const BACKUP_RPCS = ["https://rpc.ankr.com/monad_testnet", "https://monad-testnet.drpc.org"];
 // Alchemy node first when EXPO_PUBLIC_ALCHEMY_KEY is set at build time (EAS env); public RPCs stay as fallback.
 const ALCHEMY_KEY = process.env.EXPO_PUBLIC_ALCHEMY_KEY;
-const alchemy = (net: "testnet" | "mainnet") => (ALCHEMY_KEY ? [`https://monad-${net}.g.alchemy.com/v2/${ALCHEMY_KEY}`] : []);
-export const publicClient = createPublicClient({ chain, transport: fallback([...alchemy("testnet"), "https://testnet-rpc.monad.xyz", ...BACKUP_RPCS].map(rpc)) });
+// No retries on Alchemy: on a 429 fall through to the public RPCs at once (retries cost ~3.75s per call).
+const alchemy = (net: "testnet" | "mainnet") =>
+  ALCHEMY_KEY ? [http(`https://monad-${net}.g.alchemy.com/v2/${ALCHEMY_KEY}`, { batch: { wait: 16 }, retryCount: 0 })] : [];
+export const publicClient = createPublicClient({ chain, transport: fallback([...alchemy("testnet"), ...["https://testnet-rpc.monad.xyz", ...BACKUP_RPCS].map(rpc)]) });
 
 // From contracts/deployments/10143.json.
 export const addr = {
@@ -26,7 +28,7 @@ export const addr = {
   names: "0x1cA367edbCf73A357Fe60651cFE6af27cfCA8476",
   escrow: "0x2F2e58b1B33B30756fa0653672B4ba10cF93a55e",
   stream: "0xaF989d7acE5a015875Fb5f28b22a091D441e41DB",
-  pot: "0xaE8E5e776311bBa6d05774CA36986Ccd4541824E",
+  pot: "0x35E381186b7f5271Bdbc6F44cb17ac8D2DA72A78",
   circle: "0x0b467a32E1A38b999134da4941caD136390c9B41",
   mandate: "0xe770eCfBf2D2D6b8B9c1B210B7a42B92bbA8fd53",
   giftlink: "0x7ad1C20D0B96BaE5aE72462137384A1924e36BDb",
@@ -44,7 +46,7 @@ export const networks: Record<Mode, Network> = {
     mode: "main",
     chain: monad,
     ausd: "0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a",
-    client: createPublicClient({ chain: monad, transport: fallback([...alchemy("mainnet"), "https://rpc.monad.xyz", "https://rpc1.monad.xyz"].map(rpc)) }) as PublicClient,
+    client: createPublicClient({ chain: monad, transport: fallback([...alchemy("mainnet"), ...["https://rpc.monad.xyz", "https://rpc1.monad.xyz"].map(rpc)]) }) as PublicClient,
     explorer: "https://monadvision.com",
   },
 };

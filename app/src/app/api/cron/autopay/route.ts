@@ -38,7 +38,8 @@ export async function GET(req: Request) {
   }
   const opened = await openGifts();
   const reminded = await remindAll().catch((e) => (console.error("reminders failed", (e as Error).message?.slice(0, 200)), 0));
-  return Response.json({ scanned: ids.length, collected, opened, reminded });
+  const pruned = await prune();
+  return Response.json({ scanned: ids.length, collected, opened, reminded, pruned });
 }
 
 async function openGifts(): Promise<string[]> {
@@ -108,4 +109,20 @@ async function remindAll(): Promise<number> {
     sent += owes.length;
   }
   return sent;
+}
+
+/** Keep Aura Free small (audit): rate limits fail closed when it's full or paused, which would stop payments. Rate
+ *  windows are ≤ 7 days, so older Rate nodes are dead; inbox keeps 30 days. */
+async function prune(): Promise<number> {
+  if (!graphEnabled()) return 0;
+  const DAY_MS = 86_400_000;
+  const [r] = await q<{ n: number }>(
+    `MATCH (r:Rate) WHERE coalesce(r.at, 0) < $rateCut WITH r LIMIT 20000 DETACH DELETE r RETURN count(*) AS n`,
+    { rateCut: Date.now() - 8 * DAY_MS },
+  ).catch(() => [{ n: 0 }]);
+  const [n] = await q<{ n: number }>(
+    `MATCH (x:Notification) WHERE x.at < $noteCut WITH x LIMIT 20000 DETACH DELETE x RETURN count(*) AS n`,
+    { noteCut: Date.now() - 30 * DAY_MS },
+  ).catch(() => [{ n: 0 }]);
+  return (r?.n ?? 0) + (n?.n ?? 0);
 }

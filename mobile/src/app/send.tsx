@@ -107,7 +107,7 @@ export default function Send() {
       const t0 = Date.now();
       const hash = await sendDollars(person.address, units);
       if (category) setCategory(hash, category).catch(() => {});
-      if (person.name) recordPayment(person.address, units).catch(() => {}); // not on Kin: keep them out of the phonebook
+      if (person.name) recordPayment(person.address, units, hash).catch(() => {}); // not on Kin: keep them out of the phonebook
       setDone({ ms: Date.now() - t0, units, name: person.name });
     } catch (e) {
       setErr(humanError(e));

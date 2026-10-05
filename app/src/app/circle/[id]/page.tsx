@@ -31,7 +31,7 @@ export default function CircleDetail() {
 
   // Others join and pay from their phones — keep this screen current.
   useEffect(() => {
-    const i = setInterval(reload, 10_000);
+    const i = setInterval(() => document.visibilityState === "visible" && reload(), 10_000);
     return () => clearInterval(i);
   }, [reload]);
 

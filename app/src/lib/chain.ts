@@ -13,10 +13,12 @@ const BACKUP_RPCS = ["https://rpc.ankr.com/monad_testnet", "https://monad-testne
 // Alchemy node (Alchemy bounty): first in line when NEXT_PUBLIC_ALCHEMY_KEY is set, public RPCs stay as fallback.
 // The key is public by design (browser reads); lock it to the Kin domain in the Alchemy dashboard.
 const ALCHEMY_KEY = process.env.NEXT_PUBLIC_ALCHEMY_KEY;
-const alchemy = (net: "testnet" | "mainnet") => (ALCHEMY_KEY ? [`https://monad-${net}.g.alchemy.com/v2/${ALCHEMY_KEY}`] : []);
+// No retries on Alchemy: on a 429 fall through to the public RPCs at once (retries cost ~3.75s per call).
+const alchemy = (net: "testnet" | "mainnet") =>
+  ALCHEMY_KEY ? [http(`https://monad-${net}.g.alchemy.com/v2/${ALCHEMY_KEY}`, { batch: { wait: 16 }, retryCount: 0 })] : [];
 export const publicClient = createPublicClient({
   chain,
-  transport: fallback([...alchemy("testnet").map(rpc), rpc(process.env.NEXT_PUBLIC_RPC_URL), ...BACKUP_RPCS.map(rpc)]),
+  transport: fallback([...alchemy("testnet"), rpc(process.env.NEXT_PUBLIC_RPC_URL), ...BACKUP_RPCS.map(rpc)]),
 });
 
 const env = (v: string | undefined) => (v || "0x0000000000000000000000000000000000000000") as Address;
@@ -50,7 +52,7 @@ export const networks: Record<Mode, Network> = {
     mode: "main",
     chain: monad,
     ausd: "0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a" as Address,
-    client: createPublicClient({ chain: monad, transport: fallback([...alchemy("mainnet"), ...MAIN_RPCS].map(rpc)) }) as PublicClient,
+    client: createPublicClient({ chain: monad, transport: fallback([...alchemy("mainnet"), ...MAIN_RPCS.map(rpc)]) }) as PublicClient,
     explorer: "https://monadvision.com",
   },
 };

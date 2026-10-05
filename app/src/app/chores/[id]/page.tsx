@@ -23,7 +23,7 @@ export default function ChoreDetail() {
 
   // Parent sees the "I did it!" tap without a refresh.
   useEffect(() => {
-    const i = setInterval(reload, 8000);
+    const i = setInterval(() => document.visibilityState === "visible" && reload(), 15_000);
     return () => clearInterval(i);
   }, [reload]);
 

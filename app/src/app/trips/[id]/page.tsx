@@ -43,7 +43,7 @@ export default function TripPage() {
 
   // Friends add costs and pay from their phones — keep this current (never prompts Face ID).
   useEffect(() => {
-    const i = setInterval(() => (isUnlocked() || readToken()) && reload(), 10_000);
+    const i = setInterval(() => document.visibilityState === "visible" && (isUnlocked() || readToken()) && reload(), 10_000);
     return () => clearInterval(i);
   }, [reload]);
 

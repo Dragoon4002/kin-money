@@ -1,7 +1,7 @@
 # Kin — Bounty write-ups (paste into the submission form)
 
 Live: https://getkin.space · Android APK: see README · Network: Monad testnet (10143), real-money mode on Monad mainnet (143).
-Contracts (testnet, verified): KinForwarder `0xdF70…4102` · KinNames `0x1cA3…8476` · KinEscrow `0x2F2e…a55e` · KinStream `0xaF98…41DB` · KinPot `0xaE8E…824E` · KinCircle `0x0b46…9B41` · KinMandate `0xe770…fd53` · KinGiftLink `0x7ad1…6BDb` · **KinCashout `0xDdBc1208e84E82676bfc7452F25cecDB3B05b75a`**.
+Contracts (testnet, verified): KinForwarder `0xdF70…4102` · KinNames `0x1cA3…8476` · KinEscrow `0x2F2e…a55e` · KinStream `0xaF98…41DB` · KinPot `0x35E3…2A78` · KinCircle `0x0b46…9B41` · KinMandate `0xe770…fd53` · KinGiftLink `0x7ad1…6BDb` · **KinCashout `0xDdBc1208e84E82676bfc7452F25cecDB3B05b75a`**.
 
 ---
 

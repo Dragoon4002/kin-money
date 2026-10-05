@@ -22,7 +22,7 @@ export default function AllowanceDetail() {
 
   // Parent's screen notices an emergency ask without a refresh.
   useEffect(() => {
-    const i = setInterval(reload, 8000);
+    const i = setInterval(() => document.visibilityState === "visible" && reload(), 8000); // live stream ticks client-side
     return () => clearInterval(i);
   }, [reload]);
 

@@ -1,4 +1,4 @@
-import { addrOf, bad, q, route, UPSERT_ME, UPSERT_THEM, verifiedName } from "@/lib/server/graph";
+import { addrOf, bad, q, route, UPSERT_ME, UPSERT_THEM, verifiedName, allowShared } from "@/lib/server/graph";
 
 const EMPTY = { contacts: [], recents: [], suggested: [] };
 
@@ -39,6 +39,7 @@ export function POST(req: Request) {
     const label = typeof b.label === "string" ? b.label.trim().slice(0, 40) : "";
     const them = addrOf(b.address);
     if (!them || them === me) return bad();
+    if (!(await allowShared(`contacts:${me}`, 100, 3_600_000))) return bad("slow down", 429);
 
     const [meName, themName] = await Promise.all([verifiedName(me), verifiedName(them)]);
     if (!themName) return bad("That account isn't on Kin");

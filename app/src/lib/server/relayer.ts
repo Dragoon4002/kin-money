@@ -48,15 +48,24 @@ type Req = Parameters<typeof publicClient.simulateContract>[0];
 /** Simulate → send with gas = min(estimate × 1.2, cap). Serialized for nonce safety, with timeout. */
 export function submit(req: Omit<Req, "account">, cap = GAS_CAP, net: Mode = "test"): Promise<Hex> {
   const client = net === "main" ? networks.main.client : publicClient;
+  let sending: Promise<Hex> | null = null; // set once broadcasting starts
   const run = async () => {
     const { request } = await client.simulateContract({ ...req, account: relayer } as Req);
     const est = await client.estimateContractGas({ ...req, account: relayer } as never);
     const gas = (est * 12n) / 10n;
     if (gas > cap) throw new Error("gas over cap");
-    return wallets[net].writeContract({ ...request, gas } as never);
+    sending = wallets[net].writeContract({ ...request, gas } as never);
+    return sending;
   };
-  const timed = () =>
-    Promise.race([run(), new Promise<never>((_, rej) => setTimeout(() => rej(new Error("relay timeout")), TIMEOUT_MS))]);
+  // Audit: a timeout must never report "rejected" for a tx that may already be out — the user would sign again and
+  // pay twice. Before broadcast → "relay timeout" (safe to retry); once broadcasting → wait for its hash.
+  const timed = () => {
+    const work = run();
+    return Promise.race([
+      work,
+      new Promise<Hex>((res, rej) => setTimeout(() => (sending ? res(sending) : rej(new Error("relay timeout"))), TIMEOUT_MS)),
+    ]);
+  };
   const next = queues[net].then(timed, timed);
   queues[net] = next.catch(() => {});
   return next;

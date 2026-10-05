@@ -92,7 +92,7 @@ export function SendForm() {
       } else {
         const [hash, ms] = await timed(() => sendDollars(person!.address, units));
         label(hash);
-        if (person!.name) recordPayment(person!.address, units).catch(() => {}); // not on Kin: keep them out of the phonebook
+        if (person!.name) recordPayment(person!.address, units, hash).catch(() => {}); // not on Kin: keep them out of the phonebook
         router.replace(`/details?tx=${hash}&fresh=1&ms=${Math.round(ms)}`);
         return; // keep the progress screen up while the receipt loads
       }
