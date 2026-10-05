@@ -10,6 +10,7 @@ export function humanError(e: unknown): string {
     }
   }
   const msg = e instanceof Error ? e.message : String(e);
+  if (/invite used/i.test(msg)) return "This invite link was already used. Ask for a new one.";
   if (/practice only/i.test(msg)) return "This works with practice money for now. Turn off Real money in Me to use it.";
   if (/insufficient|exceeds balance/i.test(msg)) return "Not enough in your balance. Add money first.";
   if (/expired|deadline/i.test(msg)) return "That took too long. Let's try again.";

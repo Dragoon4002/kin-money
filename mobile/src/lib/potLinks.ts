@@ -68,5 +68,8 @@ export async function joinPot(id: bigint, inviter: Address, key: Hex, me: Addres
     encodeAbiParameters(parseAbiParameters("address, uint256, uint256, address, address"), [addr.pot, BigInt(chain.id), id, inviter, me]),
   );
   const signature = await privateKeyToAccount(key).signMessage({ message: { raw: digest } });
+  // Each link admits one person (KinPot clears the key on join): say so instead of a generic failure.
+  const onchain = await publicClient.readContract({ address: addr.pot, abi: KinPotAbi, functionName: "inviteKeyOf", args: [id, inviter] });
+  if (onchain.toLowerCase() !== privateKeyToAccount(key).address.toLowerCase()) throw new Error("invite used");
   return call(addr.pot, KinPotAbi, "join", [id, inviter, me, signature]);
 }
