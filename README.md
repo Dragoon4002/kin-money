@@ -34,7 +34,7 @@ Cross-border by default: everyone holds digital dollars (Agora AUSD), payments s
 ### Account layer: Mera
 Mera is the entire account layer (`app/src/lib/account.ts`, `app/src/lib/keys.ts`):
 - Passkey PRF → BIP-39 phrase → standard BIP-44 account (`m/44'/60'/0'/0/0`). No email, password or extension.
-- Same passkey, same account on web and the Android app (RP ID = `kin-money.vercel.app`).
+- Same passkey, same account on web and the Android app (RP ID = `getkin.space`).
 - Exported phrase / private key opens the same account in MetaMask or Rabby — checked by `app/scripts/check-keys.mts` against the standard `test … junk` vector.
 - Explicit gas limits (estimate × 1.2, capped) because Monad bills the gas limit (`app/src/lib/server/relayer.ts`).
 - Key bytes zeroed right after use; the Mera session lives in memory only.

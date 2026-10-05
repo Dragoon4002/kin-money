@@ -1,6 +1,6 @@
 # Kin — Bounty write-ups (paste into the submission form)
 
-Live: https://kin-money.vercel.app · Android APK: see README · Network: Monad testnet (10143), real-money mode on Monad mainnet (143).
+Live: https://getkin.space · Android APK: see README · Network: Monad testnet (10143), real-money mode on Monad mainnet (143).
 Contracts (testnet, verified): KinForwarder `0xdF70…4102` · KinNames `0x1cA3…8476` · KinEscrow `0x2F2e…a55e` · KinStream `0xaF98…41DB` · KinPot `0xaE8E…824E` · KinCircle `0x0b46…9B41` · KinMandate `0xe770…fd53` · KinGiftLink `0x7ad1…6BDb` · **KinCashout `0xDdBc1208e84E82676bfc7452F25cecDB3B05b75a`**.
 
 ---
@@ -36,7 +36,7 @@ Mera is Kin's **entire account layer**. There's no Privy, Dynamic, WalletConnect
 
 - **Signup:** `createPasskeyWithPrfOutput` → PRF → BIP-39 → EVM account. One fingerprint or face prompt creates the account, and the user picks an `@name`.
 - **Every payment:** an EIP-712 signature (EIP-3009 for AUSD, ERC-2771 forward requests for our contracts) from a Mera signing session, confirmed with the passkey ("Identity check"). The relayer pays gas, so the user never sees it.
-- **Same passkey, web and Android:** the RP ID is `kin-money.vercel.app`, with Digital Asset Links, so the native app (Credential Manager) opens the same account.
+- **Same passkey, web and Android:** the RP ID is `getkin.space`, with Digital Asset Links, so the native app (Credential Manager) opens the same account.
 - **Sessions stay in memory only.** Key bytes are zeroed after use, and local storage holds only `{credentialId, address}`.
 - **Fewer prompts:** a read-only session token lets you browse without a prompt. The passkey is asked only when money moves, and users choose: every payment, under an amount, or always.
 - **Recovery:** export the recovery phrase or private key behind a fresh identity check.

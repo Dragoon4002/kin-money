@@ -1,6 +1,6 @@
 # Kin — Step-by-step feature test guide
 
-Live: https://kin-money.vercel.app (features marked 🌿 are on branch `feature/remaining` until merged).
+Live: https://getkin.space (features marked 🌿 are on branch `feature/remaining` until merged).
 Every money action ends with a receipt → **Details → Proof of payment** (explorer link) to verify onchain.
 
 ## 0. Setup (once)

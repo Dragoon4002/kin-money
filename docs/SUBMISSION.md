@@ -15,7 +15,7 @@ Deadline: **2026-10-14 09:29 IST**.
 - [ ] **Mera UX:** zero seed phrase / extension / custody backend anywhere. Show signup on a fresh phone.
 
 ## Judge access notes (fill before submit)
-- **URL:** https://kin-money.vercel.app (only this hostname — passkeys are tied to it; a preview URL = a different account).
+- **URL:** https://getkin.space (only this hostname — passkeys are tied to it; a preview URL = a different account).
 - **Devices:** Android Chrome with a screen lock set · iPhone iOS 18+ Safari · desktop Chrome with a synced passkey (Google Password Manager / iCloud Keychain).
 - **Credentials:** none shared, by design. Passkeys can't be shared, so each judge creates their own account in ~20s — no email, no password, no recovery phrase, no extension.
 - **Test funds:** new accounts automatically receive **$10,000 in test dollars** (Agora testnet faucet, sent by our relay; skipped if the account already holds $100+).

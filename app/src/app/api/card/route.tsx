@@ -133,7 +133,7 @@ export async function GET(req: Request) {
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 40, fontSize: 34 }}>
           <span style={{ display: "flex", alignItems: "center", gap: 14, color: C.brand, fontFamily: serif, fontSize: 64 }}><KinMark size={48} />Kin</span>
-          <span style={{ color: C.muted }}>kin-money.vercel.app</span>
+          <span style={{ color: C.muted }}>getkin.space</span>
         </div>
       </div>
     ),

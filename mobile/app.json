@@ -55,8 +55,8 @@
       "reactCompiler": true
     },
     "extra": {
-      "rpId": "kin-money.vercel.app",
-      "apiBase": "https://kin-money.vercel.app",
+      "rpId": "getkin.space",
+      "apiBase": "https://getkin.space",
       "router": {},
       "eas": {
         "projectId": "4ad3b63a-f4e8-4ad4-96ec-09f8763a368d"

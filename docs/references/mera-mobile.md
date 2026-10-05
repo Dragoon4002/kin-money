@@ -10,8 +10,8 @@ Source: category-labs/mera `demos/mobile` (Expo 57, RN 0.86) + react-native-pass
     Object.defineProperty(globalThis, "crypto", { configurable: true, value: { ...globalThis.crypto, getRandomValues } });
   ```
 - Every ceremony: `webAuthnClient: reactNativeWebAuthnClient` from `@category-labs/mera/react-native-webauthn-client`.
-- rpId hardcoded `kin-money.vercel.app` (web uses `location.hostname` = same). PRF salt is a library constant → same PRF → same address as web.
+- rpId hardcoded `getkin.space` (was kin-money.vercel.app until Oct 5) (web uses `location.hostname` = same). PRF salt is a library constant → same PRF → same address as web.
 - Derivation identical to web: PRF → BIP39 entropy → seed → `m/44'/60'/0'/0/0`.
-- Android: API 28+; no plugin/intent filter needed for passkeys. Domain link file `https://kin-money.vercel.app/.well-known/assetlinks.json` with relation `delegate_permission/common.get_login_creds`, package + SHA256 of EVERY signing cert (we sign with our own keystore `mobile/credentials/kin.jks`, gitignored, via eas.json `credentialsSource: "local"`).
+- Android: API 28+; no plugin/intent filter needed for passkeys. Domain link file `https://getkin.space/.well-known/assetlinks.json` with relation `delegate_permission/common.get_login_creds`, package + SHA256 of EVERY signing cert (we sign with our own keystore `mobile/credentials/kin.jks`, gitignored, via eas.json `credentialsSource: "local"`).
 - Errors: `RequestFailed` ≈ broken association; `NoCredentials` = no synced passkey; `UserCancelled` also for "no passkey" on Android. PRF works with Google Password Manager / 1Password; others may throw `PRF_UNAVAILABLE`.
 - Not Expo Go — dev build (`eas build --profile development`).
