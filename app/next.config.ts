@@ -2,14 +2,15 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
-  // getkin.space is the one prod hostname (passkeys are bound to it). Send visitors of the old hostname there,
-  // but keep its /api and /.well-known working for already-installed old app builds.
+  // getkin.space is the one prod hostname (passkeys are bound to it). The old hostname only serves /move (account
+  // hand-over), plus /api and /.well-known for already-installed old app builds.
   async redirects() {
     return [
       {
-        source: "/:path((?!api/|\\.well-known/).*)",
+        // Old hostname: every page → its own /move (bring the account over). /api, /.well-known and build assets stay.
+        source: "/:path((?!api/|\\.well-known/|_next/|move$|.*\\.).*)",
         has: [{ type: "host", value: "kin-money.vercel.app" }],
-        destination: "https://getkin.space/:path",
+        destination: "/move",
         permanent: false,
       },
       // www is a different passkey hostname → always the apex.
