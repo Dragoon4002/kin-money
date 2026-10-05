@@ -38,7 +38,7 @@ type Row = [string] | [string, string] | { small: [string, string]; tall: string
 const SECTIONS: { title?: string; rows: Row[] }[] = [
   { rows: [["/requests"]] },
   { title: "Pay & get paid", rows: [["/earmark", "/split"], ["/invoice"]] },
-  { title: "Money", rows: [["/spends"], ["/jars", "/allowance"], ["/autopay"]] },
+  { title: "Money", rows: [["/autopay"], ["/jars", "/allowance"], ["/spends"]] },
   { title: "Together", rows: [["/circle", "/pot"], ["/trips", "/chores"]] },
   { title: "More", rows: [["/gift", "/kinko"], ["/invite"]] },
 ];
@@ -54,7 +54,7 @@ export default function Explore() {
 
   function card(href: string, shape: "wide" | "half" | "tall", place = "") {
     const t = TILES[href];
-    const icon = t.icon === "kinko" ? <MyKinko size={shape === "tall" ? 64 : 48} /> : <IconTile name={t.icon} tone={href === "/earmark" ? "brand" : "neutral"} />;
+    const icon = t.icon === "kinko" ? <MyKinko size={shape === "tall" ? 64 : 48} /> : <IconTile name={t.icon} tone="neutral" />;
     return (
       <Link key={href} href={href}
         className={`flex gap-3 rounded-[24px] border border-line bg-surface p-4 transition active:scale-[0.97] ${place} ${shape === "wide" ? "min-h-24 flex-row items-center" : shape === "half" ? "min-h-28 flex-col justify-between" : "min-h-56 flex-col justify-between"}`}>
@@ -98,7 +98,6 @@ export default function Explore() {
       <div className="flex flex-col gap-6">
         {SECTIONS.map(({ title, rows }) => (
           <section key={title ?? "top"} className="flex flex-col gap-3">
-            {title && <h2 className="px-1 text-xs font-semibold uppercase tracking-widest text-muted">{title}</h2>}
             {rows.map(row)}
           </section>
         ))}

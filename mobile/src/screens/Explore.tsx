@@ -35,7 +35,7 @@ type Row = [string] | [string, string] | { small: [string, string]; tall: string
 const SECTIONS: { title?: string; rows: Row[] }[] = [
   { rows: [["/requests"]] },
   { title: "Pay & get paid", rows: [["/earmark", "/split"], ["/invoice"]] },
-  { title: "Money", rows: [["/spends"], ["/jars", "/allowance"], ["/autopay"]] },
+  { title: "Money", rows: [["/autopay"], ["/jars", "/allowance"], ["/spends"]] },
   { title: "Together", rows: [["/circle", "/pot"], ["/trips", "/chores"]] },
   { title: "More", rows: [["/gift", "/kinko"], ["/invite"]] },
 ];
@@ -61,7 +61,7 @@ export default function Explore() {
           ...(shape === "wide" ? { minHeight: 96, flexDirection: "row", alignItems: "center" } : { flex: 1, justifyContent: "space-between", minHeight: shape === "tall" ? SMALL * 2 + GAP : SMALL }),
           transform: [{ scale: pressed ? 0.97 : 1 }],
         })}>
-        {tile.icon ? <IconTile icon={tile.icon} brand={href === "/earmark"} /> : <Kinko look={look} size={shape === "tall" ? 64 : 48} />}
+        {tile.icon ? <IconTile icon={tile.icon} /> : <Kinko look={look} size={shape === "tall" ? 64 : 48} />}
         <View style={{ flex: shape === "wide" ? 1 : undefined, minWidth: 0 }}>
           <Text style={{ color: t.ink, fontSize: shape === "tall" ? 18 : 16, fontWeight: "600" }}>{tile.title}</Text>
           <Text style={{ color: t.muted, fontSize: 12 }}>{tile.sub}</Text>
@@ -102,7 +102,6 @@ export default function Explore() {
       <View style={{ gap: 24 }}>
         {SECTIONS.map(({ title, rows }) => (
           <View key={title ?? "top"} style={{ gap: GAP }}>
-            {title && <Text style={{ color: t.muted, fontSize: 12, fontWeight: "600", letterSpacing: 1.5, textTransform: "uppercase", paddingHorizontal: 4 }}>{title}</Text>}
             {rows.map(row)}
           </View>
         ))}
