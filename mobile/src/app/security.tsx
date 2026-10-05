@@ -5,6 +5,7 @@ import { Alert, AppState, Pressable, View } from "react-native";
 import { Button, ErrorText, Label, Screen, Text, TextInput, useInputStyle } from "@/components/ui";
 import { importAccount, removeImported, revealSecrets, useAccount } from "@/lib/account";
 import { humanError } from "@/lib/errors";
+import { moveOldAccount } from "@/lib/move";
 import { parseSecret } from "@/lib/keys";
 import { nameOf, shortAddr } from "@/lib/names";
 import { useTheme } from "@/theme";
@@ -32,6 +33,14 @@ export default function Security() {
   if (step === "add") return <Add kinAddress={accounts.find((a) => a.kin)?.address} onDone={back} />;
 
   const others = accounts.filter((a) => !a.kin);
+  async function bringOld() {
+    try {
+      const n = await moveOldAccount();
+      Alert.alert("Account moved", n ? `You're now using @${n}.` : "Your old account is here.");
+    } catch (e) {
+      Alert.alert("Couldn't move it", humanError(e));
+    }
+  }
   function remove(address: `0x${string}`, label: string) {
     Alert.alert(`Remove ${label}?`, "This only forgets it on this phone. Its money stays with its recovery phrase.", [
       { text: "Keep", style: "cancel" },
@@ -45,6 +54,7 @@ export default function Security() {
       <Row icon={ShieldCheck} label="Show my recovery phrase" sub="Back up, or open this account in MetaMask, Rabby…" onPress={() => setStep("warn")} />
       <Label>Bring an account to Kin</Label>
       <Row icon={Plus} label="Add an account from another wallet" sub="Paste its recovery phrase or private key" onPress={() => setStep("add")} />
+      <Row icon={Plus} label="Bring my old Kin account" sub="Made before Kin moved to getkin.space (Oct 6)" onPress={() => void bringOld()} />
       {others.length > 0 && <Label>Other accounts on this phone</Label>}
       {others.map((a) => {
         const label = a.name ? `@${a.name}` : shortAddr(a.address);

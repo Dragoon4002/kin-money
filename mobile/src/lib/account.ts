@@ -160,6 +160,19 @@ async function ceremony(add?: { privateKey: Uint8Array; name?: string }): Promis
   }
 }
 
+// Kin's first hostname (until Oct 2026). Passkeys made there stay bound to it; the app can still ask for them
+// because that host keeps serving the same assetlinks. Used only to bring old accounts over (lib/move.ts).
+const OLD_RP_ID = "kin-money.vercel.app";
+
+/** Identity check with the OLD hostname's passkey → that account's private key (caller seals it, then zeroes). */
+export async function oldAccountKey(): Promise<Uint8Array> {
+  const r = await getPasskeyPrfOutput({ rpId: OLD_RP_ID, webAuthnClient });
+  const node = derive(r.prfOutput);
+  const key = node.privateKey!.slice();
+  node.wipePrivateData();
+  return key;
+}
+
 /** Seal a key from another wallet on this phone (Face ID) and switch to it. */
 export async function importAccount(privateKey: Uint8Array, name?: string): Promise<void> {
   const address = keyAddress(privateKey);

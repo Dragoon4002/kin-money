@@ -7,6 +7,7 @@ import { setName, signUp, unlock, useAccount } from "@/lib/account";
 import { addr, API_BASE } from "@/lib/config";
 import { registerMe } from "@/lib/contacts";
 import { humanError } from "@/lib/errors";
+import { moveOldAccount } from "@/lib/move";
 import { formatMoney, toUnits } from "@/lib/money";
 import { HANDLE_RE, nameOf, resolveName } from "@/lib/names";
 import { call } from "@/lib/tx";
@@ -51,6 +52,21 @@ export default function Onboard() {
       await signUp(first.trim());
       onHandle(suggest(first));
       setStep("handle");
+    } catch (e) {
+      setErr(humanError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function bringOld() {
+    setBusy(true);
+    setErr("");
+    try {
+      const n = await moveOldAccount();
+      void registerMe();
+      if (n) setName(n);
+      home();
     } catch (e) {
       setErr(humanError(e));
     } finally {
@@ -130,6 +146,9 @@ export default function Onboard() {
         <Button title="Create my account" onPress={() => setStep("name")} disabled={busy} />
         <Pressable onPress={haveKin} disabled={busy} style={{ height: 48, alignItems: "center", justifyContent: "center" }}>
           <Text style={{ color: t.muted, fontWeight: "600" }}>{busy ? "Opening Identity check…" : "Already have Kin?"}</Text>
+        </Pressable>
+        <Pressable onPress={bringOld} disabled={busy} style={{ height: 40, alignItems: "center", justifyContent: "center" }}>
+          <Text style={{ color: t.muted, fontSize: 13 }}>Used Kin before Oct 6? Bring your account</Text>
         </Pressable>
       </Screen>
     );

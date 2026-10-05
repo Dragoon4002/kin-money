@@ -63,6 +63,9 @@ export function Landing({ onStart, onUnlock, busy, err }: { onStart: () => void;
           <div className="flex flex-col gap-2 md:max-w-xs">
             <Button onClick={onStart}>Get started</Button>
             <p className="text-center text-sm text-muted">No passwords. No fees.</p>
+            <a href="https://kin-money.vercel.app/move" className="text-center text-sm font-semibold text-muted underline-offset-4 hover:underline">
+              Used Kin before Oct 6? Bring your account
+            </a>
           </div>
         </div>
         <div className="relative mx-auto grid w-full max-w-sm place-items-center py-6">
