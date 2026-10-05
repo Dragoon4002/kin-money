@@ -1,7 +1,7 @@
 import { isAddress, isHex, parseAbi, type Address, type Hex } from "viem";
 import { KinForwarderAbi } from "@/lib/abi";
 import { addr, networks, publicClient } from "@/lib/chain";
-import { allowShared } from "@/lib/server/graph";
+import { allowShared, releaseShared } from "@/lib/server/graph";
 import { GAS_CAP, allow, clientIp, once, submit } from "@/lib/server/relayer";
 
 const ausdAbi = parseAbi([
@@ -58,10 +58,16 @@ export async function POST(req: Request) {
       // Audit: N requests signed for the SAME forwarder nonce (different deadlines) each simulate fine, but only one
       // can land — the rest revert and Monad bills their full gas. Allow one submission per (from, nonce).
       const fwdNonce = await publicClient.readContract({ address: addr.forwarder, abi: KinForwarderAbi, functionName: "nonces", args: [r.from as Address] });
-      if (!(await allowShared(`2771n:${r.from.toLowerCase()}:${fwdNonce}`, 1, 120_000))) return bad("duplicate", 409);
+      const nonceKey = `2771n:${r.from.toLowerCase()}:${fwdNonce}`;
+      if (!(await allowShared(nonceKey, 1, 120_000))) return bad("duplicate", 409);
       const hash = await submit({
         address: addr.forwarder, abi: KinForwarderAbi, functionName: "execute",
         args: [{ from: r.from, to: r.to, value: 0n, gas: BigInt(r.gas), deadline: Number(r.deadline), data: r.data, signature: r.signature }],
+      }).catch(async (e) => {
+        // Failed before reaching the chain (simulation / gas cap): let the user retry this nonce. A timeout may have
+        // broadcast, so keep the slot then.
+        if (!/relay timeout/.test((e as Error).message ?? "")) await releaseShared(nonceKey);
+        throw e;
       });
       return Response.json({ hash });
     }

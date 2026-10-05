@@ -36,6 +36,12 @@ export async function allowShared(key: string, max: number, windowMs: number): P
   }
 }
 
+/** Undo an allowShared hit for `key` (e.g. a submission that failed before reaching the chain). Best effort. */
+export async function releaseShared(key: string): Promise<void> {
+  if (!graphEnabled()) return;
+  await q("MATCH (r:Rate {key: $key}) DELETE r", { key }).catch(() => {});
+}
+
 /** Run parameterised Cypher; rows as plain objects. */
 export async function q<T = Record<string, unknown>>(cypher: string, params: Record<string, unknown> = {}): Promise<T[]> {
   if (!driver) {
