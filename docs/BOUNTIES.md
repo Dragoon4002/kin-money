@@ -48,7 +48,7 @@ Mera is Kin's **entire account layer**. There's no Privy, Dynamic, WalletConnect
 
 **Describe how your project meaningfully integrates one or more of Alchemy's services or tools.**
 
-1. **Node API (Monad testnet + mainnet), on web and Android.** Alchemy's Monad endpoint is first in Kin's RPC chain for every balance read, receipt wait, gas estimate and relayer submission. Public RPCs stay as fallback. Before this, public-RPC 429s broke pages under load. The same key serves both networks, so Kin's real-money mode (mainnet) and practice mode (testnet) share one provider. Code: `app/src/lib/chain.ts`, `mobile/src/lib/config.ts`.
+1. **Node API (Monad testnet + mainnet), on web and Android.** Alchemy's Monad endpoint is first in Kin's RPC chain for every balance read, receipt wait, simulation and gas estimate, including the relayer's pre-flight checks (the relayer broadcasts the signed transaction through Monad's RPC). Public RPCs stay as fallback. Before this, public-RPC 429s broke pages under load. The same key serves both networks, so Kin's real-money mode (mainnet) and practice mode (testnet) share one provider. Code: `app/src/lib/chain.ts`, `mobile/src/lib/config.ts`.
 2. **Custom Webhooks (GraphQL) → instant payment notifications.** One webhook on Monad testnet streams every AUSD `Transfer` log (filtered by contract + topic in GraphQL) the moment its block lands. `/api/alchemy/webhook` verifies `X-Alchemy-Signature` (HMAC-SHA256), turns the logs into our history records, and pushes "You got $X from @name" to the receiver's phone and web. It shares the "first to index a log notifies" store with our scanner, so each payment notifies **exactly once**. This replaced polling for the money-received moment, the most emotional moment in a remittance app. Code: `app/src/app/api/alchemy/webhook/route.ts`, `app/src/lib/server/history.ts`.
 
 **Demo video (≤2 min):** phone A sends $20 → phone B gets the push within ~1 s (webhook) → show the webhook in the Alchemy dashboard and the request log → app reads through Alchemy RPC (network tab) on testnet and mainnet.
@@ -58,7 +58,7 @@ Mera is Kin's **entire account layer**. There's no Privy, Dynamic, WalletConnect
 ## 4. Envio
 
 - **HyperSync:** the full activity history, notifications and receipts come from every Kin contract plus AUSD transfers in one paged query (~2.5 s for the whole chain history). Real-money mode uses HyperSync on Monad mainnet (`143.hypersync.xyz`) per person. Code: `app/src/lib/server/history.ts`.
-- **HyperIndex:** `indexer/` indexes every Kin event plus Kin-related AUSD transfers into typed `Account`/`Activity` entities (GraphQL). The app prefers it when `ENVIO_GRAPHQL_URL` is set.
+- **HyperIndex:** `indexer/` indexes every event of the Kin contracts the activity feed reads (names, escrow, streams, pots, circles, AutoPay, gift links) plus Kin-related AUSD transfers into typed `Account`/`Activity` entities (GraphQL). The app prefers it when `ENVIO_GRAPHQL_URL` is set.
 
 ---
 

@@ -17,8 +17,10 @@ left blank on purpose rather than guessed. Fill them before submitting.
 ## Method
 Note: these first tests ran on the original host (kin-money.vercel.app). Passkeys are tied to the site address, so the production site later moved to getkin.space; accounts made on the old host come over through its `/move` page. The on-chain evidence below is unaffected.
 
+Kin now lives at `https://getkin.space` (web) and the Android APK (same account); new tests run there.
+
 `TODO(founder)`: how the tests were run (in person / remote), whether anyone helped, which link or app they used (web PWA
-`https://kin-money.vercel.app` at the time, now `https://getkin.space`, and/or the Android APK), and what each person was asked to try.
+on `kin-money.vercel.app` at the time, and/or the Android APK), and what each person was asked to try.
 
 ## Testers
 Roles are anonymised here; first names and handles are kept in private notes and can be shared with judges on request.
@@ -41,5 +43,6 @@ Every "Verified on-chain" cell comes from public contract events on Monad testne
 KinMandate) and is indexed in our Envio indexer (`indexer/`). Contract addresses: `contracts/deployments/10143.json`.
 
 ## Next round
-Five recorded sessions with a fixed protocol (the testers above already have accounts, so each is a ~5-minute call):
-first-run signup time, first send, first pot/circle, what confused them, would they invite family. Results will be added here.
+Five recorded sessions on `https://getkin.space` with a fixed protocol (testers above first move their account over at
+`https://kin-money.vercel.app/move`, so each is a ~5-minute call): first-run signup time, first send, first cash-out to UPI,
+first pot/circle, what confused them, would they invite family. Results will be added here.

@@ -16,12 +16,12 @@
 | Circles | Diaspora communities running susu/tanda/chit funds | Originality hook |
 | Freelancers | Emerging-market freelancers paid by foreign clients | Secondary; cut first |
 
-Corridor for user testing: **TBD** (see open questions in `tasks/todo.md`).
+Corridor: **India** (receiver side) — family abroad sends, receiver cashes out to UPI via Agora Instant Settlement (practice payout on testnet). Testers so far are India-based.
 
 ## Competition (same track)
 - **Homeward** — Mera + AUSD PWA, gasless link sends, standing orders, CRE, Envio, Kimi.
 - **TakumiPay** — Expo + Mera + AUSD, SEA QRIS merchants, Kimi agent.
-→ Plain "send home" is taken. **Lead demo + pitch with programmable features (9–15).**
+→ Plain "send home" is taken. **Lead demo + pitch with send → cash-out to UPI for one Indian family (Agora mentor advice, Oct 5), then the programmable features (9–15) as the differentiator.**
 
 ## Features
 Tier: **M** must, **S** should, **X** stretch. 🅰 = AUSD cross-border (Agora).

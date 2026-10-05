@@ -82,7 +82,7 @@ chains:
       - name: KinStream
         address: "0xaF989d7acE5a015875Fb5f28b22a091D441e41DB"
       - name: KinPot
-        address: "0xd039f1D113ACd4E89d1f52Ca792D8F54F177a8bA"
+        address: "0x35E381186b7f5271Bdbc6F44cb17ac8D2DA72A78" # live pot (single-use invite links), same events as 0xd039…
       - name: KinPotV1 # pre-redeploy pot, older event shapes
         address: "0x58ab4Da1575758be9d4Fe53bdB79fabe8F4C2caD"
       - name: KinCircle

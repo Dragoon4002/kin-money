@@ -15,8 +15,8 @@ Families split across countries already send money. What they can't do is make t
 
 User quotes: `TODO(real data)` — no interviews recorded yet.
 
-## 2. Wedge: programmable family money, not "send home"
-Plain sending is taken (in-track: Homeward — link sends, standing orders; TakumiPay — merchant QR). Kin sends too (@name, QR, claim link, ~1s, no fee to the user), but leads with money that follows rules — each one a live contract on Monad testnet:
+## 2. Wedge: send → cash out to UPI for one Indian family, then money that behaves
+Core loop (per Agora mentor advice, Oct 5): a family member abroad sends dollars by @name, QR or link (~1s, no fee to the user), and the person in India cashes out to their UPI ID — dollars settle through Agora's Instant Settlement on Monad testnet; the rupee payout is a labelled practice step until a licensed INR partner is live. Plain sending is taken in-track (Homeward — link sends, standing orders; TakumiPay — merchant QR), so the differentiator is money that follows rules — each one a live contract on Monad testnet:
 
 | Kin feature | What banks/remittance apps don't do |
 |---|---|

@@ -23,7 +23,7 @@ export const ADDRESSES: Record<ContractName, string> = {
   KinNames: "0x1ca367edbcf73a357fe60651cfe6af27cfca8476",
   KinEscrow: "0x2f2e58b1b33b30756fa0653672b4ba10cf93a55e",
   KinStream: "0xaf989d7ace5a015875fb5f28b22a091d441e41db",
-  KinPot: "0xd039f1d113acd4e89d1f52ca792d8f54f177a8ba",
+  KinPot: "0x35e381186b7f5271bdbc6f44cb17ac8d2da72a78",
   KinPotV1: "0x58ab4da1575758be9d4fe53bdb79fabe8f4c2cad",
   KinCircle: "0x0b467a32e1a38b999134da4941cad136390c9b41",
   KinMandate: "0xe770ecfbf2d2d6b8b9c1b210b7a42b92bba8fd53",
