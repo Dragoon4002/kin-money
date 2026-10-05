@@ -1,9 +1,10 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Kinko } from "@/components/kinko/Kinko";
 import { Button, ErrorText, Field, inputClass } from "@/components/ui";
 import { KinNamesAbi } from "@/lib/abi";
 import { setName, signUp, useAccount } from "@/lib/account";
+import { loadBloom } from "@/lib/bloom";
 import { registerMe } from "@/lib/contacts";
 import { addr } from "@/lib/chain";
 import { humanError } from "@/lib/errors";
@@ -26,6 +27,12 @@ export function Onboard({ onDone, start = "name" }: { onDone: () => void; start?
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const seq = useRef(0);
+  const maybeTaken = useRef<((h: string) => boolean) | null>(null);
+
+  // Taken-names filter: a miss means free with no RPC. Any failure → null → RPC check as before.
+  useEffect(() => {
+    fetch("/api/names/bloom").then((r) => (r.ok ? r.json() : null)).then((f) => f && (maybeTaken.current = loadBloom(f))).catch(() => {});
+  }, []);
 
   function onHandle(v: string) {
     const h = v.toLowerCase().replace(/^@/, "").replace(/\s/g, "");
@@ -33,6 +40,7 @@ export function Onboard({ onDone, start = "name" }: { onDone: () => void; start?
     setErr("");
     const n = ++seq.current;
     if (!HANDLE_RE.test(h)) return setCheck("idle");
+    if (maybeTaken.current && !maybeTaken.current(h)) return setCheck("free");
     setCheck("checking");
     resolveName(h)
       .then((a) => n === seq.current && setCheck(a ? "taken" : "free"))
