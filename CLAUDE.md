@@ -32,6 +32,7 @@ cd app && pnpm dev | pnpm build | pnpm lint
 9. Contracts: custom errors, event per state change, `ERC2771Context`, no admin/upgradeability, a Foundry test per branch that moves money.
 10. `RELAYER_PRIVATE_KEY` server-only. Never `NEXT_PUBLIC_`. Never commit `.env`.
 11. `references/` = user's CONFIDENTIAL screenshots (gitignored). Use only as private design reference. Never commit, publish as artifact, upload, copy into `app/public`, or quote personal data from them.
+12. **Never remove the old-hostname account move.** Prod = `getkin.space`; accounts made on `kin-money.vercel.app` (until Oct 6) can only move via it (passkeys are hostname-bound). Keep: `app/src/app/move/`, the `kin-money.vercel.app` → `/move` rule in `app/next.config.ts` (with `/api`, `/.well-known`, `/move` excluded), `app/public/.well-known/assetlinks.json`, mobile `oldAccountKey()` / `lib/move.ts`, and the Vercel project serving that hostname. `app/scripts/check-move.mjs` fails `pnpm build` if any piece goes. The submission links to it.
 
 ## Agents (`.claude/agents`)
 - `kin-contracts` — write/test/deploy Solidity for Kin
