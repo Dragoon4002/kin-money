@@ -21,13 +21,11 @@ interface IAgoraStableSwapPair {
 }
 
 /// @title KinCashout
-/// @notice Cash-out through Agora Instant Settlement: pulls the user's signed AUSD and swaps it at Agora's fixed
-///         price into the pair's other token, which this contract keeps as the payout desk's settlement inventory
-///         (the off-ramp partner's side). One event per cash-out carries the payout reference so the payout leg
-///         can be matched. `payoutRef` is a hash of the payout destination (e.g. a UPI ID), never the plain text.
+/// @notice Cash-out through Agora Instant Settlement: pulls the user's signed AUSD, swaps it at Agora's fixed
+///         price into the pair's other token (USDC on mainnet) and sends the output straight to `to` — the user's
+///         own account or the off-ramp partner's deposit address, chosen and signed by the user. Nothing is ever
+///         held here. One event per cash-out carries a salted payout reference (never the plain UPI ID).
 ///         This contract must be an approved swapper on the pair (Agora whitelist).
-/// @dev ponytail: settlement tokens accumulate here with no withdraw (no admin by design). Fine for the practice
-///      network pair (CTK); a real payout partner integration would forward them to the partner's deposit address.
 contract KinCashout is ERC2771Context, ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
 
@@ -37,7 +35,9 @@ contract KinCashout is ERC2771Context, ReentrancyGuardTransient {
     address public immutable settleToken;
     uint256 public count;
 
-    event CashedOut(uint256 indexed id, address indexed user, uint256 ausdIn, uint256 settledOut, bytes32 payoutRef);
+    event CashedOut(
+        uint256 indexed id, address indexed user, address indexed to, uint256 ausdIn, uint256 settledOut, bytes32 payoutRef
+    );
 
     error InvalidTerms();
     error PairMismatch();
@@ -51,8 +51,10 @@ contract KinCashout is ERC2771Context, ReentrancyGuardTransient {
         settleToken = t0 == ausd_ ? t1 : t0;
     }
 
-    /// @notice Sell `value` AUSD at Agora's fixed price; reverts if the pair would return less than `minOut`.
+    /// @notice Sell `value` AUSD at Agora's fixed price and send the output to `to`; reverts if the pair would
+    ///         return less than `minOut`.
     function cashOut(
+        address to,
         uint256 minOut,
         bytes32 payoutRef,
         uint256 value,
@@ -61,17 +63,21 @@ contract KinCashout is ERC2771Context, ReentrancyGuardTransient {
         bytes32 nonce,
         bytes calldata signature
     ) external nonReentrant returns (uint256 id, uint256 out) {
-        if (value == 0 || payoutRef == bytes32(0)) revert InvalidTerms();
+        if (value == 0 || payoutRef == bytes32(0) || to == address(0) || to == address(this)) revert InvalidTerms();
         address user = _msgSender();
         IERC3009(ausd).receiveWithAuthorization(user, address(this), value, validAfter, validBefore, nonce, signature);
 
+        out = _swap(value, minOut, to);
+        id = ++count;
+        emit CashedOut(id, user, to, value, out, payoutRef);
+    }
+
+    /// @dev AUSD → settle token on the pair at Agora's fixed price, output straight to `to`.
+    function _swap(uint256 value, uint256 minOut, address to) private returns (uint256) {
         IERC20(ausd).forceApprove(address(pair), value);
         address[] memory path = new address[](2);
         path[0] = ausd;
         path[1] = settleToken;
-        out = pair.swapExactTokensForTokens(value, minOut, path, address(this), block.timestamp)[1];
-
-        id = ++count;
-        emit CashedOut(id, user, value, out, payoutRef);
+        return pair.swapExactTokensForTokens(value, minOut, path, to, block.timestamp)[1];
     }
 }

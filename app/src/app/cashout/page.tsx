@@ -41,7 +41,7 @@ export default function CashOut() {
     setErr("");
     try {
       if ((await getBalance(me)) < shown.units) throw new Error("insufficient balance");
-      const hash = await cashOut(shown, upi);
+      const hash = await cashOut(shown, upi, me);
       setDone({ hash, q: shown, upi: upi.trim() });
     } catch (e) {
       setErr(humanError(e));

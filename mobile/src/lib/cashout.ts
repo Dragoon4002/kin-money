@@ -1,4 +1,4 @@
-import { keccak256, parseAbi, toBytes, type Hex } from "viem";
+import { keccak256, parseAbi, toBytes, toHex, type Address, type Hex } from "viem";
 import { KinCashoutAbi } from "./abi";
 import { addr, CASHOUT, publicClient } from "./config";
 import { FX } from "./money";
@@ -37,13 +37,16 @@ export async function quote(units: bigint): Promise<Quote> {
   return { units, settled, rate, gross, fee, tds, inr: Math.max(0, gross - fee - tds) };
 }
 
-/** Payout reference stored on-chain: a hash of the UPI ID, never the ID itself. */
-export const payoutRef = (upi: string): Hex => keccak256(toBytes(`upi:${upi.trim().toLowerCase()}`));
+/** Payout reference stored on-chain: hash of a random salt + the UPI ID. Salted so the UPI ID (often a phone
+ *  number) can't be brute-forced back from the event (audit). */
+export const payoutRef = (upi: string): Hex =>
+  keccak256(toBytes(`upi:${toHex(crypto.getRandomValues(new Uint8Array(32)))}:${upi.trim().toLowerCase()}`));
 
-/** Sell `q.units` dollars through Agora Instant Settlement (gasless, one Identity check). */
-export function cashOut(q: Quote, upi: string): Promise<Hex> {
+/** Sell `q.units` dollars through Agora Instant Settlement (gasless, one Identity check). The settled tokens go
+ *  straight to `to` (the user's own account here; an off-ramp partner's deposit address on mainnet). */
+export function cashOut(q: Quote, upi: string, to: Address): Promise<Hex> {
   // Fixed price: allow 0.5% slack in case Agora nudges the price between quote and confirm.
-  return call(CASHOUT, KinCashoutAbi, "cashOut", [(q.settled * 995n) / 1000n, payoutRef(upi)], { fund: q.units });
+  return call(CASHOUT, KinCashoutAbi, "cashOut", [to, (q.settled * 995n) / 1000n, payoutRef(upi)], { fund: q.units });
 }
 
 export const inr = (n: number) => `₹${n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;

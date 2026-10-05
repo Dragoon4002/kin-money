@@ -1,6 +1,6 @@
 import { isAddress, isHex, parseAbi, type Address, type Hex } from "viem";
 import { KinForwarderAbi } from "@/lib/abi";
-import { addr, networks } from "@/lib/chain";
+import { addr, networks, publicClient } from "@/lib/chain";
 import { allowShared } from "@/lib/server/graph";
 import { GAS_CAP, allow, clientIp, once, submit } from "@/lib/server/relayer";
 
@@ -10,6 +10,7 @@ const ausdAbi = parseAbi([
 const OLD_POT = "0x58ab4Da1575758be9d4Fe53bdB79fabe8F4C2caD"; // pre-redeploy KinPot (lib/programs.ts OLD_POT): only close() is used
 const KIN = new Set([addr.names, addr.escrow, addr.stream, addr.pot, addr.circle, addr.mandate, addr.giftlink, addr.cashout, OLD_POT].map((a) => a.toLowerCase()));
 const MAX_DEADLINE_S = 3600;
+const MIN_MAIN_VALUE = 10_000n; // $0.01: dust sends on mainnet only burn relayer MON (audit)
 
 const bad = (error: string, status = 400) => Response.json({ error }, { status });
 const uint = (v: unknown) => (typeof v === "string" || typeof v === "number") && /^\d{1,78}$/.test(String(v));
@@ -29,9 +30,11 @@ export async function POST(req: Request) {
       const { auth: a, signature } = body;
       if (![a?.from, a?.to].every((x) => isAddress(x)) || !isHex(a.nonce) || !isHex(signature)) return bad("invalid");
       if (![a.value, a.validAfter, a.validBefore].every(uint) || BigInt(a.value) === 0n) return bad("invalid"); // a $0 transfer only burns relayer gas
+      if (net === "main" && BigInt(a.value) < MIN_MAIN_VALUE) return bad("too small");
       if (!allow(`from:${a.from.toLowerCase()}`, 10)) return bad("slow down", 429);
       if (!(await allowShared(`relay-from:${a.from.toLowerCase()}`, 200, 86_400_000))) return bad("slow down", 429);
-      if (!once(`3009:${net}:${a.from.toLowerCase()}:${a.nonce}`)) return bad("duplicate", 409);
+      const k3009 = `3009:${net}:${a.from.toLowerCase()}:${a.nonce}`;
+      if (!once(k3009) || !(await allowShared(k3009, 1, 3_600_000))) return bad("duplicate", 409);
       const hash = await submit(
         {
           address: networks[net].ausd, abi: ausdAbi, functionName: "transferWithAuthorization",
@@ -52,6 +55,10 @@ export async function POST(req: Request) {
       if (!allow(`from:${r.from.toLowerCase()}`, 10)) return bad("slow down", 429);
       if (!(await allowShared(`relay-from:${r.from.toLowerCase()}`, 200, 86_400_000))) return bad("slow down", 429);
       if (!once(`2771:${r.signature.toLowerCase()}`)) return bad("duplicate", 409);
+      // Audit: N requests signed for the SAME forwarder nonce (different deadlines) each simulate fine, but only one
+      // can land — the rest revert and Monad bills their full gas. Allow one submission per (from, nonce).
+      const fwdNonce = await publicClient.readContract({ address: addr.forwarder, abi: KinForwarderAbi, functionName: "nonces", args: [r.from as Address] });
+      if (!(await allowShared(`2771n:${r.from.toLowerCase()}:${fwdNonce}`, 1, 120_000))) return bad("duplicate", 409);
       const hash = await submit({
         address: addr.forwarder, abi: KinForwarderAbi, functionName: "execute",
         args: [{ from: r.from, to: r.to, value: 0n, gas: BigInt(r.gas), deadline: Number(r.deadline), data: r.data, signature: r.signature }],

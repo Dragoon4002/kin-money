@@ -17,11 +17,11 @@ let ready: Promise<unknown> | null = null;
 
 /**
  * Rate limit shared by every server instance (fixed window, one Rate node per key). The in-memory `allow`
- * only sees one instance, so anything that costs relayer gas also goes through this. Fails open when the
- * graph is off or down (the in-memory limit still applies).
+ * only sees one instance, so anything that costs relayer gas also goes through this. Fails CLOSED in production
+ * when the graph is missing or erroring (audit: an outage must not lift the limits); open in local dev.
  */
 export async function allowShared(key: string, max: number, windowMs: number): Promise<boolean> {
-  if (!graphEnabled()) return true;
+  if (!graphEnabled()) return process.env.NODE_ENV !== "production";
   const bucket = Math.floor(Date.now() / windowMs);
   try {
     const [r] = await q<{ n: number }>(
@@ -32,7 +32,7 @@ export async function allowShared(key: string, max: number, windowMs: number): P
     );
     return (r?.n ?? 0) <= max;
   } catch {
-    return true;
+    return false;
   }
 }
 

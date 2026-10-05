@@ -35,7 +35,7 @@ export const explorerTx = (hash: string) => `https://testnet.monadvision.com/tx/
 
 // ---------- Practice / Real money (mirrors app/src/lib/chain.ts) ----------
 // Real money (mainnet) covers balance, send, receive, activity, proof; programs + links stay on the practice network.
-export const CASHOUT: Address = "0x58a1971001245373B484eB048529f55aDFe41f01"; // KinCashout, testnet (contracts/deployments/10143.json)
+export const CASHOUT: Address = "0xDdBc1208e84E82676bfc7452F25cecDB3B05b75a"; // KinCashout, testnet (contracts/deployments/10143.json)
 export type Mode = "test" | "main";
 export type Network = { mode: Mode; chain: Chain; ausd: Address; client: PublicClient; explorer: string };
 export const networks: Record<Mode, Network> = {

@@ -39,7 +39,9 @@ export function allow(key: string, max: number, windowMs = 60_000): boolean {
   return true;
 }
 
-export const clientIp = (req: Request) => req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
+// Vercel sets x-vercel-forwarded-for / x-real-ip itself; a client-sent x-forwarded-for can be forged (audit).
+export const clientIp = (req: Request) =>
+  req.headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip")?.trim() || "local";
 
 type Req = Parameters<typeof publicClient.simulateContract>[0];
 

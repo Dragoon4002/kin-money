@@ -50,6 +50,7 @@ contract KinCashoutTest is KinTest {
     MockSettle ctk;
     MockStablePair pair;
     bytes32 constant REF = keccak256("upi:alice@okbank");
+    address constant TO = address(0xD35C);
 
     function setUp() public override {
         super.setUp();
@@ -65,7 +66,7 @@ contract KinCashoutTest is KinTest {
         _forward(
             pk,
             address(cash),
-            abi.encodeCall(KinCashout.cashOut, (minOut, ref, a.value, a.validAfter, a.validBefore, a.nonce, a.sig))
+            abi.encodeCall(KinCashout.cashOut, (TO, minOut, ref, a.value, a.validAfter, a.validBefore, a.nonce, a.sig))
         );
     }
 
@@ -75,11 +76,12 @@ contract KinCashoutTest is KinTest {
 
     function test_CashOutViaForwarderSwapsAtFixedPrice() public {
         vm.expectEmit(address(cash));
-        emit KinCashout.CashedOut(1, alice, 25 * USD, 25e18, REF);
+        emit KinCashout.CashedOut(1, alice, TO, 25 * USD, 25e18, REF);
         _cashOut(ALICE_PK, 25 * USD, 25e18, REF);
         assertEq(ausd.balanceOf(alice), 975 * USD);
         assertEq(ausd.balanceOf(address(pair)), 25 * USD);
-        assertEq(ctk.balanceOf(address(cash)), 25e18);
+        assertEq(ctk.balanceOf(TO), 25e18); // output goes straight to the signed recipient
+        assertEq(ctk.balanceOf(address(cash)), 0); // nothing held (audit fix)
         assertEq(ausd.balanceOf(address(cash)), 0);
         assertEq(cash.count(), 1);
     }
@@ -88,7 +90,7 @@ contract KinCashoutTest is KinTest {
         Auth memory a = _auth(ALICE_PK, address(cash), 10 * USD);
         vm.expectRevert(MockStablePair.InsufficientOutputAmount.selector);
         vm.prank(alice);
-        cash.cashOut(10e18 + 1, REF, a.value, a.validAfter, a.validBefore, a.nonce, a.sig);
+        cash.cashOut(TO, 10e18 + 1, REF, a.value, a.validAfter, a.validBefore, a.nonce, a.sig);
         assertEq(ausd.balanceOf(alice), 1_000 * USD);
     }
 
@@ -96,9 +98,9 @@ contract KinCashoutTest is KinTest {
         Auth memory a = _auth(ALICE_PK, address(cash), 10 * USD);
         vm.startPrank(alice);
         vm.expectRevert(KinCashout.InvalidTerms.selector);
-        cash.cashOut(0, REF, 0, a.validAfter, a.validBefore, a.nonce, a.sig);
+        cash.cashOut(TO, 0, REF, 0, a.validAfter, a.validBefore, a.nonce, a.sig);
         vm.expectRevert(KinCashout.InvalidTerms.selector);
-        cash.cashOut(0, bytes32(0), a.value, a.validAfter, a.validBefore, a.nonce, a.sig);
+        cash.cashOut(TO, 0, bytes32(0), a.value, a.validAfter, a.validBefore, a.nonce, a.sig);
         vm.stopPrank();
     }
 
@@ -107,7 +109,7 @@ contract KinCashoutTest is KinTest {
         Auth memory a = _auth(ALICE_PK, address(other), 10 * USD);
         vm.expectRevert(MockStablePair.NotApproved.selector);
         vm.prank(alice);
-        other.cashOut(0, REF, a.value, a.validAfter, a.validBefore, a.nonce, a.sig);
+        other.cashOut(TO, 0, REF, a.value, a.validAfter, a.validBefore, a.nonce, a.sig);
     }
 
     function test_RevertsAuthForSomeoneElse() public {
@@ -115,7 +117,17 @@ contract KinCashoutTest is KinTest {
         Auth memory a = _auth(ALICE_PK, address(cash), 10 * USD);
         vm.expectRevert();
         vm.prank(bob);
-        cash.cashOut(0, REF, a.value, a.validAfter, a.validBefore, a.nonce, a.sig);
+        cash.cashOut(TO, 0, REF, a.value, a.validAfter, a.validBefore, a.nonce, a.sig);
+    }
+
+    function test_RevertsZeroOrSelfRecipient() public {
+        Auth memory a = _auth(ALICE_PK, address(cash), 10 * USD);
+        vm.startPrank(alice);
+        vm.expectRevert(KinCashout.InvalidTerms.selector);
+        cash.cashOut(address(0), 0, REF, a.value, a.validAfter, a.validBefore, a.nonce, a.sig);
+        vm.expectRevert(KinCashout.InvalidTerms.selector);
+        cash.cashOut(address(cash), 0, REF, a.value, a.validAfter, a.validBefore, a.nonce, a.sig);
+        vm.stopPrank();
     }
 
     function test_ConstructorRejectsPairWithoutAusd() public {
@@ -164,10 +176,11 @@ contract KinCashoutForkTest is KinTest {
         );
         bytes memory sig = _sign(ALICE_PK, keccak256(abi.encodePacked("\x19\x01", _domain("Agora Dollar", AUSD), structHash)));
         vm.prank(alice);
-        (uint256 id, uint256 out) = cash.cashOut(9e18, keccak256("upi:test"), 10 * USD, 0, before, nonce, sig);
+        (uint256 id, uint256 out) = cash.cashOut(alice, 9e18, keccak256("upi:test"), 10 * USD, 0, before, nonce, sig);
         assertEq(id, 1);
         assertGe(out, 9e18);
-        assertEq(IERC20(cash.settleToken()).balanceOf(address(cash)), out);
+        assertEq(IERC20(cash.settleToken()).balanceOf(alice), out);
+        assertEq(IERC20(cash.settleToken()).balanceOf(address(cash)), 0);
         assertEq(IERC20(AUSD).balanceOf(alice), 0);
     }
 }

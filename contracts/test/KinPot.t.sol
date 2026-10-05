@@ -157,11 +157,28 @@ contract KinPotTest is KinTest {
         pot.setInviteKey(id, vm.addr(BOB_KEY_PK));
         pot.join(id, bob, carol, _joinSig(BOB_KEY_PK, id, bob, carol));
         assertTrue(pot.isMember(id, carol));
-        // the new member can invite too
-        address dave = makeAddr("dave");
-        _forward(CAROL_PK, address(pot), abi.encodeCall(KinPot.setInviteKey, (id, vm.addr(CAROL_PK))));
-        pot.join(id, carol, dave, _joinSig(CAROL_PK, id, carol, dave));
-        assertTrue(pot.isMember(id, dave));
+        assertEq(pot.inviteKeyOf(id, bob), address(0)); // link used up
+        assertTrue(pot.joinedByLink(id, carol));
+    }
+
+    /// @dev Audit fix: someone who joined by link can't mint links (no invite chains / sybil fill).
+    function test_LinkJoinerCantInvite() public {
+        pot.join(id, alice, carol, _joinSig(KEY_PK, id, alice, carol));
+        vm.expectRevert(KinPot.Unauthorized.selector);
+        vm.prank(carol);
+        pot.setInviteKey(id, vm.addr(CAROL_PK));
+        assertEq(pot.inviteKeyOf(id, carol), address(0));
+    }
+
+    /// @dev Audit regression: a leaked link admits exactly one person, so it can't be used to fill a toAll pot.
+    function test_LeakedLinkAdmitsOnlyOne() public {
+        address s1 = makeAddr("sybil1");
+        address s2 = makeAddr("sybil2");
+        pot.join(id, alice, s1, _joinSig(KEY_PK, id, alice, s1));
+        bytes memory again = _joinSig(KEY_PK, id, alice, s2);
+        vm.expectRevert(KinPot.InvalidTerms.selector); // key cleared
+        pot.join(id, alice, s2, again);
+        assertEq(pot.membersOf(id).length, 3);
     }
 
     function test_NonMemberCantSetKey() public {
@@ -205,8 +222,10 @@ contract KinPotTest is KinTest {
     function test_JoinTwiceReverts() public {
         pot.join(id, alice, carol, _joinSig(KEY_PK, id, alice, carol));
         bytes memory s = _joinSig(KEY_PK, id, alice, carol);
-        vm.expectRevert(KinPot.AlreadyMember.selector);
+        vm.expectRevert(KinPot.InvalidTerms.selector); // the link was used up
         pot.join(id, alice, carol, s);
+        vm.prank(alice);
+        pot.setInviteKey(id, vm.addr(KEY_PK)); // fresh link
         s = _joinSig(KEY_PK, id, alice, bob);
         vm.expectRevert(KinPot.AlreadyMember.selector);
         pot.join(id, alice, bob, s);
@@ -215,12 +234,27 @@ contract KinPotTest is KinTest {
     function test_JoinFullReverts() public {
         for (uint256 i = 3; i <= 20; ++i) {
             address a = address(uint160(0x1000 + i));
+            vm.prank(alice);
+            pot.setInviteKey(id, vm.addr(KEY_PK)); // one link per invitee
             pot.join(id, alice, a, _joinSig(KEY_PK, id, alice, a));
         }
         assertEq(pot.membersOf(id).length, 20);
+        vm.prank(alice);
+        pot.setInviteKey(id, vm.addr(KEY_PK));
         bytes memory s = _joinSig(KEY_PK, id, alice, carol);
         vm.expectRevert(KinPot.Full.selector);
         pot.join(id, alice, carol, s);
+    }
+
+    function test_CreateRejectsContractOrDollarAsRecipient() public {
+        address[] memory m = new address[](1);
+        m[0] = alice;
+        vm.prank(alice);
+        vm.expectRevert(KinPot.InvalidTerms.selector);
+        pot.create(_one(address(pot)), false, uint96(10 * USD), m, address(0));
+        vm.prank(alice);
+        vm.expectRevert(KinPot.InvalidTerms.selector);
+        pot.create(_one(address(ausd)), false, uint96(10 * USD), m, address(0));
     }
 
     function test_DisableOnlyAffectsOwnLink() public {

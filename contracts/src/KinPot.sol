@@ -14,8 +14,9 @@ import {IERC3009} from "./interfaces/IERC3009.sol";
 ///         equally between the recipients, round advances, excess carries over. Recipients = a fixed list of
 ///         1-20 beneficiaries, or (`toAll`) every current member at payout time. 1-20 members; creator must be a
 ///         member or a beneficiary. Any recipient may `close` to split the remaining balance; no contributions after.
-///         Invite links: each member may set their own ephemeral key (lives in their link); anyone holding it can
-///         `join` until the pot is full. A member can rotate or clear only their own key.
+///         Invite links: each original member may set their own ephemeral key (lives in their link). A key admits
+///         exactly one person and is then cleared, so a leaked link can't fill the pot. Members who joined by link
+///         can't create links themselves (no invite chains). A member can rotate or clear only their own key.
 contract KinPot is ERC2771Context, ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
 
@@ -40,6 +41,8 @@ contract KinPot is ERC2771Context, ReentrancyGuardTransient {
     mapping(uint256 => mapping(uint256 => mapping(address => uint256))) public contributed;
     /// @notice id => member => their invite link key (0 = no link)
     mapping(uint256 => mapping(address => address)) public inviteKeyOf;
+    /// @notice id => member => joined through someone's invite link (can't create links)
+    mapping(uint256 => mapping(address => bool)) public joinedByLink;
 
     event PotCreated(
         uint256 indexed id,
@@ -84,12 +87,13 @@ contract KinPot is ERC2771Context, ReentrancyGuardTransient {
         id = ++count;
         pots[id] = Pot(target, 0, 0, false, toAll);
         for (uint256 i; i < members.length; ++i) {
-            if (members[i] == address(0) || isMember[id][members[i]]) revert InvalidTerms();
+            if (members[i] == address(0) || members[i] == address(this) || members[i] == ausd || isMember[id][members[i]]) revert InvalidTerms();
             isMember[id][members[i]] = true;
         }
         for (uint256 i; i < beneficiaries.length; ++i) {
-            if (beneficiaries[i] == address(0) || isBeneficiary[id][beneficiaries[i]]) revert InvalidTerms();
-            isBeneficiary[id][beneficiaries[i]] = true;
+            address b = beneficiaries[i];
+            if (b == address(0) || b == address(this) || b == ausd || isBeneficiary[id][b]) revert InvalidTerms();
+            isBeneficiary[id][b] = true;
         }
         address creator = _msgSender();
         if (!isBeneficiary[id][creator] && !isMember[id][creator]) revert InvalidTerms();
@@ -107,6 +111,7 @@ contract KinPot is ERC2771Context, ReentrancyGuardTransient {
     function setInviteKey(uint256 id, address key) external {
         address member = _msgSender();
         if (!isMember[id][member]) revert NotMember();
+        if (joinedByLink[id][member]) revert Unauthorized();
         inviteKeyOf[id][member] = key;
         emit InviteKeySet(id, member, key);
     }
@@ -115,7 +120,7 @@ contract KinPot is ERC2771Context, ReentrancyGuardTransient {
     ///         keccak256(abi.encode(address(this), block.chainid, id, inviter, member)). Anyone may submit.
     function join(uint256 id, address inviter, address member, bytes calldata signature) external {
         address key = inviteKeyOf[id][inviter];
-        if (key == address(0) || member == address(0)) revert InvalidTerms(); // only members ever hold a key
+        if (key == address(0) || member == address(0) || member == address(this) || member == ausd) revert InvalidTerms();
         if (pots[id].closed) revert Closed();
         if (isMember[id][member]) revert AlreadyMember();
         if (_members[id].length >= MAX_MEMBERS) revert Full();
@@ -123,7 +128,10 @@ contract KinPot is ERC2771Context, ReentrancyGuardTransient {
             keccak256(abi.encode(address(this), block.chainid, id, inviter, member))
         );
         if (ECDSA.recover(digest, signature) != key) revert BadSignature();
+        delete inviteKeyOf[id][inviter]; // one join per link
+        emit InviteKeySet(id, inviter, address(0));
         isMember[id][member] = true;
+        joinedByLink[id][member] = true;
         _members[id].push(member);
         emit Joined(id, member, inviter);
     }
