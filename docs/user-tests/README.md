@@ -15,8 +15,10 @@ left blank on purpose rather than guessed. Fill them before submitting.
   accounts and are **not** counted here.
 
 ## Method
+Note: these first tests ran on the original host (kin-money.vercel.app). Passkeys are tied to the site address, so the production site later moved to getkin.space; accounts made on the old host come over through its `/move` page. The on-chain evidence below is unaffected.
+
 `TODO(founder)`: how the tests were run (in person / remote), whether anyone helped, which link or app they used (web PWA
-`https://kin-money.vercel.app` and/or the Android APK), and what each person was asked to try.
+`https://kin-money.vercel.app` at the time, now `https://getkin.space`, and/or the Android APK), and what each person was asked to try.
 
 ## Testers
 Roles are anonymised here; first names and handles are kept in private notes and can be shared with judges on request.
