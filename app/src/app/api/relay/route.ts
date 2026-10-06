@@ -1,6 +1,7 @@
 import { isAddress, isHex, parseAbi, type Address, type Hex } from "viem";
-import { KinForwarderAbi } from "@/lib/abi";
+import { KinCashoutV2Abi, KinForwarderAbi } from "@/lib/abi";
 import { addr, networks, publicClient } from "@/lib/chain";
+import { ROUTES, termsNonce, VENUES } from "@/lib/cashoutRoutes";
 import { allowShared, releaseShared } from "@/lib/server/graph";
 import { GAS_CAP, allow, clientIp, once, submit } from "@/lib/server/relayer";
 
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
   try {
     // Real money (mainnet): plain sends only. Programs and links stay on the practice network.
     const net = body?.net === "main" ? "main" : "test";
-    if (net === "main" && body?.kind !== "3009") return bad("not available");
+    if (net === "main" && body?.kind !== "3009" && body?.kind !== "cashout") return bad("not available");
     if (body?.kind === "3009") {
       const { auth: a, signature } = body;
       if (![a?.from, a?.to].every((x) => isAddress(x)) || !isHex(a.nonce) || !isHex(signature)) return bad("invalid");
@@ -43,6 +44,30 @@ export async function POST(req: Request) {
           args: [a.from as Address, a.to as Address, BigInt(a.value), BigInt(a.validAfter), BigInt(a.validBefore), a.nonce as Hex, signature as Hex],
         },
         200_000n,
+        net,
+      );
+      return Response.json({ hash });
+    }
+    if (body?.kind === "cashout") {
+      // KinCashoutV2: one signed EIP-3009 pull whose nonce commits to the terms (see lib/cashoutRoutes.ts).
+      const { from, terms: t, value, validAfter, validBefore, signature } = body;
+      const target = ROUTES[net].cashout;
+      if (!target) return bad("not available");
+      const b32 = (v: unknown) => isHex(v) && v.length === 66;
+      if (!isAddress(from) || !isAddress(t?.to) || !b32(t.payoutRef) || !b32(t.salt) || !isHex(signature)) return bad("invalid");
+      if (![value, validAfter, validBefore, t.minOut].every(uint) || BigInt(value) === 0n || !(Number.isInteger(t.venue) && t.venue >= 0 && t.venue < VENUES.length)) return bad("invalid");
+      if (net === "main" && BigInt(value) < MIN_MAIN_VALUE) return bad("too small");
+      if (!allow(`from:${from.toLowerCase()}`, 10)) return bad("slow down", 429);
+      if (!(await allowShared(`relay-from:${from.toLowerCase()}`, 200, 86_400_000))) return bad("slow down", 429);
+      const terms = { to: t.to as Address, venue: Number(t.venue), minOut: BigInt(t.minOut), payoutRef: t.payoutRef as Hex, salt: t.salt as Hex };
+      const k = `3009:${net}:${from.toLowerCase()}:${termsNonce(net, terms)}`;
+      if (!once(k) || !(await allowShared(k, 1, 3_600_000))) return bad("duplicate", 409);
+      const hash = await submit(
+        {
+          address: target, abi: KinCashoutV2Abi, functionName: "cashOut",
+          args: [from as Address, terms, BigInt(value), BigInt(validAfter), BigInt(validBefore), signature as Hex],
+        },
+        GAS_CAP,
         net,
       );
       return Response.json({ hash });

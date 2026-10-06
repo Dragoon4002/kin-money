@@ -19,8 +19,8 @@ const AGORA_PAIR = "0x1Aa8958Aa34cEC8096EF4381cb335effe977b0ae"; // Agora Instan
 export const UPI_RE = /^[a-z0-9._-]{2,256}@[a-z][a-z0-9.-]{1,64}$/i;
 
 /** Onramp.money INR payout fee tiers (live sell config, Oct 2026): ₹2.36 ≤ ₹1k, ₹5.31 ≤ ₹25k, else ₹9.44. */
-const payoutFee = (inr: number) => (inr <= 1_000 ? 2.36 : inr <= 25_000 ? 5.31 : 9.44);
-const TDS = 0.01; // India: 1% tax deducted on selling digital dollars
+export const payoutFee = (inr: number) => (inr <= 1_000 ? 2.36 : inr <= 25_000 ? 5.31 : 9.44);
+export const TDS = 0.01; // India: 1% tax deducted on selling digital dollars
 
 export type Quote = { units: bigint; settled: bigint; rate: number; gross: number; fee: number; tds: number; inr: number };
 

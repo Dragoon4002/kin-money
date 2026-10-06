@@ -2,15 +2,27 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AmountInput, useSignedIn } from "@/components/social/bits";
-import { Button, Card, Chip, Delivered, ErrorText, Field, Screen, inputClass } from "@/components/ui";
+import { Button, Card, Chip, Delivered, ErrorText, Field, Screen, Tabs, inputClass } from "@/components/ui";
 import { getBalance } from "@/lib/activity";
 import { cashOut, inr, quote, UPI_RE, type Quote } from "@/lib/cashout";
 import { humanError } from "@/lib/errors";
 import { useMode } from "@/lib/mode";
 import { formatMoney, fromLocal } from "@/lib/money";
+import Offramp from "./Offramp";
+
+// Two ways out: Agora (practice cash-out at Agora's fixed price) and Onramp (exchange route + money-flow view).
+export default function CashOut() {
+  const [tab, setTab] = useState<"agora" | "onramp">("agora");
+  return (
+    <Screen title="Cash out to UPI" back="/money">
+      <Tabs value={tab} options={[["agora", "Agora"], ["onramp", "Onramp"]] as const} onChange={setTab} />
+      {tab === "agora" ? <AgoraPractice /> : <Offramp />}
+    </Screen>
+  );
+}
 
 // Amount → UPI ID → live quote (Agora fixed price) → Identity check → settled. Practice money only for now.
-export default function CashOut() {
+function AgoraPractice() {
   const me = useSignedIn()?.address;
   const mode = useMode();
   const [amount, setAmount] = useState("");
@@ -52,7 +64,7 @@ export default function CashOut() {
 
   if (done) {
     return (
-      <Screen title="Cash out" back="/money">
+      <>
         <Delivered title={`${inr(done.q.inr)} on its way`} subtitle={`To ${done.upi} · usually within minutes`}>
           <Card className="flex flex-col gap-2 text-left text-sm">
             <Chip tone="warn">Practice cash-out</Chip>
@@ -62,12 +74,12 @@ export default function CashOut() {
           </Card>
           <Link href={`/details?tx=${done.hash}`} className="mt-4 block text-center text-sm font-semibold text-brand">Proof of payment</Link>
         </Delivered>
-      </Screen>
+      </>
     );
   }
 
   return (
-    <Screen title="Cash out to UPI" back="/money">
+    <>
       {mode === "main" ? (
         <Card className="flex flex-col gap-2">
           <Chip tone="warn">Coming soon</Chip>
@@ -105,7 +117,7 @@ export default function CashOut() {
           </div>
         </>
       )}
-    </Screen>
+    </>
   );
 }
 
