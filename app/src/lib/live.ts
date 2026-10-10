@@ -3,6 +3,7 @@ import { useSyncExternalStore } from "react";
 import type { Address } from "viem";
 import { api } from "./contacts";
 import { formatMoney } from "./money";
+import { play } from "./sound";
 
 // Messages + notification center, client side. Realtime over Pusher (`private-user-<address>`),
 // falling back to polling when NEXT_PUBLIC_PUSHER_* isn't set or the socket is down.
@@ -67,6 +68,7 @@ export function startLive(me: Address): () => void {
   let disconnect = () => {};
   const fire = (event: "message" | "notification") => (data: unknown) => {
     if (data == null) return;
+    if (event === "notification" && /^You got /.test((data as { title?: string }).title ?? "")) play("received");
     handlers.forEach((h) => h(event, data));
     void refreshCounts();
   };

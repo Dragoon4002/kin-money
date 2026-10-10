@@ -6,6 +6,7 @@ import type { Address } from "viem";
 import { Avatar, Field, IconTile, Text, TextInput, useInputStyle } from "@/components/ui";
 import { isUnlocked, useAccount } from "@/lib/account";
 import { humanError } from "@/lib/errors";
+import { play } from "@/lib/sound";
 import { ICON, type IconName } from "@/lib/icons";
 import { currencySymbol, FX, getCurrency } from "@/lib/money";
 import { nameOf } from "@/lib/names";
@@ -54,7 +55,9 @@ export function useAction() {
     setError("");
     setStatus(isUnlocked() ? "Working on it…" : "Confirm with Identity check…");
     try {
-      return await fn(setStatus);
+      const r = await fn(setStatus);
+      if (r !== false) play("coin");
+      return r;
     } catch (e) {
       setError(humanError(e));
     } finally {

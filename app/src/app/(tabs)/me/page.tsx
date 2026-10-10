@@ -8,6 +8,7 @@ import { getPayCheck, lock, setPayCheck, signOut, switchAccount, useRequireAccou
 import { FX, currencySymbol, fromLocal, getCurrency, toDollars } from "@/lib/money";
 import { shortAddr } from "@/lib/names";
 import { setPrivate, usePrivate } from "@/lib/privacy";
+import { setSoundOn, useSoundOn } from "@/lib/sound";
 import { setMode } from "@/lib/chain";
 import { useMode } from "@/lib/mode";
 import { disablePush, enablePush, iosNeedsInstall, pushState, type PushState } from "@/lib/push";
@@ -42,6 +43,7 @@ export default function Me() {
   const [copied, setCopied] = useState(false);
   const [confirmOut, setConfirmOut] = useState(false);
   const hidden = usePrivate();
+  const sound = useSoundOn();
   const moneyMode = useMode();
   const payRaw = useSyncExternalStore(subscribe, () => JSON.stringify(getPayCheck()), () => "");
   const pay = payRaw ? (JSON.parse(payRaw) as PayCheck) : null;
@@ -142,6 +144,13 @@ export default function Me() {
             <span className="block text-sm text-muted">Your balance shows as •••• — tap it to peek</span>
           </span>
           <input type="checkbox" role="switch" className="size-6 accent-brand" checked={hidden} onChange={(e) => setPrivate(e.target.checked)} />
+        </label>
+        <label className="flex min-h-16 items-center gap-4 px-5">
+          <span className="flex-1">
+            <span className="block font-semibold">Sounds</span>
+            <span className="block text-sm text-muted">Little sounds when money moves</span>
+          </span>
+          <input type="checkbox" role="switch" className="size-6 accent-brand" checked={sound} onChange={(e) => setSoundOn(e.target.checked)} />
         </label>
 
         <Band>When I pay</Band>

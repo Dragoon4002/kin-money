@@ -80,3 +80,16 @@ body { font-family: var(--font-jakarta), system-ui, sans-serif; -webkit-tap-high
   html[data-navdir="next"] main { animation: kin-in-next 0.28s ease-out; }
   html[data-navdir="prev"] main { animation: kin-in-prev 0.28s ease-out; }
 }
+
+/* Micro motion for small wins and errors. `kin-pop` = springy scale-in (checks, badges), `kin-rise` = fade up
+   (titles; stagger with animation-delay), `kin-ring` = one soft pulse ring behind a check, `kin-shake` = error nudge. */
+@keyframes kin-pop { 0% { transform: scale(0.3); opacity: 0; } 60% { transform: scale(1.12); opacity: 1; } 100% { transform: scale(1); } }
+@keyframes kin-rise { from { transform: translateY(10px); opacity: 0; } }
+@keyframes kin-ring { from { transform: scale(1); opacity: 0.5; } to { transform: scale(1.9); opacity: 0; } }
+@keyframes kin-shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
+@media (prefers-reduced-motion: no-preference) {
+  .kin-pop { animation: kin-pop 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
+  .kin-rise { animation: kin-rise 0.4s ease-out both; }
+  .kin-ring { animation: kin-ring 0.9s ease-out 0.2s both; }
+  .kin-shake { animation: kin-shake 0.35s ease-in-out; }
+}

@@ -2,6 +2,7 @@ import * as Clipboard from "expo-clipboard";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, KeyboardAvoidingView, Pressable, ScrollView, View } from "react-native";
+import Animated, { FadeInDown, ZoomIn } from "react-native-reanimated";
 import { Avatar, Button, ErrorText, Label, Screen, Serif, Text, TextInput, useInputStyle } from "@/components/ui";
 import { getAccount, getProfile, isUnlocked, readToken } from "@/lib/account";
 import { getBalance } from "@/lib/activity";
@@ -13,6 +14,7 @@ import { isAddress, type Address } from "viem";
 import { HANDLE_RE, loadDirectory, nameOf, resolveName, shortAddr } from "@/lib/names";
 import { parseAmt, unitsToLocal } from "@/lib/payLink";
 import { shareCard } from "@/lib/shareCard";
+import { play } from "@/lib/sound";
 import { sendDollars } from "@/lib/tx";
 import type { Trie } from "@/lib/trie";
 import { useTheme } from "@/theme";
@@ -109,6 +111,7 @@ export default function Send() {
       if (category) setCategory(hash, category).catch(() => {});
       if (person.name) recordPayment(person.address, units, hash).catch(() => {}); // not on Kin: keep them out of the phonebook
       setDone({ ms: Date.now() - t0, units, name: person.name });
+      play("sent");
     } catch (e) {
       setErr(humanError(e));
     } finally {
@@ -121,8 +124,10 @@ export default function Send() {
     return (
       <Screen>
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12 }}>
-          <Text style={{ color: t.good, fontSize: 20, fontWeight: "700" }}>Delivered ✓✓ in {(done.ms / 1000).toFixed(1)}s</Text>
-          <Serif size={64}>{formatMoney(done.units, currency)}</Serif>
+          <Animated.View entering={ZoomIn.springify().damping(12)}>
+            <Text style={{ color: t.good, fontSize: 20, fontWeight: "700" }}>Delivered ✓✓ in {(done.ms / 1000).toFixed(1)}s</Text>
+          </Animated.View>
+          <Animated.View entering={FadeInDown.delay(120)}><Serif size={64}>{formatMoney(done.units, currency)}</Serif></Animated.View>
           <Text style={{ color: t.muted }}>to {label(done.name)}{note.trim() ? ` · “${note.trim()}”` : ""}</Text>
         </View>
         <View style={{ gap: 8 }}>

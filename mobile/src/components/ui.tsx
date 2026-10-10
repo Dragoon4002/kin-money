@@ -1,11 +1,13 @@
 import { router } from "expo-router";
 import { ChevronLeft, Delete, type LucideIcon } from "lucide-react-native";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text as RNText, TextInput as RNTextInput, View, type StyleProp, type TextInputProps, type TextProps, type TextStyle } from "react-native";
+import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { Kinko } from "@/components/Kinko";
 import { useAvatarLook } from "@/lib/names";
+import { play } from "@/lib/sound";
 import { fonts, useTheme } from "@/theme";
 
 /** Plus Jakarta Sans at the style's fontWeight, unless a fontFamily is set (e.g. Serif). */
@@ -68,9 +70,19 @@ export function Button({ title, onPress, variant = "primary", disabled, busy }: 
 
 export function ErrorText({ children }: { children?: string }) {
   const t = useTheme();
+  const x = useSharedValue(0);
+  // New error: soft sound + a small shake.
+  useEffect(() => {
+    if (!children) return;
+    play("error");
+    x.set(withSequence(...[-5, 5, -5, 5, 0].map((v) => withTiming(v, { duration: 60 }))));
+  }, [children, x]);
+  const shake = useAnimatedStyle(() => ({ transform: [{ translateX: x.get() }] }));
   if (!children) return null;
   return (
-    <Text accessibilityRole="alert" style={{ color: t.bad, backgroundColor: t.surface2, borderRadius: 16, padding: 12, fontSize: 14 }}>{children}</Text>
+    <Animated.View style={shake}>
+      <Text accessibilityRole="alert" style={{ color: t.bad, backgroundColor: t.surface2, borderRadius: 16, padding: 12, fontSize: 14 }}>{children}</Text>
+    </Animated.View>
   );
 }
 

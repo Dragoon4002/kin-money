@@ -1,11 +1,13 @@
 import { DateTimePicker } from "@expo/ui/community/datetime-picker";
 import { X } from "lucide-react-native";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Pressable, View, type ViewStyle } from "react-native";
+import Animated, { FadeInDown, ZoomIn } from "react-native-reanimated";
 import type { Address } from "viem";
 import type { Person } from "@/components/PersonPicker";
 import { dateLabel } from "@/components/programs/kit";
 import { Avatar, Field, Serif, Text, useInputStyle } from "@/components/ui";
+import { play, type Sound } from "@/lib/sound";
 import { useTheme } from "@/theme";
 
 // Port of app/src/components/trips/bits.tsx + small web ui bits (Card, Delivered, date input) shared by
@@ -84,14 +86,15 @@ export function Pill({ title, onPress, soft, disabled }: { title: string; onPres
   );
 }
 
-/** Success body (web Delivered): big check line, title, subtitle; actions go in the Screen's <Footer>. */
-export function Delivered({ title, subtitle }: { title: string; subtitle?: string }) {
+/** Success body (web Delivered): big check line, title, subtitle; actions go in the Screen's <Footer>. `sound` = which moment (lib/sound.ts). */
+export function Delivered({ title, subtitle, sound = "success" }: { title: string; subtitle?: string; sound?: Sound }) {
   const t = useTheme();
+  useEffect(() => play(sound), [sound]);
   return (
     <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12 }}>
-      <Text style={{ color: t.good, fontSize: 20, fontWeight: "700" }}>✓✓</Text>
-      <Serif size={44}>{title}</Serif>
-      {!!subtitle && <Text style={{ color: t.muted, fontSize: 16, textAlign: "center" }}>{subtitle}</Text>}
+      <Animated.View entering={ZoomIn.springify().damping(12)}><Text style={{ color: t.good, fontSize: 20, fontWeight: "700" }}>✓✓</Text></Animated.View>
+      <Animated.View entering={FadeInDown.delay(120)}><Serif size={44}>{title}</Serif></Animated.View>
+      {!!subtitle && <Animated.View entering={FadeInDown.delay(200)}><Text style={{ color: t.muted, fontSize: 16, textAlign: "center" }}>{subtitle}</Text></Animated.View>}
     </View>
   );
 }

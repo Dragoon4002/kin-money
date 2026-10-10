@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import type { Address } from "viem";
 import { isUnlocked, useRequireAccount } from "@/lib/account";
 import { humanError } from "@/lib/errors";
+import { play } from "@/lib/sound";
 import { FX, getCurrency } from "@/lib/money";
 import { useCurrencySymbol } from "@/lib/useCurrencySymbol";
 import { nameOf } from "@/lib/names";
@@ -52,7 +53,9 @@ export function useAction() {
     setError("");
     setStatus(isUnlocked() ? "Working on it…" : "Confirm with Identity check…");
     try {
-      return await fn(setStatus);
+      const r = await fn(setStatus);
+      if (r !== false) play("coin");
+      return r;
     } catch (e) {
       setError(humanError(e));
     } finally {

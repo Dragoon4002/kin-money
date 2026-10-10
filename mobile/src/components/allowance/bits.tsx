@@ -1,6 +1,8 @@
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { View, type ViewStyle } from "react-native";
+import Animated, { FadeInDown, ZoomIn } from "react-native-reanimated";
 import { Serif, Text } from "@/components/ui";
+import { play, type Sound } from "@/lib/sound";
 import { useTheme } from "@/theme";
 
 // Small pieces shared by the allowance, chores, AutoPay and bill screens (web Card / Delivered / done note).
@@ -15,16 +17,17 @@ export function Card({ children, hot, style }: { children: ReactNode; hot?: bool
   );
 }
 
-/** Big centered success state. Put buttons in a <Footer> after it. */
-export function Delivered({ title, subtitle }: { title: string; subtitle?: string }) {
+/** Big centered success state. Put buttons in a <Footer> after it. `sound` = which moment (lib/sound.ts). */
+export function Delivered({ title, subtitle, sound = "success" }: { title: string; subtitle?: string; sound?: Sound }) {
   const t = useTheme();
+  useEffect(() => play(sound), [sound]);
   return (
     <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12 }}>
-      <View style={{ width: 80, height: 80, borderRadius: 40, alignItems: "center", justifyContent: "center", backgroundColor: t.good }}>
+      <Animated.View entering={ZoomIn.springify().damping(12)} style={{ width: 80, height: 80, borderRadius: 40, alignItems: "center", justifyContent: "center", backgroundColor: t.good }}>
         <Text style={{ color: "#fff", fontSize: 30, fontWeight: "700" }}>✓</Text>
-      </View>
-      <Serif size={36}>{title}</Serif>
-      {!!subtitle && <Text style={{ color: t.muted, textAlign: "center" }}>{subtitle}</Text>}
+      </Animated.View>
+      <Animated.View entering={FadeInDown.delay(120)}><Serif size={36}>{title}</Serif></Animated.View>
+      {!!subtitle && <Animated.View entering={FadeInDown.delay(200)}><Text style={{ color: t.muted, textAlign: "center" }}>{subtitle}</Text></Animated.View>}
     </View>
   );
 }

@@ -6,6 +6,7 @@ import { useAccount } from "./account";
 import { PUSHER } from "./config";
 import { api } from "./contacts";
 import { formatMoney } from "./money";
+import { play } from "./sound";
 
 // Messages + notification center (port of app/src/lib/live.ts). Realtime over Pusher
 // (`private-user-<address>`), falling back to polling while the socket is down.
@@ -72,6 +73,7 @@ function startLive(me: Address): () => void {
   void refreshCounts();
   const fire = (event: "message" | "notification") => (data: unknown) => {
     if (data == null) return;
+    if (event === "notification" && /^You got /.test((data as { title?: string }).title ?? "")) play("received");
     handlers.forEach((h) => h(event, data));
     void refreshCounts();
   };

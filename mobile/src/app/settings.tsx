@@ -8,6 +8,7 @@ import { useAccount } from "@/lib/account";
 import { setMode, useMode } from "@/lib/config";
 import { FX, getCurrency, setCurrency } from "@/lib/money";
 import { usePush } from "@/lib/push";
+import { setSoundOn, useSoundOn } from "@/lib/sound";
 import { getThemePref, setThemePref, useTheme, type ThemePref } from "@/theme";
 
 // Settings part of web (tabs)/me/page.tsx: appearance, notifications, currency.
@@ -23,6 +24,7 @@ type Perm = "on" | "off" | "denied" | null;
 
 export default function Settings() {
   const t = useTheme();
+  const sound = useSoundOn();
   const moneyMode = useMode();
   const { unlocked } = useAccount();
   const push = usePush(unlocked);
@@ -60,6 +62,16 @@ export default function Settings() {
           </Text>
         </View>
         <Switch accessibilityLabel="Real money" value={moneyMode === "main"} onValueChange={(v) => setMode(v ? "main" : "test")}
+          trackColor={{ true: t.brand, false: t.line }} thumbColor="#ffffff" />
+      </View>
+
+      <Band>Sounds</Band>
+      <View style={{ minHeight: 64, flexDirection: "row", alignItems: "center", gap: 16 }}>
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: t.ink, fontWeight: "600" }}>Sounds</Text>
+          <Text style={{ color: t.muted, fontSize: 14 }}>Little sounds when money moves</Text>
+        </View>
+        <Switch accessibilityLabel="Sounds" value={sound} onValueChange={setSoundOn}
           trackColor={{ true: t.brand, false: t.line }} thumbColor="#ffffff" />
       </View>
 

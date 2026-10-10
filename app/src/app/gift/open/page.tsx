@@ -107,7 +107,7 @@ export default function OpenGiftLink() {
 
   if (phase === "opened" && info) {
     return (
-      <Celebrate open title="Your gift is open!" amount={money} subtitle={`From ${from}. It's in your balance now.`}
+      <Celebrate open intro="gift" title="Your gift is open!" amount={money} subtitle={`From ${from}. It's in your balance now.`}
         shareText="I just opened a gift on Kin 🎁" onClose={() => router.push("/home")}
         card={{ kind: "gift", amount: info.amount, from: info.sender || undefined, look: me && savedLook(me) }} />
     );

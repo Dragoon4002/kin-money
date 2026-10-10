@@ -9,6 +9,7 @@ import { Button, ErrorText, Screen, Text } from "@/components/ui";
 import { API_BASE } from "@/lib/config";
 import { openKin } from "@/lib/nav";
 import { kinTarget, parseWalletUri } from "@/lib/scan";
+import { play } from "@/lib/sound";
 import { useTheme } from "@/theme";
 
 /** Scan & pay: camera QR → native Pay screen (or claim/invoice/chores on web). */
@@ -28,6 +29,7 @@ export default function Scan() {
     if (!path) return setErr("That's not a Kin code. Ask them to open My QR in Kin.");
     done.current = true;
     Vibration.vibrate(30);
+    play("scan");
     openKin(path, { replace: true });
   }
 
@@ -45,6 +47,7 @@ export default function Scan() {
   function payAccount(to: Address, units: bigint | null) {
     done.current = true;
     Vibration.vibrate(30);
+    play("scan");
     router.replace(`/send?to=${to}${units ? `&amt=${units}` : ""}` as Href);
   }
 

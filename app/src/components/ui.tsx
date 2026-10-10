@@ -1,10 +1,11 @@
 "use client";
 import Link from "next/link";
-import { useState, type ButtonHTMLAttributes, type ReactNode } from "react";
+import { useEffect, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { ICON, type IconName } from "@/lib/icons";
 import { Kinko } from "@/components/kinko/Kinko";
 import { useAvatarLook } from "@/lib/kinko";
 import { usePrivate } from "@/lib/privacy";
+import { play, type Sound } from "@/lib/sound";
 
 // Kin UI kit. Colors ONLY via token classes (see globals.css). Mobile-first, 44px+ targets.
 
@@ -228,18 +229,25 @@ export function Avatar({ name, size = 44 }: { name?: string; size?: number }) {
 }
 
 export function ErrorText({ children }: { children?: ReactNode }) {
+  const text = typeof children === "string" ? children : "";
+  useEffect(() => void (text && play("error")), [text]);
   if (!children) return null;
-  return <p role="alert" className="rounded-2xl bg-bad/10 px-4 py-3 text-sm text-bad">{children}</p>;
+  // key = text: a new error shakes again.
+  return <p key={text} role="alert" className="kin-shake rounded-2xl bg-bad/10 px-4 py-3 text-sm text-bad">{children}</p>;
 }
 
-/** Success state shown after a payment settles. */
-export function Delivered({ title, subtitle, children }: { title: string; subtitle?: string; children?: ReactNode }) {
+/** Success state shown after a payment settles. `sound` = which moment it is (lib/sound.ts). */
+export function Delivered({ title, subtitle, children, sound = "success" }: { title: string; subtitle?: string; children?: ReactNode; sound?: Sound }) {
+  useEffect(() => play(sound), [sound]);
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-      <div className="grid size-20 place-items-center rounded-full bg-good text-3xl font-bold text-fun-ink">✓</div>
-      <h2 className="font-display text-4xl">{title}</h2>
-      {subtitle && <p className="text-muted">{subtitle}</p>}
-      <div className="mt-6 w-full">{children}</div>
+      <div className="relative grid size-20 place-items-center">
+        <span aria-hidden className="kin-ring absolute inset-0 rounded-full bg-good" />
+        <span className="kin-pop relative grid size-20 place-items-center rounded-full bg-good text-3xl font-bold text-fun-ink">✓</span>
+      </div>
+      <h2 className="kin-rise font-display text-4xl [animation-delay:120ms]">{title}</h2>
+      {subtitle && <p className="kin-rise text-muted [animation-delay:200ms]">{subtitle}</p>}
+      <div className="kin-rise mt-6 w-full [animation-delay:280ms]">{children}</div>
     </div>
   );
 }

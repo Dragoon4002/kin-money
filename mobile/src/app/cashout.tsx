@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { View } from "react-native";
+import Animated, { ZoomIn } from "react-native-reanimated";
 import { MoneyInput } from "@/components/programs/kit";
 import { Pill } from "@/components/requests/bits";
 import { Button, ErrorText, Field, Footer, Screen, Serif, Text, TextInput, useInputStyle } from "@/components/ui";
@@ -10,6 +11,7 @@ import { useMode } from "@/lib/config";
 import { humanError } from "@/lib/errors";
 import { formatMoney, fromLocal } from "@/lib/money";
 import { openKin } from "@/lib/nav";
+import { play } from "@/lib/sound";
 import { useTheme } from "@/theme";
 
 // Port of app/src/app/cashout/page.tsx: amount → UPI ID → live quote (Agora fixed price) → Identity check → settled.
@@ -47,6 +49,7 @@ export default function CashOut() {
       if ((await getBalance(me)) < shown.units) throw new Error("insufficient balance");
       const hash = await cashOut(shown, upi, me);
       setDone({ hash, q: shown, upi: upi.trim() });
+      play("cashout");
     } catch (e) {
       setErr(humanError(e));
     } finally {
@@ -66,9 +69,9 @@ export default function CashOut() {
     return (
       <Screen title="Cash out" back scroll>
         <View style={{ alignItems: "center", gap: 12, paddingTop: 32 }}>
-          <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: t.good, alignItems: "center", justifyContent: "center" }}>
+          <Animated.View entering={ZoomIn.springify().damping(12)} style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: t.good, alignItems: "center", justifyContent: "center" }}>
             <Text style={{ color: t.brandInk, fontSize: 32, fontWeight: "700" }}>✓</Text>
-          </View>
+          </Animated.View>
           <Serif size={36}>{`${inr(done.q.inr)} on its way`}</Serif>
           <Text style={{ color: t.muted }}>{`To ${done.upi} · usually within minutes`}</Text>
         </View>

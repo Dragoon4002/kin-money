@@ -74,7 +74,7 @@ export default function Claim() {
   if (phase === "done") {
     return (
       <Screen>
-        <Delivered title={`${money} is yours`} subtitle={`From ${from} · Delivered in ${secs}s ✓✓`}>
+        <Delivered sound="received" title={`${money} is yours`} subtitle={`From ${from} · Delivered in ${secs}s ✓✓`}>
           <Link href="/home" className="grid h-14 place-items-center rounded-full bg-brand font-semibold text-brand-ink active:scale-[0.98]">See my balance</Link>
         </Delivered>
       </Screen>

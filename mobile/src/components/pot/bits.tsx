@@ -1,10 +1,13 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Linking, View } from "react-native";
+import Animated, { FadeInDown, ZoomIn } from "react-native-reanimated";
 import Svg, { Circle } from "react-native-svg";
+import { Confetti } from "@/components/Confetti";
 import { Kinko } from "@/components/Kinko";
 import { Sheet, share, Status, useMe } from "@/components/programs/kit";
 import { Button, ErrorText, Footer, Screen, Serif, Text } from "@/components/ui";
 import { useKinko } from "@/lib/kinko";
+import { play } from "@/lib/sound";
 import { fonts, useTheme } from "@/theme";
 
 // Shared by pot, jars and circle screens (web: ui Ring, kinko/Celebrate, the invite sheet).
@@ -58,18 +61,20 @@ export function OfGoal({ have, goal }: { have: string; goal: string }) {
   );
 }
 
-/** Goal-reached moment (web Celebrate, minus confetti). */
+/** Goal-reached moment (web Celebrate): confetti, cheering Kinko, the "celebrate" sound. */
 export function Celebrate({ title, amount, subtitle, shareText, onClose }: { title: string; amount: string; subtitle: string; shareText: string; onClose: () => void }) {
   const t = useTheme();
   const { look } = useKinko(useMe());
   const center = { textAlign: "center", color: t.ink } as const;
+  useEffect(() => play("celebrate"), []);
   return (
     <Screen>
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12 }}>
-        <Kinko look={look} mood="celebrate" size={200} />
-        <Text style={{ ...center, fontFamily: fonts.serif, fontSize: 36, lineHeight: 40 }}>{title}</Text>
-        <Text style={{ ...center, fontFamily: fonts.serif, fontSize: 56, lineHeight: 60, fontVariant: ["tabular-nums"] }}>{amount}</Text>
-        <Text style={{ ...center, maxWidth: 288, fontSize: 16, fontWeight: "500", color: t.muted }}>{subtitle}</Text>
+        <Confetti />
+        <Animated.View entering={ZoomIn.springify().damping(12)}><Kinko look={look} mood="celebrate" size={200} /></Animated.View>
+        <Animated.Text entering={FadeInDown.delay(150)} style={{ ...center, fontFamily: fonts.serif, fontSize: 36, lineHeight: 40 }}>{title}</Animated.Text>
+        <Animated.Text entering={ZoomIn.delay(250).springify()} style={{ ...center, fontFamily: fonts.serif, fontSize: 56, lineHeight: 60, fontVariant: ["tabular-nums"] }}>{amount}</Animated.Text>
+        <Animated.Text entering={FadeInDown.delay(350)} style={{ ...center, maxWidth: 288, fontSize: 16, fontWeight: "500", color: t.muted }}>{subtitle}</Animated.Text>
       </View>
       <Footer>
         <Button title="Share the good news" variant="soft" onPress={() => share(shareText)} />

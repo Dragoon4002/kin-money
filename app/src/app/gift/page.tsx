@@ -26,7 +26,7 @@ export default function GiftPage() {
   if (creating) return <NewGift me={me} onClose={() => { setCreating(false); reloadAll(); }} />;
   if (opened) {
     return (
-      <Celebrate
+      <Celebrate intro="gift"
         open
         title="Your gift is open!"
         amount={formatMoney(opened.amount)}

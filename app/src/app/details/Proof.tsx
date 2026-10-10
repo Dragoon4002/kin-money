@@ -14,6 +14,7 @@ import { formatMoney } from "@/lib/money";
 import { shareCard, warmCard, type CardParams } from "@/lib/shareCard";
 import { describe, isKinContract } from "@/lib/counterparty";
 import { nameOf, shortAddr } from "@/lib/names";
+import { play } from "@/lib/sound";
 
 type Receipt = { net: Network; amount: bigint; from: string; to: string; fromA?: Address; toA?: Address; out: boolean; at: Date; block: bigint; ok: boolean };
 
@@ -110,6 +111,11 @@ export function Proof() {
     if (card) warmCard(card); // memoized by URL; ready before the tap so the share sheet opens
   });
 
+  // Just sent and it went through: the "sent" sound (lib/sound.ts).
+  useEffect(() => {
+    if (fresh && r?.ok) play("sent");
+  }, [fresh, r?.ok]);
+
   // Nudge the server so the other person's notification goes out now (fire-and-forget).
   useEffect(() => {
     if (fresh) fetch("/api/push/tick").catch(() => {});
@@ -156,9 +162,9 @@ export function Proof() {
             <p className="text-muted">Didn&apos;t go through — money not moved</p>
           </>
         ) : fresh ? (
-          <div className="relative">
+          <div className="kin-pop relative">
             <MyKinko mood="celebrate" size={56} />
-            <span className="absolute -bottom-1 -right-3 grid size-8 place-items-center rounded-full border-2 border-bg bg-good text-fun-ink"><Ico name="check" size={16} /></span>
+            <span className="kin-pop absolute -bottom-1 -right-3 grid size-8 place-items-center rounded-full border-2 border-bg bg-good text-fun-ink [animation-delay:250ms]"><Ico name="check" size={16} /></span>
           </div>
         ) : (
           <div className="grid size-16 place-items-center rounded-full bg-good text-fun-ink"><Ico name="check" size={30} /></div>

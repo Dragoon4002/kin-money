@@ -5,6 +5,7 @@ import type QrScannerType from "qr-scanner";
 import { Button, ErrorText, Ico, Screen } from "@/components/ui";
 import { useRequireAccount } from "@/lib/account";
 import { kinTarget } from "@/lib/scan";
+import { play } from "@/lib/sound";
 import { walletTarget } from "@/lib/walletUri";
 
 /** Scan & pay: camera QR scanner → opens the pre-filled Pay (or claim/invoice) screen. */
@@ -27,6 +28,7 @@ export default function ScanPage() {
     if (!path) return setErr("That's not a Kin code. Ask them to open My QR in Kin.");
     done.current = true;
     navigator.vibrate?.(30);
+    play("scan");
     scanner.current?.stop();
     router.replace(path);
   }

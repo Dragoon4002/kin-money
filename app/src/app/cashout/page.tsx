@@ -65,7 +65,7 @@ function AgoraPractice() {
   if (done) {
     return (
       <>
-        <Delivered title={`${inr(done.q.inr)} on its way`} subtitle={`To ${done.upi} · usually within minutes`}>
+        <Delivered sound="cashout" title={`${inr(done.q.inr)} on its way`} subtitle={`To ${done.upi} · usually within minutes`}>
           <Card className="flex flex-col gap-2 text-left text-sm">
             <Chip tone="warn">Practice cash-out</Chip>
             <p className="text-muted">
