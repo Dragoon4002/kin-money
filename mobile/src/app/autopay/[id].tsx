@@ -26,7 +26,7 @@ export default function AutoPayDetail() {
   const missing = <Screen title="AutoPay" back><ErrorText>We couldn&apos;t find this AutoPay.</ErrorText></Screen>;
   if (!valid) return missing;
   if (!m) return <Screen title="AutoPay" back>{error ? <ErrorText>{error}</ErrorText> : <Loading />}</Screen>;
-  if (m.payer === ZERO) return missing;
+  if (m.payer === ZERO || !(same(m.payer, me) || same(m.payee, me))) return missing;
   const isPayer = same(m.payer, me);
   const other = isPayer ? m.payee : m.payer;
   const ready = dueCount(m, now);

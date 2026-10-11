@@ -36,7 +36,9 @@ export default function BillPage() {
   const valid = /^\d{1,30}$/.test(id);
   const { data, error, reload } = useLoad(() => loadBill(BigInt(id)), valid && me ? id : undefined);
 
-  if (!valid || (data && data.e.kind !== "bill")) return <Screen title="Bill" back="/earmark"><ErrorText>We couldn&apos;t find this bill.</ErrorText></Screen>;
+  // Only the sender, recipient and approver see a bill.
+  const outside = data && ![data.e.from, data.e.to, data.e.approver].some((a) => same(a, me));
+  if (!valid || (data && data.e.kind !== "bill") || outside) return <Screen title="Bill" back="/earmark"><ErrorText>We couldn&apos;t find this bill.</ErrorText></Screen>;
   if (!data) return <Screen title="Bill" back="/earmark">{error ? <ErrorText>{error}</ErrorText> : <Loading />}</Screen>;
   const { e, what } = data;
   const f = what ? BILL_FOR[what] : null;

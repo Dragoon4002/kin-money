@@ -31,9 +31,10 @@ export default function PotDetail() {
   if (!r) return <Screen title="Family pot" back="/pot"><ErrorText>We couldn&apos;t find this pot.</ErrorText></Screen>;
   if (!data) return <Screen title="Family pot" back="/pot">{error ? <ErrorText>{error}</ErrorText> : <Loading />}</Screen>;
   const { pot, payouts, myKey } = data;
-  if (!pot.target) return <Screen title="Family pot" back="/pot"><ErrorText>We couldn&apos;t find this pot.</ErrorText></Screen>;
   const iMember = pot.members.some((m) => same(m, me));
   const iGet = pot.beneficiaries.some((b) => same(b, me));
+  // Only people in the pot see it (typing /pot/<id> shows nothing). Joining goes through /pot/join.
+  if (!pot.target || !(iMember || iGet)) return <Screen title="Family pot" back="/pot"><ErrorText>We couldn&apos;t find this pot.</ErrorText></Screen>;
   const split = pot.beneficiaries.length;
   const pct = Number(pot.balance) / Number(pot.target);
   const left = pot.target - pot.balance;

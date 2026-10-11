@@ -23,7 +23,7 @@ export default function CircleDetail() {
   const { data, error, reload } = useLoad(async () => {
     const [c, history, myKey] = await Promise.all([getCircle(BigInt(id)), circleHistory(BigInt(id)), me ? readInviteKey(BigInt(id), me) : ZERO]);
     return { c, history, myKey };
-  }, `${id}.${me ?? ""}`);
+  }, me && `${id}.${me}`); // wait for me: only members see the circle
   const { busy, status, error: actionError, run } = useAction();
   const [inviting, setInviting] = useState(false);
   const [link, setLink] = useState("");
@@ -37,12 +37,13 @@ export default function CircleDetail() {
 
   if (!data) return <Screen title="Savings circle" back="/circle">{error ? <ErrorText>{error}</ErrorText> : <Loading />}</Screen>;
   const { c, history, myKey } = data;
-  if (!c.members.length) return <Screen title="Savings circle" back="/circle"><ErrorText>We couldn&apos;t find this circle.</ErrorText></Screen>;
+  const mine = c.members.find((m) => same(m.address, me));
+  // Only seat holders (joined or invited) see it; invite links go through /circle/join.
+  if (!mine) return <Screen title="Savings circle" back="/circle"><ErrorText>We couldn&apos;t find this circle.</ErrorText></Screen>;
 
   const n = c.seats;
   const phase = circlePhase(c, now);
   const open = n - c.members.length;
-  const mine = c.members.find((m) => same(m.address, me));
   const pot = c.contribution * BigInt(n);
   const turn = c.members[c.round];
   const roundEnds = c.roundStart + c.roundLength;

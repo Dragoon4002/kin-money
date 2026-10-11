@@ -23,12 +23,12 @@ export default function Invoice() {
   const title = rawTitle?.slice(0, 60);
   const me = useMe();
   const ids = id.split("-").filter((x) => /^\d+$/.test(x)).slice(0, 3).map(BigInt);
-  const { data, error, reload } = useLoad(() => Promise.all(ids.map(getEscrow)), id);
+  const { data, error, reload } = useLoad(() => Promise.all(ids.map(getEscrow)), me && id); // wait for me: only the two sides see it
   const { data: inv, reload: reloadInv } = useLoad(() => api<Meta | null>(`/api/invoices?e=${ids[0]}`).catch(() => null), me && ids.length ? `${id}-${me}` : undefined);
 
   if (!data) return <Screen title="Invoice" back>{error ? <ErrorText>{error}</ErrorText> : <Loading />}</Screen>;
   const first = data[0];
-  if (!first || data.some((e) => e.kind !== "invoice")) {
+  if (!first || data.some((e) => e.kind !== "invoice" || ![e.from, e.to, e.approver].some((a) => same(a, me)))) {
     return <Screen title="Invoice" back><ErrorText>We couldn&apos;t find this invoice.</ErrorText></Screen>;
   }
   const paid = data.filter((e) => e.settled).reduce((a, e) => a + e.amount, 0n);

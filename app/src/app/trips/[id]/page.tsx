@@ -28,7 +28,9 @@ export default function TripPage() {
   const me = useMe();
   const { data, error, reload } = useLoad(async () => {
     await syncSettlements(id);
-    return { trip: await getTrip(id), pending: pendingSettlements(id, me!) };
+    // Server answers 404 to non-members: show "couldn't find", not "try again".
+    const trip = await getTrip(id).catch((e: Error) => (/ 404$/.test(e.message) ? null : Promise.reject(e)));
+    return { trip, pending: pendingSettlements(id, me!) };
   }, me && id);
   const [tab, setTab] = useState<Tab>("expenses");
   const [sheet, setSheet] = useState<"add" | "member" | "date" | TripExpense | null>(null);

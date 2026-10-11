@@ -36,7 +36,7 @@ export default function AllowanceDetail() {
   if (!valid) return <Screen title="Allowance" back><ErrorText>We couldn&apos;t find this allowance.</ErrorText></Screen>;
   if (!data) return <Screen title="Allowance" back>{error ? <ErrorText>{error}</ErrorText> : <Loading />}</Screen>;
   const { s, reserve, asked } = data;
-  if (s.payer === ZERO) return <Screen title="Allowance" back><ErrorText>We couldn&apos;t find this allowance.</ErrorText></Screen>;
+  if (s.payer === ZERO || !(same(s.payer, me) || same(s.payee, me))) return <Screen title="Allowance" back><ErrorText>We couldn&apos;t find this allowance.</ErrorText></Screen>;
   const isPayer = same(s.payer, me);
   const other = isPayer ? s.payee : s.payer;
 

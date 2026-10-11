@@ -18,7 +18,7 @@ export default function AutoPayDetail() {
   const now = useNow(1000);
 
   if (!m) return <Screen title="AutoPay" back="/autopay">{error ? <ErrorText>{error}</ErrorText> : <Loading />}</Screen>;
-  if (m.payer === ZERO) return <Screen title="AutoPay" back="/autopay"><ErrorText>We couldn&apos;t find this AutoPay.</ErrorText></Screen>;
+  if (m.payer === ZERO || !(same(m.payer, me) || same(m.payee, me))) return <Screen title="AutoPay" back="/autopay"><ErrorText>We couldn&apos;t find this AutoPay.</ErrorText></Screen>;
   const isPayer = same(m.payer, me);
   const other = isPayer ? m.payee : m.payer;
   const ready = dueCount(m, now);
