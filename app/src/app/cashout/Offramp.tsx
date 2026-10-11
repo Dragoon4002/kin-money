@@ -1,21 +1,25 @@
 "use client";
 import { useEffect, useState } from "react";
-import { erc20Abi, formatUnits, isAddress, type Address, type Hex } from "viem";
+import { erc20Abi, formatUnits, type Address, type Hex } from "viem";
 import { AmountInput, useSignedIn } from "@/components/social/bits";
-import { Button, Card, Chip, ErrorText, Field, Tabs, inputClass } from "@/components/ui";
+import { Button, Card, Chip, ErrorText, Tabs } from "@/components/ui";
 import { networks, type Mode } from "@/lib/chain";
-import { inr, payoutFee, TDS, UPI_RE } from "@/lib/cashout";
+import { inr, payoutFee, TDS } from "@/lib/cashout";
 import { ROUTES, type Venue } from "@/lib/cashoutRoutes";
 import { humanError } from "@/lib/errors";
 import { useMode } from "@/lib/mode";
 import { FX, fromLocal } from "@/lib/money";
 import { cashOutVia, quoteVia, venueStatus, type Hop, type VenueStatus } from "@/lib/offramp";
+import { onrampQuote, type OnrampQuote } from "@/lib/onrampWidget";
 
-// Onramp route: dollars → exchange (Agora or Uniswap) → payout account → Onramp → rupees to UPI.
-// Test options pick the network, exchange and payout account; "Where your money goes" shows every hop,
-// planned before and real (from the receipt) after. The Onramp leg isn't connected yet (needs Onramp keys).
+// Onramp route: dollars → exchange (Agora or Uniswap) → back into your account → Onramp → rupees to your bank.
+// Leg 2 (Onramp white-label, server-to-server): Onramp's quote for the exchanged amount. Practice money = Onramp's
+// sandbox, no rupees move. The order + deposit (createTransaction → payOut) switches on once Onramp enables our app. "Where your money goes"
+// shows every hop, planned before and real (from the receipts) after.
 
 const VENUE_NAME: Record<Venue, string> = { agora: "Agora settlement", uniswap: "Uniswap pool" };
+
+type Done = { hash: Hex; hops: Hop[]; payout: "sent" | "off" | "sandbox"; rupees?: number; quote?: OnrampQuote };
 
 export default function Offramp() {
   const me = useSignedIn()?.address as Address | undefined;
@@ -23,21 +27,16 @@ export default function Offramp() {
   const [net, setNet] = useState<Mode>(mode);
   const [st, setSt] = useState<{ net: Mode; s: Record<Venue, VenueStatus> } | null>(null);
   const [venue, setVenue] = useState<Venue>("uniswap");
-  const [dest, setDest] = useState<"me" | "other">("me");
-  const [other, setOther] = useState("");
   const [amount, setAmount] = useState("");
-  const [upi, setUpi] = useState("");
   const [out, setOut] = useState<{ units: bigint; out: bigint; net: Mode; venue: Venue } | null>(null);
   const [balance, setBalance] = useState<bigint | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  const [done, setDone] = useState<{ hash: Hex; hops: Hop[] } | null>(null);
+  const [done, setDone] = useState<Done | null>(null);
 
   const r = ROUTES[net];
   const status = st?.net === net ? st.s : null;
   const units = Number(amount) > 0 ? fromLocal(amount) : 0n;
-  const to = dest === "me" ? me : isAddress(other.trim()) ? (other.trim() as Address) : undefined;
-  const upiOk = !upi || UPI_RE.test(upi.trim());
 
   useEffect(() => {
     let live = true;
@@ -67,15 +66,16 @@ export default function Offramp() {
   const gross = settled * FX.INR;
   const rupees = Math.max(0, gross - payoutFee(gross) - Math.round(gross * TDS * 100) / 100);
   const dollars = (u: bigint) => `$${formatUnits(u, 6)}`;
-  const destName = dest === "me" ? "You" : to ? `${to.slice(0, 6)}…${to.slice(-4)}` : "Payout account";
 
   async function submit() {
-    if (!me || !shown || !to) return;
+    if (!me || !shown) return;
     setBusy(true);
     setErr("");
     try {
       if (balance !== null && balance < shown.units) throw new Error("insufficient balance");
-      setDone(await cashOutVia(net, venue, shown.units, shown.out, to, upi.trim()));
+      const l1 = await cashOutVia(net, venue, shown.units, shown.out, "onramp");
+      const quote = await onrampQuote(formatUnits(l1.received, r.settle.decimals).replace(/(\.\d{6})\d+$/, "$1")).catch(() => undefined);
+      setDone({ ...l1, payout: net === "main" ? "off" : "sandbox", rupees: quote?.rupees, quote });
     } catch (e) {
       setErr(humanError(e));
     } finally {
@@ -87,59 +87,36 @@ export default function Offramp() {
     ? [
         { from: "You", to: "Kin cash-out", amount: `${dollars(shown.units)} AUSD` },
         { from: "Kin cash-out", to: VENUE_NAME[venue], amount: `${dollars(shown.units)} AUSD` },
-        { from: VENUE_NAME[venue], to: destName, amount: `≈ ${settled.toFixed(r.settle.decimals === 6 ? 6 : 4)} ${r.settle.symbol}` },
+        { from: VENUE_NAME[venue], to: "You", amount: `≈ ${settled.toFixed(r.settle.decimals === 6 ? 6 : 4)} ${r.settle.symbol}` },
       ]
     : [];
   const hops = done?.hops ?? planned;
+  const payoutNote = { sent: "on its way", off: "not sent · money is in your account", sandbox: "Onramp sandbox · no rupees move" };
 
   return (
     <>
-      <Card className="flex flex-col gap-3 text-sm">
-        <div className="flex items-center justify-between">
-          <span className="font-semibold">Test options</span>
-          <Chip tone={net === "main" ? "warn" : "muted"}>{net === "main" ? "Real money" : "Practice money"}</Chip>
-        </div>
-        <Opt label="Network">
+      <Card className="flex flex-col gap-2 text-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <Tabs value={net} options={[["test", "Practice"], ["main", "Real"]] as const} onChange={(v) => (setNet(v), setDone(null), setErr(""))} />
-        </Opt>
-        <Opt label="Exchange">
           <Tabs value={venue} options={[["uniswap", "Uniswap"], ["agora", "Agora"]] as const} onChange={(v) => (setVenue(v), setDone(null))} />
-          {status && !status[venue].ok && <p className="text-xs text-bad">{status[venue].why}</p>}
-        </Opt>
-        <Opt label="Send exchanged money to">
-          <Tabs value={dest} options={[["me", "My account"], ["other", "Another account"]] as const} onChange={(v) => (setDest(v), setDone(null))} />
-          {dest === "other" && (
-            <>
-              <input className={inputClass} placeholder="0x… payout account" value={other} onChange={(e) => setOther(e.target.value)}
-                autoCapitalize="none" autoCorrect="off" spellCheck={false} />
-              <p className="text-xs text-muted">Paste an exchange&apos;s deposit account. Money sent there can&apos;t be pulled back — double-check it.</p>
-            </>
-          )}
-        </Opt>
-        <Opt label="Payout">
-          <p className="text-xs text-muted">Onramp → rupees to UPI: not connected yet (needs Onramp keys and Monad selling turned on).</p>
-        </Opt>
-        {balance !== null && <p className="text-xs text-muted">Balance on this network: {dollars(balance)}</p>}
+        </div>
+        {status && !status[venue].ok && <p className="text-xs text-bad">{status[venue].why}</p>}
+        {balance !== null && <p className="text-xs text-muted">Balance: {dollars(balance)}</p>}
       </Card>
 
-      {done ? (
-        <Card className="flex flex-col gap-1 text-sm">
-          <Chip tone="good">Done</Chip>
-          <p className="text-muted">Exchanged and sent to {destName}. Rupee payout is the next step once Onramp is connected.</p>
-        </Card>
-      ) : (
+      {!done && (
         <>
           <AmountInput label="How much?" value={amount} onChange={(v) => (setAmount(v), setErr(""))} />
-          <Field label="Your UPI ID (for the payout record)" hint={!upiOk ? "Looks like name@bank" : undefined}>
-            <input className={inputClass} placeholder="name@okbank" value={upi} onChange={(e) => setUpi(e.target.value)}
-              autoCapitalize="none" autoCorrect="off" spellCheck={false} inputMode="email" maxLength={100} />
-          </Field>
+          <p className="text-xs text-muted">Rupees are paid by Onramp to your bank, verified once with Onramp.</p>
         </>
       )}
 
       {hops.length > 0 && (
         <Card className="flex flex-col gap-2 text-sm">
-          <span className="font-semibold">Where your money goes {done ? "" : "(planned)"}</span>
+          <div className="flex items-center justify-between">
+            <span className="font-semibold">Where your money goes {done ? "" : "(planned)"}</span>
+            {done && <Chip tone={done.payout === "sent" ? "good" : "muted"}>{done.payout === "sent" ? "Done" : "Exchanged"}</Chip>}
+          </div>
           <ol className="flex flex-col gap-2">
             {hops.map((h, i) => (
               <li key={i} className="flex items-start justify-between gap-3">
@@ -151,11 +128,17 @@ export default function Offramp() {
             ))}
             <li className="flex items-start justify-between gap-3 text-muted">
               <span>
-                {hops.length + 1}. {destName} → Onramp → your UPI
+                {hops.length + 1}. Onramp → your bank
               </span>
-              <span className="shrink-0 text-right">{shown || done ? `≈ ${inr(rupees)} · not connected` : "not connected"}</span>
+              <span className="shrink-0 text-right">{done?.rupees ? inr(done.rupees) : `≈ ${inr(rupees)}`}{done ? ` · ${payoutNote[done.payout]}` : ""}</span>
             </li>
           </ol>
+          {done?.quote && (
+            <div className="flex flex-col gap-1 border-t border-line pt-2 text-xs text-muted">
+              <span className="font-semibold text-ink">Onramp quote {done.quote.sandbox ? "(sandbox)" : ""}</span>
+              <span>Rate ₹{done.quote.rate.toFixed(2)} per dollar · Onramp fee ₹{done.quote.fees.onramp.toFixed(2)} · Bank fee ₹{done.quote.fees.gateway.toFixed(2)} · Tax (TDS 1%) ₹{done.quote.fees.tds.toFixed(2)}</span>
+            </div>
+          )}
           {done && (
             <a href={`${networks[net].explorer}/tx/${done.hash}`} target="_blank" rel="noreferrer" className="pt-1 text-sm font-semibold text-brand">
               Proof of payment ↗
@@ -169,20 +152,11 @@ export default function Offramp() {
         {done ? (
           <Button variant="soft" onClick={() => (setDone(null), setAmount(""))}>Try again</Button>
         ) : (
-          <Button onClick={submit} busy={busy} disabled={!shown || !to || !upiOk}>
-            {shown ? `Exchange ${dollars(shown.units)}` : "Exchange"}
+          <Button onClick={submit} busy={busy} disabled={!shown}>
+            {shown ? `Cash out ${dollars(shown.units)}` : "Cash out"}
           </Button>
         )}
       </div>
     </>
-  );
-}
-
-function Opt({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-2">
-      <span className="text-xs font-medium text-muted">{label}</span>
-      {children}
-    </div>
   );
 }

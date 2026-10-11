@@ -1,12 +1,13 @@
 "use client";
-import { formatUnits, isAddressEqual, parseAbi, parseEventLogs, toHex, type Address, type Hex, type Log } from "viem";
+import { formatUnits, isAddressEqual, parseAbi, parseEventLogs, toHex, type Address, type Hex, type Log, type TransactionReceipt } from "viem";
 import { confirmPayment, getAccount } from "./account";
 import { networks, type Mode } from "./chain";
 import { payoutRef } from "./cashout";
 import { ROUTES, termsNonce, venueId, type Venue } from "./cashoutRoutes";
 
 // Cash-out through KinCashoutV2 on either network: quote per venue, one Identity check, relay submits, then the
-// receipt's transfers become the "where your money goes" hops. The INR leg (Onramp) isn't connected yet.
+// receipt's transfers become the "where your money goes" hops. Exchanged money lands in the user's own account;
+// payOut then sends it on to Onramp for rupees (not connected until Onramp keys arrive).
 
 const pairAbi = parseAbi([
   "function getAmountsOut(uint256 amountIn, address[] path) view returns (uint256[])",
@@ -82,36 +83,65 @@ export function hopsFrom(net: Mode, logs: Log[], me: Address, hash: Hex): Hop[] 
 }
 
 const now = () => BigInt(Math.floor(Date.now() / 1000));
+const salt = () => toHex(crypto.getRandomValues(new Uint8Array(32)));
+const AUTH = [
+  { name: "from", type: "address" }, { name: "to", type: "address" }, { name: "value", type: "uint256" },
+  { name: "validAfter", type: "uint256" }, { name: "validBefore", type: "uint256" }, { name: "nonce", type: "bytes32" },
+] as const;
 
-/** One Identity check → relay → receipt. `out` is the quote; up to 0.5% slack is allowed. */
-export async function cashOutVia(net: Mode, venue: Venue, units: bigint, out: bigint, to: Address, upi: string) {
-  const r = ROUTES[net];
-  const { ausd, chain, client } = networks[net];
-  await confirmPayment(units);
-  const account = await getAccount();
-  const terms = { to, venue: venueId(venue), minOut: (out * 995n) / 1000n, payoutRef: payoutRef(upi || "kin"), salt: toHex(crypto.getRandomValues(new Uint8Array(32))) };
-  const auth = { from: account.address, to: r.cashout as Address, value: units, validAfter: 0n, validBefore: now() + 3600n, nonce: termsNonce(net, terms) };
-  const signature = await account.signTypedData({
-    domain: { name: "Agora Dollar", version: "1", chainId: chain.id, verifyingContract: ausd },
-    types: {
-      ReceiveWithAuthorization: [
-        { name: "from", type: "address" }, { name: "to", type: "address" }, { name: "value", type: "uint256" },
-        { name: "validAfter", type: "uint256" }, { name: "validBefore", type: "uint256" }, { name: "nonce", type: "bytes32" },
-      ],
-    },
-    primaryType: "ReceiveWithAuthorization",
-    message: auth,
-  });
+/** Relay `body`, wait for the receipt. */
+async function relay(net: Mode, body: object): Promise<TransactionReceipt> {
   const res = await fetch("/api/relay", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ kind: "cashout", net, from: auth.from, terms, value: units, validAfter: auth.validAfter, validBefore: auth.validBefore, signature }, (_, v) =>
-      typeof v === "bigint" ? v.toString() : v,
-    ),
+    body: JSON.stringify({ ...body, net }, (_, v) => (typeof v === "bigint" ? v.toString() : v)),
   });
   const json = await res.json();
   if (!res.ok) throw new Error(`relay: ${json.error ?? res.status}`);
-  const receipt = await client.waitForTransactionReceipt({ hash: json.hash });
+  const receipt = await networks[net].client.waitForTransactionReceipt({ hash: json.hash });
   if (receipt.status !== "success") throw new Error("relay: reverted");
-  return { hash: json.hash as Hex, hops: hopsFrom(net, receipt.logs, account.address, json.hash) };
+  return receipt;
+}
+
+/**
+ * Leg 1: one Identity check → dollars exchanged into the user's own account. `out` is the quote; up to 0.5% slack.
+ * Returns the hops and the settle-token amount that actually landed.
+ */
+export async function cashOutVia(net: Mode, venue: Venue, units: bigint, out: bigint, upi: string) {
+  const r = ROUTES[net];
+  const { ausd, chain } = networks[net];
+  await confirmPayment(units);
+  const account = await getAccount();
+  const terms = { to: account.address, venue: venueId(venue), minOut: (out * 995n) / 1000n, payoutRef: payoutRef(upi || "kin"), salt: salt() };
+  const auth = { from: account.address, to: r.cashout as Address, value: units, validAfter: 0n, validBefore: now() + 3600n, nonce: termsNonce(net, terms) };
+  const signature = await account.signTypedData({
+    domain: { name: "Agora Dollar", version: "1", chainId: chain.id, verifyingContract: ausd },
+    types: { ReceiveWithAuthorization: AUTH },
+    primaryType: "ReceiveWithAuthorization",
+    message: auth,
+  });
+  const receipt = await relay(net, { kind: "cashout", from: auth.from, terms, value: units, validAfter: auth.validAfter, validBefore: auth.validBefore, signature });
+  const received = parseEventLogs({ abi: transferAbi, logs: receipt.logs, eventName: "Transfer" })
+    .filter((l) => isAddressEqual(l.address, r.settle.address) && isAddressEqual(l.args.to, account.address))
+    .reduce((sum, l) => sum + l.args.value, 0n);
+  return { hash: receipt.transactionHash, hops: hopsFrom(net, receipt.logs, account.address, receipt.transactionHash), received };
+}
+
+/**
+ * Leg 2 (real money): the exchanged USDC goes from the user's own account to the Onramp deposit address their sell
+ * widget gave (lib/onrampWidget.ts) → rupees to the user's bank. No new Identity check: the session from leg 1 signs.
+ */
+export async function payOut(usdc: bigint, deposit: Address): Promise<{ hash: Hex; hop: Hop }> {
+  const account = await getAccount();
+  const s = ROUTES.main.settle;
+  const auth = { from: account.address, to: deposit, value: usdc, validAfter: 0n, validBefore: now() + 3600n, nonce: salt() };
+  const signature = await account.signTypedData({
+    domain: { name: "USDC", version: "2", chainId: networks.main.chain.id, verifyingContract: s.address }, // Circle USDC on Monad (checked on-chain)
+    types: { TransferWithAuthorization: AUTH },
+    primaryType: "TransferWithAuthorization",
+    message: auth,
+  });
+  const receipt = await relay("main", { kind: "usdc", auth, signature });
+  const hash = receipt.transactionHash;
+  return { hash, hop: { from: "You", to: "Onramp", amount: `${formatUnits(usdc, s.decimals)} ${s.symbol}`, proof: `${networks.main.explorer}/tx/${hash}` } };
 }

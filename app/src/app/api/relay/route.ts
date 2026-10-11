@@ -28,19 +28,21 @@ export async function POST(req: Request) {
   try {
     // Real money (mainnet): plain sends only. Programs and links stay on the practice network.
     const net = body?.net === "main" ? "main" : "test";
-    if (net === "main" && body?.kind !== "3009" && body?.kind !== "cashout") return bad("not available");
-    if (body?.kind === "3009") {
+    if (net === "main" && body?.kind !== "3009" && body?.kind !== "cashout" && body?.kind !== "usdc") return bad("not available");
+    // "usdc": the cash-out's second leg — exchanged USDC (EIP-3009) to the payout deposit account. Real money only.
+    if (body?.kind === "usdc" && net !== "main") return bad("not available");
+    if (body?.kind === "3009" || body?.kind === "usdc") {
       const { auth: a, signature } = body;
       if (![a?.from, a?.to].every((x) => isAddress(x)) || !isHex(a.nonce) || !isHex(signature)) return bad("invalid");
       if (![a.value, a.validAfter, a.validBefore].every(uint) || BigInt(a.value) === 0n) return bad("invalid"); // a $0 transfer only burns relayer gas
       if (net === "main" && BigInt(a.value) < MIN_MAIN_VALUE) return bad("too small");
       if (!allow(`from:${a.from.toLowerCase()}`, 10)) return bad("slow down", 429);
       if (!(await allowShared(`relay-from:${a.from.toLowerCase()}`, 200, 86_400_000))) return bad("slow down", 429);
-      const k3009 = `3009:${net}:${a.from.toLowerCase()}:${a.nonce.toLowerCase()}`; // case-insensitive: same nonce, any hex case
+      const k3009 = `${body.kind}:${net}:${a.from.toLowerCase()}:${a.nonce.toLowerCase()}`; // case-insensitive: same nonce, any hex case
       if (!once(k3009) || !(await allowShared(k3009, 1, 3_600_000))) return bad("duplicate", 409);
       const hash = await submit(
         {
-          address: networks[net].ausd, abi: ausdAbi, functionName: "transferWithAuthorization",
+          address: body.kind === "usdc" ? ROUTES.main.settle.address : networks[net].ausd, abi: ausdAbi, functionName: "transferWithAuthorization",
           args: [a.from as Address, a.to as Address, BigInt(a.value), BigInt(a.validAfter), BigInt(a.validBefore), a.nonce as Hex, signature as Hex],
         },
         200_000n,
