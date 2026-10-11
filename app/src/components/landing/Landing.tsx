@@ -1,7 +1,9 @@
+import { useEffect, useState } from "react";
 import { KinMark } from "@/components/KinMark";
 import { Kinko } from "@/components/kinko/Kinko";
 import { Amount, Button, Chip, ErrorText, Ico, IconTile } from "@/components/ui";
 import type { IconName } from "@/lib/icons";
+import { Facts, Journey } from "./Journey";
 
 const STEPS: [IconName, string, string][] = [
   ["safe", "Make your account with an Identity check", "No passwords, no forms. Ready in seconds."],
@@ -33,11 +35,36 @@ const FAQ: [string, string][] = [
   ["Who can I send to?", "Anyone, anywhere. If they're not on Kin yet, send them a link."],
 ];
 
+// Who Kin is built with. Logos are each company's own mark (public/partners).
+const PARTNERS: [string, string, string][] = [
+  ["Monad", "/partners/monad.png", "Every payment lands in about a second"],
+  ["Mera", "/partners/mera.png", "Sign in with just an Identity check"],
+  ["Agora", "/partners/agora.png", "The digital dollars in your balance"],
+  ["Onramp", "/partners/onramp.png", "Cash out to a local bank"],
+  ["Alchemy", "/partners/alchemy.svg", "Instant alerts when money arrives"],
+  ["Envio", "/partners/envio.ico", "Your activity, always up to date"],
+];
+
+function Logo({ name, src, size = 40 }: { name: string; src: string; size?: number }) {
+  return (
+    // White tile so dark marks stay visible in dark mode.
+    // eslint-disable-next-line @next/next/no-img-element -- tiny static logo
+    <img src={src} alt={name} width={size} height={size} className="shrink-0 rounded-xl bg-white object-contain p-1" />
+  );
+}
+
+const ordinal = (n: number) => n + (["th", "st", "nd", "rd"][n % 100 >= 11 && n % 100 <= 13 ? 0 : n % 10] ?? "th");
+
 const wrap = "mx-auto w-full max-w-5xl px-5 md:px-8";
 const h2 = "font-display text-4xl leading-[1.05] tracking-tight md:text-5xl";
 
 /** Signed-out marketing page. Breaks out of the app's phone-width column to use desktop space. */
 export function Landing({ onStart, onUnlock, busy, err }: { onStart: () => void; onUnlock: () => void; busy: boolean; err: string }) {
+  // People on Kin so far (refreshed daily by the CDN). Hidden until known.
+  const [users, setUsers] = useState(0);
+  useEffect(() => {
+    fetch("/api/users").then((r) => r.json()).then((d) => setUsers(Number(d.count) || 0)).catch(() => {});
+  }, []);
   const unlock = (
     <button onClick={onUnlock} disabled={busy} className="h-12 px-2 text-sm font-semibold text-muted active:text-ink disabled:opacity-40">
       I already have Kin
@@ -61,6 +88,11 @@ export function Landing({ onStart, onUnlock, busy, err }: { onStart: () => void;
           <p className="max-w-md text-lg text-muted">Send dollars home in a second. Free, with just an Identity check. Then set it to save, share and grow on its own.</p>
           <ErrorText>{err}</ErrorText>
           <div className="flex flex-col gap-2 md:max-w-xs">
+            {users > 0 && (
+              <p className="text-center text-sm font-semibold text-brand">
+                {users.toLocaleString()} people are on Kin. Be the {ordinal(users + 1)} to try it.
+              </p>
+            )}
             <Button onClick={onStart}>Get started</Button>
             <p className="text-center text-sm text-muted">No passwords. No fees.</p>
             <a href="https://kin-money.vercel.app/move" className="text-center text-sm font-semibold text-muted underline-offset-4 hover:underline">
@@ -77,6 +109,33 @@ export function Landing({ onStart, onUnlock, busy, err }: { onStart: () => void;
             <div className="mt-2"><Chip tone="good">Delivered ✓✓</Chip></div>
           </div>
         </div>
+      </section>
+
+      {/* Story: the old way vs Kin */}
+      <section className={`${wrap} pt-14 md:pt-20`}>
+        <p className="text-xs font-semibold uppercase tracking-widest text-muted">Why Kin</p>
+        <h2 className={`${h2} mt-2`}>Why does $200 take a week to get home?</h2>
+        <p className="mt-3 max-w-xl text-lg text-muted">Follow one payment. Keep scrolling.</p>
+      </section>
+      <Journey />
+      <section className={`${wrap} pb-14 md:pb-20`}>
+        <Facts />
+      </section>
+
+      {/* Built with */}
+      <section className={`${wrap} pb-14 md:pb-20`}>
+        <p className="text-xs font-semibold uppercase tracking-widest text-muted">Built with</p>
+        <ul className="mt-4 flex snap-x gap-3 overflow-x-auto pb-2 [&>*]:shrink-0">
+          {PARTNERS.map(([name, src, what]) => (
+            <li key={name} className="flex w-56 snap-start items-center gap-3 rounded-[28px] border border-line bg-surface p-4">
+              <Logo name={name} src={src} />
+              <div>
+                <p className="font-semibold">{name}</p>
+                <p className="text-sm text-muted">{what}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
       </section>
 
       {/* How it works */}
@@ -147,7 +206,7 @@ export function Landing({ onStart, onUnlock, busy, err }: { onStart: () => void;
       {/* FAQ */}
       <section className={`${wrap} py-14 md:py-20`}>
         <h2 className={h2}>Questions</h2>
-        <div className="mt-6 divide-y divide-line border-y border-line md:max-w-2xl">
+        <div className="mt-6 divide-y divide-line border-y border-line md:max-w-4xl w-full">
           {FAQ.map(([q, a]) => (
             <details key={q} className="group">
               <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 py-4 font-semibold [&::-webkit-details-marker]:hidden">
@@ -169,6 +228,14 @@ export function Landing({ onStart, onUnlock, busy, err }: { onStart: () => void;
             <Button onClick={onStart}>Create my account</Button>
             {unlock}
           </div>
+        </div>
+        <div className="mt-10 flex flex-col items-center gap-3">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted">Built with</p>
+          <ul className="flex flex-wrap justify-center gap-3">
+            {PARTNERS.map(([name, src]) => (
+              <li key={name} title={name}><Logo name={name} src={src} size={32} /></li>
+            ))}
+          </ul>
         </div>
         <p className="mt-8 text-center text-sm text-muted">Kin · Money for the people you love</p>
       </section>
