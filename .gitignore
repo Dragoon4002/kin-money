@@ -20,3 +20,4 @@ indexer/.envio/
 indexer/generated/
 indexer/build/
 indexer/logs/
+/.vercel/
