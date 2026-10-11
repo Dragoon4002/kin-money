@@ -2,7 +2,6 @@ import { router } from "expo-router";
 import { AlignLeft, House, LayoutGrid, Users, Wallet } from "lucide-react-native";
 import { Animated, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { useTheme } from "@/theme";
 
 /** Swipeable tab order (same as web NavBar). Home sits in the middle so the strip starts balanced. */
@@ -44,16 +43,6 @@ export function NavBar({ progress, active, onPick }: { progress: Animated.Animat
   const x = Animated.multiply(progress, -SLOT);
   return (
     <View pointerEvents="box-none" style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: NAV_H + bottom - 16 }}>
-      <Svg pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} width="100%" height="100%">
-        <Defs>
-          <LinearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor={t.bg} stopOpacity={0} />
-            <Stop offset="0.5" stopColor={t.bg} stopOpacity={0.9} />
-            <Stop offset="1" stopColor={t.bg} stopOpacity={1} />
-          </LinearGradient>
-        </Defs>
-        <Rect width="100%" height="100%" fill="url(#fade)" />
-      </Svg>
       <Animated.View accessibilityRole="tablist"
         style={{ position: "absolute", bottom, left: "50%", height: 80, flexDirection: "row", alignItems: "center", transform: [{ translateX: -SLOT / 2 }, { translateX: x }] }}>
         {TABS.map(([label, Icon], i) => {
