@@ -8,7 +8,7 @@ import { addr, publicClient } from "./chain";
 // Logs (asks, circle/pot history) come from /api/history (full range since deploy) plus a short live tail.
 
 // Blocks past the server's cached head we fetch ourselves (its response may be up to 30s old).
-const TAIL = 300n;
+export const TAIL = 300n;
 const MIN_CHUNK = 100n;
 let chunk = MIN_CHUNK;
 // ponytail: scans newest MAX_IDS records per contract; add an indexer when usage outgrows it.
@@ -33,7 +33,7 @@ export const nowSec = () => Math.floor(Date.now() / 1000);
 const same = (a?: string, b?: string) => !!a && !!b && a.toLowerCase() === b.toLowerCase();
 export const ZERO = "0x0000000000000000000000000000000000000000" as Address;
 
-async function rawLogs(address: Address, from: bigint, to: bigint) {
+export async function rawLogs(address: Address, from: bigint, to: bigint) {
   for (;;) {
     try {
       const parts: [bigint, bigint][] = [];

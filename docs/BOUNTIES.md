@@ -58,7 +58,7 @@ Mera is Kin's **entire account layer**. There's no Privy, Dynamic, WalletConnect
 ## 4. Envio
 
 - **HyperSync:** the full activity history, notifications and receipts come from every Kin contract plus AUSD transfers in one paged query (~2.5 s for the whole chain history). Real-money mode uses HyperSync on Monad mainnet (`143.hypersync.xyz`) per person. Code: `app/src/lib/server/history.ts`.
-- **HyperIndex:** `indexer/` indexes every event of the Kin contracts the activity feed reads (names, escrow, streams, pots, circles, AutoPay, gift links) plus Kin-related AUSD transfers into typed `Account`/`Activity` entities (GraphQL). The app prefers it when `ENVIO_GRAPHQL_URL` is set.
+- **HyperIndex:** `indexer/` indexes every event of the Kin contracts the activity feed reads (names, escrow, streams, pots, circles, AutoPay, gift links) plus Kin-related AUSD transfers into typed `Account`/`Activity` entities (GraphQL), plus cash-outs. **The Activity feed is served from it:** `/api/activity` asks HyperIndex for one person's newest payments with the other side's @name joined (code: `indexedTransfers` in `app/src/lib/server/history.ts`), so the app skips downloading history and looking up each name; a live tail covers blocks the indexer hasn't reached, and HyperSync is the fallback.
 
 ---
 

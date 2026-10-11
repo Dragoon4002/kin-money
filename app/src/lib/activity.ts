@@ -1,9 +1,9 @@
 "use client";
 import { erc20Abi, formatLog, isAddressEqual, parseEventLogs, type Address, type Hex, type RpcLog } from "viem";
-import { addr, getMode, money } from "./chain";
+import { addr, getMode, money, publicClient } from "./chain";
 import { describe, isKinContract } from "./counterparty";
 import { nameOf, shortAddr } from "./names";
-import { history } from "./programs";
+import { history, rawLogs, TAIL } from "./programs";
 
 // Activity feed from AUSD Transfer logs since deploy (server-side history + live tail, see programs.history).
 const KEEP = 100;
@@ -69,7 +69,40 @@ export function payments(me: Address): Promise<Raw[]> {
 /** Last payments loaded this session for `me` in the current mode (no fetch). */
 export const cachedPayments = (me: Address): Raw[] | null => lastRaw.get(key(me)) ?? null;
 
+/**
+ * Practice money, fast path: newest payments from Envio HyperIndex (/api/activity, names included) + a live tail of
+ * blocks the indexer hasn't reached. Throws when the indexer is down or too far behind → caller uses full history.
+ */
+async function indexedPayments(me: Address): Promise<Raw[]> {
+  const [res, latest] = await Promise.all([
+    fetch(`/api/activity?address=${me}`).then((r) => (r.ok ? r.json() : Promise.reject(new Error("index unavailable")))),
+    publicClient.getBlockNumber(),
+  ]);
+  const { payments, names: known, head } = res as {
+    payments: { hash: Hex; logIndex: number; from: Address; to: Address; value: string; time: number }[];
+    names: Record<string, string>;
+    head: number;
+  };
+  // Behind, or nothing indexed (accounts without an @name aren't tracked): full history instead.
+  if (head < 0 || latest - BigInt(head) > TAIL || !payments.length) throw new Error("index behind");
+  for (const [a, n] of Object.entries(known)) if (!names.has(a)) names.set(a, Promise.resolve(n));
+  const tail = parseEventLogs({ abi: erc20Abi, eventName: "Transfer", logs: await rawLogs(addr.ausd, BigInt(head) + 1n, latest) });
+  const seen = new Set(payments.map((p) => `${p.hash}:${p.logIndex}`));
+  const fresh = tail
+    .filter((l) => (isAddressEqual(l.args.from, me) || isAddressEqual(l.args.to, me)) && !seen.has(`${l.transactionHash}:${l.logIndex}`))
+    .map((l) => ({ hash: l.transactionHash, logIndex: l.logIndex, from: l.args.from, to: l.args.to, value: l.args.value, time: Date.now() / 1000 }))
+    .reverse();
+  return [...fresh, ...payments].map((p) => {
+    const out = isAddressEqual(p.from, me);
+    return { hash: p.hash, logIndex: p.logIndex, dir: out ? "out" : "in", other: out ? p.to : p.from, amount: BigInt(p.value), time: p.time * 1000 } as const;
+  });
+}
+
 async function fetchPayments(me: Address, k: string): Promise<Raw[]> {
+  if (getMode() === "test") {
+    const raw = await indexedPayments(me).catch(() => null);
+    if (raw) return lastRaw.set(k, raw), raw;
+  }
   try {
     const logs = parseEventLogs({ abi: erc20Abi, eventName: "Transfer", logs: getMode() === "main" ? await mainHistory(me) : await history(addr.ausd, me) });
     const found = logs.flatMap((log) => {

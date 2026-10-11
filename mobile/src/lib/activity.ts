@@ -136,9 +136,44 @@ export const feedLabel = (raw: Raw[], me: Address): Promise<Item[]> =>
 /** Newest KEEP payments, labelled (Spends). */
 export const loadFeed = async (me: Address): Promise<Item[]> => feedLabel((await feedPayments(me)).slice(0, KEEP), me);
 
+/**
+ * Practice money, fast path (same as web): newest payments from Envio HyperIndex (/api/activity, names included) +
+ * a live tail past the indexer's head. Throws when it's down, behind or empty → full history instead.
+ */
+async function indexedFeed(me: Address): Promise<Raw[]> {
+  const [res, latest] = await Promise.all([
+    fetch(`${API_BASE}/api/activity?address=${me}`).then((r) => (r.ok ? r.json() : Promise.reject(new Error("index unavailable")))),
+    publicClient.getBlockNumber(),
+  ]);
+  const { payments, names: known, head } = res as {
+    payments: { hash: Hex; logIndex: number; from: Address; to: Address; value: string; time: number }[];
+    names: Record<string, string>;
+    head: number;
+  };
+  if (head < 0 || latest - BigInt(head) > TAIL || !payments.length) throw new Error("index behind");
+  for (const [a, n] of Object.entries(known)) if (!names.has(a)) names.set(a, Promise.resolve(n));
+  const tail: Log[] = [];
+  for (let b = BigInt(head) + 1n; b <= latest; b += CHUNK) {
+    tail.push(...(await publicClient.getLogs({ address: addr.ausd, fromBlock: b, toBlock: b + CHUNK - 1n < latest ? b + CHUNK - 1n : latest })));
+  }
+  const seen = new Set(payments.map((p) => `${p.hash}:${p.logIndex}`));
+  const fresh = parseEventLogs({ abi: erc20Abi, eventName: "Transfer", logs: tail })
+    .filter((l) => (isAddressEqual(l.args.from, me) || isAddressEqual(l.args.to, me)) && !seen.has(`${l.transactionHash}:${l.logIndex}`))
+    .map((l) => ({ hash: l.transactionHash, logIndex: l.logIndex, from: l.args.from, to: l.args.to, value: l.args.value.toString(), time: Date.now() / 1000 }))
+    .reverse();
+  return [...fresh, ...payments].map((p) => {
+    const out = isAddressEqual(p.from, me);
+    return { hash: p.hash, logIndex: p.logIndex, dir: out ? "out" : "in", other: out ? p.to : p.from, amount: BigInt(p.value), time: p.time * 1000 } as Raw;
+  });
+}
+
 async function feedScan(me: Address): Promise<Raw[]> {
   const main = getMode() === "main";
   const k = `${main ? "main" : "test"}:${me.toLowerCase()}`;
+  if (!main) {
+    const raw = await indexedFeed(me).catch(() => null);
+    if (raw) return feedLast.set(k, raw), raw;
+  }
   try {
     if (main) {
       // Real money: this person's mainnet dollar transfers (server HyperSync query); no practice-network tail.

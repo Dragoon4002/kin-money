@@ -219,7 +219,7 @@ async function gql<T>(query: string, variables: Record<string, unknown> = {}): P
 /** Logs in (after, head] from the HyperIndex GraphQL, head = the indexer's progress block. */
 async function indexed(after: bigint): Promise<{ logs: RpcLog[]; head: bigint }> {
   const { _meta } = await gql<{ _meta: { chainId: number; progressBlock: number } | { chainId: number; progressBlock: number }[] }>("{ _meta { chainId progressBlock } }");
-  const head = BigInt([_meta].flat().find((m) => m.chainId === monadTestnet.id)?.progressBlock ?? -1);
+  const head = BigInt(headOf(_meta));
   const want = new Set(Object.values(contracts()).filter(Boolean));
   const out = new Map<string, RpcLog>(); // rows are per involved account → dedupe to one log
   for (let offset = 0; offset < 100 * IDX_PAGE; offset += IDX_PAGE) {
@@ -237,6 +237,37 @@ async function indexed(after: bigint): Promise<{ logs: RpcLog[]; head: bigint }>
     if (rows.length < IDX_PAGE) break;
   }
   return { logs: [...out.values()], head };
+}
+
+/** Head block the indexer has processed for Monad testnet (-1 if unknown). */
+const headOf = (m: { chainId: number; progressBlock: number } | { chainId: number; progressBlock: number }[]) =>
+  [m].flat().find((x) => x.chainId === monadTestnet.id)?.progressBlock ?? -1;
+
+/**
+ * One person's newest AUSD transfers straight from HyperIndex (Activity rows keyed by account), plus the @names of
+ * everyone on the other side. Two small queries instead of downloading history + a name lookup per row on the phone.
+ */
+export async function indexedTransfers(me: string, limit: number) {
+  if (!process.env.ENVIO_GRAPHQL_URL) throw new Error("no index");
+  const { Activity: rows, _meta } = await gql<{
+    Activity: { txHash: Hex; logIndex: number; timestamp: number; data: string }[];
+    _meta: Parameters<typeof headOf>[0];
+  }>(
+    `query($a: String!, $c: String!, $n: Int!) {
+      Activity(where: {account: {_eq: $a}, contract: {_eq: $c}}, order_by: [{blockNumber: desc}, {logIndex: desc}], limit: $n) { txHash logIndex timestamp data }
+      _meta { chainId progressBlock }
+    }`,
+    { a: me.toLowerCase(), c: contracts().transfers, n: limit },
+  );
+  const payments = rows.map((r) => {
+    const d = JSON.parse(r.data) as { from: string; to: string; value: string };
+    return { hash: r.txHash, logIndex: r.logIndex, from: d.from.toLowerCase(), to: d.to.toLowerCase(), value: d.value, time: r.timestamp };
+  });
+  const others = [...new Set(payments.map((p) => (p.from === me.toLowerCase() ? p.to : p.from)))];
+  const { Account: accounts } = others.length
+    ? await gql<{ Account: { id: string; name: string | null }[] }>(`query($ids: [String!]!) { Account(where: {id: {_in: $ids}}) { id name } }`, { ids: others })
+    : { Account: [] };
+  return { payments, names: Object.fromEntries(accounts.filter((x) => x.name).map((x) => [x.id, x.name])), head: headOf(_meta) };
 }
 
 /** HyperIndex path (when ENVIO_GRAPHQL_URL is set). False → caller falls through to HyperSync, then RPC. */

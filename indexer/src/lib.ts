@@ -8,14 +8,16 @@ import KinPotV1 from "../abis/KinPotV1.json" with { type: "json" };
 import KinCircle from "../abis/KinCircle.json" with { type: "json" };
 import KinMandate from "../abis/KinMandate.json" with { type: "json" };
 import KinGiftLink from "../abis/KinGiftLink.json" with { type: "json" };
+import KinCashout from "../abis/KinCashout.json" with { type: "json" };
+import KinCashoutV2 from "../abis/KinCashoutV2.json" with { type: "json" };
 import AUSD from "../abis/AUSD.json" with { type: "json" };
 
-export const ABIS = { KinNames, KinEscrow, KinStream, KinPot, KinPotV1, KinCircle, KinMandate, KinGiftLink, AUSD } as unknown as Record<ContractName, Abi>;
-export type ContractName = "KinNames" | "KinEscrow" | "KinStream" | "KinPot" | "KinPotV1" | "KinCircle" | "KinMandate" | "KinGiftLink" | "AUSD";
+export const ABIS = { KinNames, KinEscrow, KinStream, KinPot, KinPotV1, KinCircle, KinMandate, KinGiftLink, KinCashout, KinCashoutV2, AUSD } as unknown as Record<ContractName, Abi>;
+export type ContractName = "KinNames" | "KinEscrow" | "KinStream" | "KinPot" | "KinPotV1" | "KinCircle" | "KinMandate" | "KinGiftLink" | "KinCashout" | "KinCashoutV2" | "AUSD";
 
 export const KIND: Record<ContractName, string> = {
   KinNames: "name", KinEscrow: "escrow", KinStream: "stream", KinPot: "pot", KinPotV1: "pot",
-  KinCircle: "circle", KinMandate: "mandate", KinGiftLink: "gift", AUSD: "transfer",
+  KinCircle: "circle", KinMandate: "mandate", KinGiftLink: "gift", KinCashout: "cashout", KinCashoutV2: "cashout", AUSD: "transfer",
 };
 
 // ponytail: mirrors config.yaml addresses (test checks they match). Upgrade path: read indexer.chains at startup.
@@ -28,6 +30,8 @@ export const ADDRESSES: Record<ContractName, string> = {
   KinCircle: "0x0b467a32e1a38b999134da4941cad136390c9b41",
   KinMandate: "0xe770ecfbf2d2d6b8b9c1b210b7a42b92bba8fd53",
   KinGiftLink: "0x7ad1c20d0b96bae5ae72462137384a1924e36bdb",
+  KinCashout: "0xddbc1208e84e82676bfc7452f25cecdb3b05b75a",
+  KinCashoutV2: "0xca36ce5954e4c4058216b19622106525a894ad37",
   AUSD: "0xa9012a055bd4e0edff8ce09f960291c09d5322dc",
 };
 const KIN_CONTRACTS = new Set(Object.entries(ADDRESSES).filter(([n]) => n !== "AUSD").map(([, a]) => a));
@@ -52,7 +56,7 @@ export function keepTransfer(from: string, to: string, touchesAccount: boolean):
   return touchesAccount || KIN_CONTRACTS.has(from.toLowerCase()) || KIN_CONTRACTS.has(to.toLowerCase());
 }
 
-const AMOUNT_KEYS = ["amount", "value", "total", "covered", "deposit"];
+const AMOUNT_KEYS = ["amount", "value", "total", "covered", "deposit", "ausdIn"];
 export const json = (v: unknown) => JSON.stringify(v, (_, x) => (typeof x === "bigint" ? x.toString() : x));
 
 /** Rebuild the exact raw log (topics + data) from decoded params, so consumers can treat rows as plain logs. */

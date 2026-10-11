@@ -67,6 +67,14 @@ contracts:
       - event: Created
       - event: Opened
       - event: Refunded
+  - name: KinCashout # cash-out V1 (Agora only)
+    abi_file_path: ./abis/KinCashout.json
+    events:
+      - event: CashedOut
+  - name: KinCashoutV2 # cash-out: AUSD → USDC via Agora (or Uniswap on mainnet)
+    abi_file_path: ./abis/KinCashoutV2.json
+    events:
+      - event: CashedOut
   - name: AUSD
     abi_file_path: ./abis/AUSD.json
     events:
@@ -91,5 +99,9 @@ chains:
         address: "0xe770eCfBf2D2D6b8B9c1B210B7a42B92bbA8fd53"
       - name: KinGiftLink
         address: "0x7ad1C20D0B96BaE5aE72462137384A1924e36BDb"
+      - name: KinCashout
+        address: "0xDdBc1208e84E82676bfc7452F25cecDB3B05b75a"
+      - name: KinCashoutV2
+        address: "0xca36cE5954E4C4058216b19622106525A894ad37"
       - name: AUSD
         address: "0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC"
