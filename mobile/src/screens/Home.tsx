@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { Avatar, Button, IconButton, Keypad, MeButton, Screen, Serif, TabHeader, Text } from "@/components/ui";
 import { useAccount } from "@/lib/account";
-import { getBalance } from "@/lib/activity";
+import { cachedFeed, feedLabel, feedPayments, getBalance } from "@/lib/activity";
 import { openKin } from "@/lib/nav";
 import { recentPeople, type Person } from "@/lib/contacts";
 import { useUnread } from "@/lib/live";
@@ -31,6 +31,11 @@ export default function Home() {
     setBalance(null);
     if (me) getBalance(me).then(setBalance).catch(() => setFailed(true));
   }
+
+  // Warm Activity so its tab opens with the newest payments ready.
+  useEffect(() => {
+    if (me && !cachedFeed(me)) feedPayments(me).then((p) => feedLabel(p.slice(0, 5), me)).catch(() => {});
+  }, [me]);
 
   // People need a read session (or unlocked) — Home never pops Face ID.
   useEffect(() => {

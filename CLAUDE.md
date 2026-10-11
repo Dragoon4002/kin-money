@@ -27,7 +27,7 @@ cd app && pnpm dev | pnpm build | pnpm lint
 4. **AUSD = 6 decimals.** Testnet `0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC`; mainnet `0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a`. EIP-712 domain name `"Agora Dollar"`, version `"1"`.
 5. **Monad charges gas limit.** Always set explicit `gas` = estimate × 1.2. Never hardcode huge limits.
 6. **Passkey RP ID = hostname.** New hostname = new account. Demo only on the fixed prod domain.
-7. **Mera session in module scope/ref only**, never serialized React state or storage. Zero key bytes after use. localStorage holds only `{credentialId, address}`.
+7. **Mera session in module scope/ref only**, never serialized React state or storage. Zero key bytes after use. localStorage holds only `{credentialId, address}`. Exception (user, Oct 11): last People phonebook per account (`kin.people.<address>`, web localStorage / mobile file). Activity is never stored on device.
 8. Real onchain logic only — no simulated settlement (Technical Execution is judged on it).
 9. Contracts: custom errors, event per state change, `ERC2771Context`, no admin/upgradeability, a Foundry test per branch that moves money.
 10. `RELAYER_PRIVATE_KEY` server-only. Never `NEXT_PUBLIC_`. Never commit `.env`.

@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { MessagesButton } from "@/components/core/NavBar";
 import { PersonPicker, type Person } from "@/components/PersonPicker";
 import { PersonRow, Section, SkeletonRows, useSignedIn } from "@/components/social/bits";
@@ -12,10 +12,14 @@ import { formatMoney } from "@/lib/money";
 
 const sendTo = (p: Person) => `/send?to=${encodeURIComponent(p.name)}`;
 
+const noop = () => () => {};
+
 export default function ContactsPage() {
   useSignedIn();
   const { canRead } = useAccount();
-  const [book, setBook] = useState<Phonebook | null>(cachedContacts);
+  const [fetched, setBook] = useState<Phonebook | null>(null);
+  const saved = useSyncExternalStore(noop, cachedContacts, () => null); // last phonebook on this device, shown until fresh
+  const book = fetched ?? saved;
   const [err, setErr] = useState("");
   const [adding, setAdding] = useState(false);
   const [person, setPerson] = useState<Person | null>(null);
@@ -31,10 +35,10 @@ export default function ContactsPage() {
     setErr("");
     const prev = book;
     // Optimistic: show them in "Your people" right away.
-    setBook((b) => b && {
-      ...b,
-      contacts: [...b.contacts.filter((c) => c.address !== p.address), { ...p, label: nick }],
-      suggested: b.suggested.filter((s) => s.address !== p.address),
+    setBook(book && {
+      ...book,
+      contacts: [...book.contacts.filter((c) => c.address !== p.address), { ...p, label: nick }],
+      suggested: book.suggested.filter((s) => s.address !== p.address),
     });
     try {
       await addContact(p, nick);

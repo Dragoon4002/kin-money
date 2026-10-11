@@ -5,7 +5,7 @@ import { Pressable, ScrollView, View } from "react-native";
 import { Avatar, Button, ErrorText, IconButton, Label, Text, TextInput, useInputStyle } from "@/components/ui";
 import { unlock, useAccount } from "@/lib/account";
 import { openKin } from "@/lib/nav";
-import { addContact, listContacts, type Person, type Phonebook } from "@/lib/contacts";
+import { addContact, cachedContacts, listContacts, type Person, type Phonebook } from "@/lib/contacts";
 import { humanError } from "@/lib/errors";
 import { useUnread } from "@/lib/live";
 import { formatMoney } from "@/lib/money";
@@ -21,7 +21,7 @@ export default function People() {
   const { canRead } = useAccount();
   const unread = useUnread();
   const input = useInputStyle();
-  const [book, setBook] = useState<Phonebook | null>(null);
+  const [book, setBook] = useState<Phonebook | null>(cachedContacts); // last phonebook on this phone, until fresh
   const [err, setErr] = useState("");
   const [adding, setAdding] = useState(false);
   const [handle, setHandle] = useState("");

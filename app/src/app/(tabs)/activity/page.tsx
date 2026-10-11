@@ -1,12 +1,13 @@
 "use client";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useMode } from "@/lib/mode";
 import type { Address } from "viem";
 import { ActivityRow } from "@/components/core/ActivityRow";
+import { SkeletonRows } from "@/components/social/bits";
 import { Band, Button, Chip, ErrorText, Ico, IconTile, Row, Screen, Tabs, funBg } from "@/components/ui";
 import { useRequireAccount } from "@/lib/account";
-import { ago, cachedActivity, loadActivity, type Item } from "@/lib/activity";
+import { ago, cachedPayments, label, payments, type Item } from "@/lib/activity";
 import { categoryOf } from "@/lib/categories";
 import { forgetLink, myLinkIds, readLink, refundLink } from "@/lib/claimLink";
 import { humanError } from "@/lib/errors";
@@ -48,12 +49,20 @@ function Moment({ item }: { item: Item }) {
 const WIRE_FLAT = 5_000_000n; // $5 in base units
 const wireSavings = (sent: bigint[]) => sent.reduce((a, v) => a + (v * 3n) / 100n + WIRE_FLAT, 0n);
 
+// Names are looked up per payment: label the newest FIRST, then NEXT more, then NEXT per scroll.
+const FIRST = 5;
+const NEXT = 10;
+
 export default function Activity() {
   const { profile } = useRequireAccount();
   const me = profile?.address;
   const mode = useMode();
-  const [loaded, setItems] = useState<Item[] | null>(null);
-  const items = loaded ?? (me ? cachedActivity(me) : null); // last list right away; refresh() replaces it
+  const [raw, setRaw] = useState<{ mode: string; list: Awaited<ReturnType<typeof payments>> } | null>(null);
+  const all = raw?.mode === mode ? raw.list : me ? cachedPayments(me) : null; // this session's last list right away
+  const [n, setN] = useState(FIRST);
+  const [labelled, setItems] = useState<Item[] | null>(null);
+  const items = all && labelled;
+  const more = useRef<HTMLDivElement>(null);
   const [links, setLinks] = useState<Pending[]>([]);
   const [filter, setFilter] = useState<Filter>("all");
   const [busy, setBusy] = useState<bigint | null>(null);
@@ -61,9 +70,35 @@ export default function Activity() {
 
   const refresh = useCallback(() => {
     if (!me) return;
-    loadActivity(me).then(setItems).catch(() => {});
+    payments(me).then((list) => setRaw({ mode, list })).catch(() => {});
     pendingLinks(me).then(setLinks).catch(() => {});
-  }, [me]);
+  }, [me, mode]);
+
+  // Label the newest n payments; once the first FIRST show, queue NEXT more.
+  useEffect(() => {
+    if (!me || !all) return;
+    let live = true;
+    label(all.slice(0, n), me)
+      .then((it) => {
+        if (!live) return;
+        setItems(it);
+        if (n === FIRST) setN(FIRST + NEXT);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [all, n, me]);
+
+  // Near the bottom: NEXT more (one step per finished page).
+  const hasMore = !!all && !!items && n > FIRST && items.length === n && n < all.length;
+  useEffect(() => {
+    const el = more.current;
+    if (!el || !hasMore) return;
+    const io = new IntersectionObserver(([e]) => e.isIntersecting && setN(items!.length + NEXT), { rootMargin: "300px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasMore, items]);
 
   useEffect(() => {
     refresh();
@@ -85,7 +120,7 @@ export default function Activity() {
   }
 
   const hide = usePrivate();
-  const saved = items ? wireSavings(items.filter((i) => i.dir === "out").map((i) => i.amount)) : 0n;
+  const saved = all ? wireSavings(all.filter((i) => i.dir === "out").map((i) => i.amount)) : 0n;
   const shown = items?.filter((i) => filter === "all" || i.dir === filter) ?? [];
   const moments = items?.slice(0, 8) ?? [];
 
@@ -99,6 +134,14 @@ export default function Activity() {
             <Chip tone="good">You saved about {formatMoney(saved)} vs a bank wire</Chip>
             <p className="px-1 text-xs text-muted">Estimate: banks often charge 3% + $5 per transfer.</p>
           </div>
+        )}
+        {items === null && (
+          <section className="flex flex-col gap-3" aria-busy="true" aria-label="Loading">
+            <span className="mx-5 h-7 w-32 animate-pulse rounded-full bg-surface-2" />
+            <div className="flex gap-3 overflow-hidden px-5 pb-1">
+              {Array.from({ length: 4 }, (_, i) => <span key={i} className="h-40 w-36 shrink-0 animate-pulse rounded-[28px] bg-surface-2" />)}
+            </div>
+          </section>
         )}
         {moments.length > 0 && (
           <section className="flex flex-col gap-3">
@@ -132,7 +175,7 @@ export default function Activity() {
 
         <section className="flex flex-col">
           {items === null ? (
-            <p className="py-6 text-center text-sm text-muted">Loading your payments…</p>
+            <div className="px-5"><SkeletonRows n={5} /></div>
           ) : shown.length === 0 ? (
             <p className="px-5 py-6 text-center text-sm text-muted">
               {items.length === 0 ? "No payments yet. Money you send or get shows up here." : "Nothing here yet."}
@@ -140,6 +183,7 @@ export default function Activity() {
           ) : (
             shown.map((i) => <ActivityRow key={`${i.hash}:${i.logIndex}`} item={i} />)
           )}
+          {hasMore && <div ref={more} className="px-5"><SkeletonRows n={2} /></div>}
         </section>
       </Screen>
     </>

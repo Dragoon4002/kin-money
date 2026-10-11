@@ -1,3 +1,4 @@
+import { File, Paths } from "expo-file-system";
 import * as SecureStore from "expo-secure-store";
 import type { Address, Hex } from "viem";
 import type { Look } from "@/components/Kinko";
@@ -64,14 +65,9 @@ export async function publishLook(look: Look): Promise<void> {
   await api("/api/contacts/me", "POST", { look }).catch(() => {});
 }
 
-// One fetch shared by every picker on a screen (pickers remount per pick); 30 s TTL, per account.
-let recentCache: { who?: string; at: number; p: Promise<Person[]> } | null = null;
-
 /** Recent + frequent people for pickers (recents first, then saved contacts). Never throws. */
 export function recentPeople(): Promise<Person[]> {
-  const who = getProfile()?.address;
-  if (recentCache && recentCache.who === who && Date.now() - recentCache.at < 30_000) return recentCache.p;
-  const p = api<{ recents: Person[]; contacts: Person[] }>("/api/contacts")
+  return listContacts()
     .then((book) => {
       const seen = new Set<string>();
       return [...book.recents, ...book.contacts]
@@ -79,9 +75,7 @@ export function recentPeople(): Promise<Person[]> {
         .slice(0, 8)
         .map(({ address, name }) => ({ address, name }));
     })
-    .catch(() => ((recentCache = null), [] as Person[]));
-  recentCache = { who, at: Date.now(), p };
-  return p;
+    .catch(() => [] as Person[]);
 }
 
 // ---------- phonebook (People tab), same shapes as web lib/contacts.ts ----------
@@ -91,10 +85,41 @@ export type Recent = Person & { count: number; total: string; last: number };
 export type Suggestion = Person & { mutual: number };
 export type Phonebook = { contacts: Contact[]; recents: Recent[]; suggested: Suggestion[] };
 
-export const listContacts = () => api<Phonebook>("/api/contacts");
+// One phonebook fetch shared by Home, pickers and People (30 s TTL, per account). The last good one is also kept
+// in a file per account (user decision, Oct 11) so People renders instantly and refreshes behind it. Same as web.
+let bookCache: { who?: string; at: number; p: Promise<Phonebook> } | null = null;
+const peopleFile = (who: string) => new File(Paths.document, `kin-people-${who.toLowerCase()}.json`);
+
+export function listContacts(): Promise<Phonebook> {
+  const who = getProfile()?.address;
+  if (bookCache && bookCache.who === who && Date.now() - bookCache.at < 30_000) return bookCache.p;
+  const p = api<Phonebook>("/api/contacts");
+  bookCache = { who, at: Date.now(), p };
+  p.then(
+    (book) => {
+      try {
+        if (who) peopleFile(who).write(JSON.stringify(book));
+      } catch {}
+    },
+    () => bookCache?.p === p && (bookCache = null),
+  );
+  return p;
+}
+
+/** Last phonebook saved on this phone for the current account, if any (no fetch). */
+export function cachedContacts(): Phonebook | null {
+  const who = getProfile()?.address;
+  try {
+    const f = who ? peopleFile(who) : null;
+    return f?.exists ? (JSON.parse(f.textSync()) as Phonebook) : null;
+  } catch {
+    return null;
+  }
+}
 
 /** Save someone with a nickname ("Mum"). */
-export const addContact = (p: Person, label = "") => api<{ ok: true }>("/api/contacts", "POST", { address: p.address, label });
+export const addContact = (p: Person, label = "") =>
+  api<{ ok: true }>("/api/contacts", "POST", { address: p.address, label }).finally(() => (bookCache = null));
 
 // ---------- money requests (/api/requests), same shapes as web ----------
 

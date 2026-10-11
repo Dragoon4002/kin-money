@@ -112,22 +112,43 @@ export async function registerMe(look?: Look): Promise<void> {
 export type Invites = { invited: { name: string; at: number }[]; invitedBy: string | null };
 export const listInvites = () => api<Invites>("/api/invites");
 
-// One phonebook fetch shared by Home, pickers and People (30 s TTL, per account); the last good one is kept so
-// People renders instantly and refreshes behind it.
+// One phonebook fetch shared by Home, pickers and People (30 s TTL, per account). The last good one is also kept
+// in localStorage per account (user decision, Oct 11) so People renders instantly and refreshes behind it.
 let bookCache: { who?: string; at: number; p: Promise<Phonebook> } | null = null;
-let lastBook: { who?: string; book: Phonebook } | null = null;
+let lastBook: { who: string; book: Phonebook | null } | null = null;
+const PEOPLE = (who: string) => `kin.people.${who.toLowerCase()}`;
 
 export function listContacts(): Promise<Phonebook> {
   const who = savedAddress();
   if (bookCache && bookCache.who === who && Date.now() - bookCache.at < 30_000) return bookCache.p;
   const p = api<Phonebook>("/api/contacts");
   bookCache = { who, at: Date.now(), p };
-  p.then((book) => (lastBook = { who, book }), () => bookCache?.p === p && (bookCache = null));
+  p.then(
+    (book) => {
+      if (!who) return;
+      lastBook = { who, book };
+      try {
+        localStorage.setItem(PEOPLE(who), JSON.stringify(book));
+      } catch {}
+    },
+    () => bookCache?.p === p && (bookCache = null),
+  );
   return p;
 }
 
-/** Last phonebook loaded for this account, if any (no fetch). */
-export const cachedContacts = (): Phonebook | null => (lastBook && lastBook.who === savedAddress() ? lastBook.book : null);
+/** Last phonebook saved for this account, if any (no fetch). Same object until it changes (useSyncExternalStore-safe). */
+export function cachedContacts(): Phonebook | null {
+  const who = savedAddress();
+  if (!who) return null;
+  if (lastBook?.who !== who) {
+    try {
+      lastBook = { who, book: JSON.parse(localStorage.getItem(PEOPLE(who)) ?? "null") as Phonebook | null };
+    } catch {
+      lastBook = { who, book: null };
+    }
+  }
+  return lastBook.book;
+}
 
 /** Recent + frequent people for pickers (recents first, then saved contacts). Never throws. */
 export function recentPeople(): Promise<Person[]> {
@@ -144,7 +165,7 @@ export function recentPeople(): Promise<Person[]> {
 
 /** Save someone with a nickname ("Mum"). */
 export const addContact = (p: Person, label = "") =>
-  api<{ ok: true }>("/api/contacts", "POST", { address: p.address, label }).finally(() => (bookCache = lastBook = null));
+  api<{ ok: true }>("/api/contacts", "POST", { address: p.address, label }).finally(() => (bookCache = null));
 
 /** Ask `to` for `amount` base units, optionally "pay by" `due` (unix ms). */
 export const createRequest = (to: Address, amount: bigint, note: string, due: number | null = null) =>

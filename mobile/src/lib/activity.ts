@@ -51,16 +51,16 @@ export function ago(ms: number): string {
 }
 
 const cache = new Map<string, { cursor: bigint; items: Raw[] }>();
-const inflight = new Map<string, Promise<Item[]>>();
+const inflight = new Map<string, Promise<Raw[]>>();
 
-/** Newest-first payments to/from `me`. Safe to poll; concurrent calls share one scan. */
-export function loadActivity(me: Address): Promise<Item[]> {
+/** Newest-first payments to/from `me` in recent blocks (fallback when server history is down). Concurrent calls share one scan. */
+function recentPayments(me: Address): Promise<Raw[]> {
   const k = me.toLowerCase();
   if (!inflight.has(k)) inflight.set(k, scan(me).finally(() => inflight.delete(k)));
   return inflight.get(k)!;
 }
 
-async function scan(me: Address): Promise<Item[]> {
+async function scan(me: Address): Promise<Raw[]> {
   const k = me.toLowerCase();
   const c = cache.get(k) ?? { cursor: 0n, items: [] };
   let items = c.items;
@@ -100,14 +100,15 @@ async function scan(me: Address): Promise<Item[]> {
     // ponytail: rate-limited or offline — show what we have, next call resumes from the cursor.
   }
 
-  return Promise.all(items.map(async (i) => ({ ...i, who: await who(i.other, i.dir), when: ago(i.time) })));
+  return items;
 }
 
 // ---------- full feed (Activity tab): server history since deploy + live tail, web-style labels ----------
 
 const TAIL = 300n;
-const feedLast = new Map<string, Item[]>();
-const feedInflight = new Map<string, Promise<Item[]>>();
+const feedLast = new Map<string, Raw[]>(); // memory only, never stored on the phone
+const feedInflight = new Map<string, Promise<Raw[]>>();
+const feedKey = (me: Address) => `${getMode()}:${me.toLowerCase()}`;
 
 /** Faucet that funds the sign-up welcome gift (same as web). */
 const FAUCET = "0xd236c18D274E54FAccC3dd9DDA4b27965a73ee6C";
@@ -118,14 +119,24 @@ function feedWho(other: Address, dir: Raw["dir"], hash: Hex, me: Address): Promi
   return who(other, dir);
 }
 
-/** Like loadActivity but full history via /api/history (falls back to the recent-block scan). Safe to poll. */
-export function loadFeed(me: Address): Promise<Item[]> {
-  const k = `${getMode()}:${me.toLowerCase()}`;
+/** Newest-first payments, unlabelled: full history via /api/history (falls back to the recent-block scan). Safe to poll. */
+export function feedPayments(me: Address): Promise<Raw[]> {
+  const k = feedKey(me);
   if (!feedInflight.has(k)) feedInflight.set(k, feedScan(me).finally(() => feedInflight.delete(k)));
   return feedInflight.get(k)!;
 }
 
-async function feedScan(me: Address): Promise<Item[]> {
+/** Last payments loaded this session for `me` in the current mode (no fetch). */
+export const cachedFeed = (me: Address): Raw[] | null => feedLast.get(feedKey(me)) ?? null;
+
+/** Names/labels for a slice of payments (cached per address/tx, so relabelling a longer slice is cheap). */
+export const feedLabel = (raw: Raw[], me: Address): Promise<Item[]> =>
+  Promise.all(raw.map(async (i) => ({ ...i, who: await feedWho(i.other, i.dir, i.hash, me), when: ago(i.time) })));
+
+/** Newest KEEP payments, labelled (Spends). */
+export const loadFeed = async (me: Address): Promise<Item[]> => feedLabel((await feedPayments(me)).slice(0, KEEP), me);
+
+async function feedScan(me: Address): Promise<Raw[]> {
   const main = getMode() === "main";
   const k = `${main ? "main" : "test"}:${me.toLowerCase()}`;
   try {
@@ -141,9 +152,9 @@ async function feedScan(me: Address): Promise<Item[]> {
         const time = log.blockTimestamp ? Number(log.blockTimestamp) * 1000 : Date.now();
         return [{ hash: log.transactionHash, logIndex: log.logIndex, dir: out ? "out" : "in", other: out ? to : f, amount: value, time } as Raw];
       });
-      const items = await Promise.all(found.reverse().slice(0, KEEP).map(async (i) => ({ ...i, who: await who(i.other, i.dir), when: ago(i.time) })));
-      feedLast.set(k, items);
-      return items;
+      const raw = found.reverse();
+      feedLast.set(k, raw);
+      return raw;
     }
     const [res, latest] = await Promise.all([
       fetch(`${API_BASE}/api/history?kind=transfers&address=${me}`).then((r) => (r.ok ? (r.json() as Promise<{ logs: RpcLog[]; to: string }>) : Promise.reject(new Error("history unavailable")))),
@@ -164,12 +175,12 @@ async function feedScan(me: Address): Promise<Item[]> {
       const time = log.blockTimestamp ? Number(log.blockTimestamp) * 1000 : Date.now();
       return [{ hash: log.transactionHash, logIndex: log.logIndex, dir: out ? "out" : "in", other: out ? to : f, amount: value, time } as Raw];
     });
-    const items = await Promise.all(found.reverse().slice(0, KEEP).map(async (i) => ({ ...i, who: await feedWho(i.other, i.dir, i.hash, me), when: ago(i.time) })));
-    feedLast.set(k, items);
-    return items;
+    const raw = found.reverse();
+    feedLast.set(k, raw);
+    return raw;
   } catch {
     // ponytail: server history down or offline — last good list, else the recent-block scan.
-    return feedLast.get(k) ?? (main ? [] : loadActivity(me));
+    return feedLast.get(k) ?? (main ? [] : recentPayments(me));
   }
 }
 

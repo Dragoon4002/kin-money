@@ -54,25 +54,24 @@ export function ago(ms: number): string {
   return new Date(ms).toLocaleDateString(undefined, { day: "numeric", month: "short" });
 }
 
-const inflight = new Map<string, Promise<Item[]>>();
+type Raw = Omit<Item, "who" | "when">;
+const key = (me: Address) => `${getMode()}:${me.toLowerCase()}`;
+const lastRaw = new Map<string, Raw[]>(); // memory only, never browser storage
+const rawInflight = new Map<string, Promise<Raw[]>>();
 
-/** Newest-first payments to/from `me`. Safe to poll; concurrent calls share one scan. */
-export function loadActivity(me: Address): Promise<Item[]> {
-  const k = `${getMode()}:${me.toLowerCase()}`;
-  if (!inflight.has(k)) inflight.set(k, scan(me).finally(() => inflight.delete(k)));
-  return inflight.get(k)!;
+/** Newest-first payments to/from `me`, unlabelled (one history call). Concurrent calls share it. */
+export function payments(me: Address): Promise<Raw[]> {
+  const k = key(me);
+  if (!rawInflight.has(k)) rawInflight.set(k, fetchPayments(me, k).finally(() => rawInflight.delete(k)));
+  return rawInflight.get(k)!;
 }
 
-const last = new Map<string, Item[]>();
+/** Last payments loaded this session for `me` in the current mode (no fetch). */
+export const cachedPayments = (me: Address): Raw[] | null => lastRaw.get(key(me)) ?? null;
 
-/** Last list loaded for `me` in the current mode, if any (no fetch): Activity shows it while refreshing. */
-export const cachedActivity = (me: Address): Item[] | null => last.get(`${getMode()}:${me.toLowerCase()}`) ?? null;
-
-async function scan(me: Address): Promise<Item[]> {
-  const main = getMode() === "main";
-  const k = `${main ? "main" : "test"}:${me.toLowerCase()}`;
+async function fetchPayments(me: Address, k: string): Promise<Raw[]> {
   try {
-    const logs = parseEventLogs({ abi: erc20Abi, eventName: "Transfer", logs: main ? await mainHistory(me) : await history(addr.ausd, me) });
+    const logs = parseEventLogs({ abi: erc20Abi, eventName: "Transfer", logs: getMode() === "main" ? await mainHistory(me) : await history(addr.ausd, me) });
     const found = logs.flatMap((log) => {
       const { from, to, value } = log.args;
       const out = isAddressEqual(from, me);
@@ -80,12 +79,19 @@ async function scan(me: Address): Promise<Item[]> {
       const time = log.blockTimestamp ? Number(log.blockTimestamp) * 1000 : Date.now();
       return [{ hash: log.transactionHash, logIndex: log.logIndex, dir: out ? "out" : "in", other: out ? to : from, amount: value, time } as const];
     });
-    const items = await Promise.all(found.reverse().slice(0, KEEP).map(async (i) => ({ ...i, who: await who(i.other, i.dir, i.hash, me), when: ago(i.time) })));
-    last.set(k, items);
-    return items;
+    const raw = found.reverse();
+    lastRaw.set(k, raw);
+    return raw;
   } catch (e) {
     // ponytail: offline or rate-limited — keep showing the last good list.
-    if (last.has(k)) return last.get(k)!;
+    if (lastRaw.has(k)) return lastRaw.get(k)!;
     throw e;
   }
 }
+
+/** Names/labels for a slice of payments (cached per address/tx, so relabelling a longer slice is cheap). */
+export const label = (raw: Raw[], me: Address): Promise<Item[]> =>
+  Promise.all(raw.map(async (i) => ({ ...i, who: await who(i.other, i.dir, i.hash, me), when: ago(i.time) })));
+
+/** Newest KEEP payments, labelled (Spends). */
+export const loadActivity = async (me: Address): Promise<Item[]> => label((await payments(me)).slice(0, KEEP), me);
