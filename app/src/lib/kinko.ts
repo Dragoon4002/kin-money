@@ -69,15 +69,15 @@ async function load(me: Address): Promise<Set<Ach>> {
   const inv = await invites;
   if (inv && (inv.invited.length > 0 || inv.invitedBy)) got.add("invite");
   if (streams.status === "fulfilled") {
-    if (streams.value.some((s) => same(s.payee, me) && s.withdrawn > 0n)) got.add("allowance");
-    if (streams.value.some((s) => same(s.payer, me))) got.add("gave");
+    if (streams.value.some((s) => same(s.payee, me) && !same(s.payer, me) && s.withdrawn > 0n)) got.add("allowance");
+    if (streams.value.some((s) => same(s.payer, me) && !same(s.payee, me))) got.add("gave");
   }
   if (pots.status === "fulfilled" && pots.value.some((p) => p.beneficiaries.some((b) => same(b, me)) && p.round > 0n)) got.add("jar");
   if (circles.status === "fulfilled" && circles.value.some((c) => c.members.some((m) => same(m.address, me) && m.paidRound > 0 && !m.defaulted))) got.add("circle");
   if (escrows.status === "fulfilled") {
     const es = escrows.value.escrows;
     if (es.some((e) => e.kind === "chore" && e.settled && e.approved && same(e.to, me) && !same(e.from, me))) got.add("chore");
-    if (es.some((e) => (e.kind === "gift" || e.kind === "link") && same(e.from, me))) got.add("gave");
+    if (es.some((e) => (e.kind === "gift" || e.kind === "link") && same(e.from, me) && !same(e.to, me))) got.add("gave");
   }
   return got;
 }

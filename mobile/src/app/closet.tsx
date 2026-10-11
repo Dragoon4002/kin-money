@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { Lock } from "lucide-react-native";
+import { Lock, Sparkles } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
@@ -114,6 +114,13 @@ export default function Closet() {
           </Text>
         </View>
       )}
+
+      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, borderRadius: 16, backgroundColor: t.surface2, paddingHorizontal: 16, paddingVertical: 12 }}>
+        <Sparkles color={t.ink} size={18} style={{ marginTop: 2 }} />
+        <Text style={{ flex: 1, color: t.muted, fontSize: 14 }}>
+          <Text style={{ color: t.ink, fontWeight: "600", fontSize: 14 }}>Collectible packs, coming soon.</Text> Your Kinko items and Kin Score will turn into packs with rare drops and limited events to collect. Just for fun for now.
+        </Text>
+      </View>
 
       <View style={{ marginTop: "auto", paddingTop: 8 }}>
         <Button title={locked.length ? `Unlock ${locked[0].label} to wear` : changed ? "Save" : "Saved"} disabled={!changed || locked.length > 0} onPress={save} />

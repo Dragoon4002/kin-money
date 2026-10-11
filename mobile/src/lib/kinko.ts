@@ -90,8 +90,8 @@ async function load(me: Address): Promise<Set<Ach>> {
   const inv = await invites;
   if (inv && (inv.invited.length > 0 || inv.invitedBy)) got.add("invite");
   if (streams.status === "fulfilled") {
-    if (streams.value.some((s) => same(s[3], me) && s[5] > 0n)) got.add("allowance");
-    if (streams.value.some((s) => same(s[0], me))) got.add("gave");
+    if (streams.value.some((s) => same(s[3], me) && !same(s[0], me) && s[5] > 0n)) got.add("allowance");
+    if (streams.value.some((s) => same(s[0], me) && !same(s[3], me))) got.add("gave");
   }
   if (pots.status === "fulfilled") {
     // Paid-out pots (round > 0): did any pay me? Recipients come from beneficiariesOf (handles "everyone").
@@ -110,7 +110,7 @@ async function load(me: Address): Promise<Set<Ach>> {
       const chore = !link && !autoApproveAt && unlockAt === CHORE_MARK;
       const gift = !link && !autoApproveAt && unlockAt > CHORE_MARK;
       if (chore && settled && approved && same(to, me) && !same(from, me)) got.add("chore");
-      if ((gift || link) && same(from, me)) got.add("gave");
+      if ((gift || link) && same(from, me) && !same(to, me)) got.add("gave");
     }
   }
   return got;

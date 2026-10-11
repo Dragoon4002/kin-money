@@ -83,6 +83,13 @@ export default function Closet() {
         </p>
       )}
 
+      <div className="flex items-start gap-3 rounded-2xl bg-fun-2/15 px-4 py-3">
+        <Ico name="sparkle" size={18} className="mt-0.5 shrink-0" />
+        <p className="min-w-0 text-sm text-muted">
+          <span className="font-semibold text-ink">Collectible packs, coming soon.</span> Your Kinko items and Kin Score will turn into packs with rare drops and limited events to collect. Just for fun for now.
+        </p>
+      </div>
+
       <div className="sticky bottom-[max(1rem,env(safe-area-inset-bottom))] mt-auto pt-2">
         <Button variant="ink" disabled={!changed || locked.length > 0} onClick={() => (k.setLook(look), setDraft(null), setPicked(null))}>
           {locked.length ? `Unlock ${locked[0].label} to wear` : <span className="inline-flex items-center gap-2"><Ico name={changed ? "sparkle" : "check"} /> {changed ? "Wear" : "Wearing"}</span>}
