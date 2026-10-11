@@ -287,6 +287,9 @@ async function scan() {
   await save(fresh);
 }
 
+/** This instance caught up within the last minute: the client's own tail (newest 300 blocks ≈ 2 min) covers the rest. */
+export const syncedRecently = () => Date.now() - syncedAt < 60_000;
+
 /** Extend the cache toward head and back toward deploy (≤ BUDGET_MS). Concurrent callers share one scan. */
 export function sync(): Promise<void> {
   if (Date.now() - syncedAt < 1_000) return Promise.resolve();

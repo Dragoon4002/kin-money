@@ -6,7 +6,7 @@ import { PersonPicker, type Person } from "@/components/PersonPicker";
 import { PersonRow, Section, SkeletonRows, useSignedIn } from "@/components/social/bits";
 import { Button, Card, ErrorText, Field, Ico, IconTile, Screen, inputClass } from "@/components/ui";
 import { unlock, useAccount } from "@/lib/account";
-import { addContact, listContacts, type Phonebook } from "@/lib/contacts";
+import { addContact, cachedContacts, listContacts, type Phonebook } from "@/lib/contacts";
 import { humanError } from "@/lib/errors";
 import { formatMoney } from "@/lib/money";
 
@@ -15,7 +15,7 @@ const sendTo = (p: Person) => `/send?to=${encodeURIComponent(p.name)}`;
 export default function ContactsPage() {
   useSignedIn();
   const { canRead } = useAccount();
-  const [book, setBook] = useState<Phonebook | null>(null);
+  const [book, setBook] = useState<Phonebook | null>(cachedContacts);
   const [err, setErr] = useState("");
   const [adding, setAdding] = useState(false);
   const [person, setPerson] = useState<Person | null>(null);

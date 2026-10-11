@@ -1,6 +1,6 @@
 import { after } from "next/server";
 import { isAddress } from "viem";
-import { history, mainTransfers, sync, type Kind, warm } from "@/lib/server/history";
+import { history, mainTransfers, sync, syncedRecently, type Kind, warm } from "@/lib/server/history";
 import { allow, clientIp } from "@/lib/server/relayer";
 
 const KINDS = new Set<Kind>(["transfers", "escrow", "pot", "circle", "stream", "mandate", "giftlink"]);
@@ -19,11 +19,13 @@ export async function GET(req: Request) {
     if (!body) return Response.json({ error: "unavailable" }, { status: 503 });
     return Response.json(body, { headers: { "cache-control": "public, s-maxage=5" } });
   }
-  // Persisted history first (fast DB read), then answer within ~1.5s while new blocks are scanned.
+  // Persisted history first (fast DB read). Synced in the last minute → answer now (the client tails the newest
+  // blocks itself); else give the scan ≤1.5s. Either way it finishes after the response.
   await warm();
+  const fresh = syncedRecently();
   const s = sync().catch(() => {});
   after(s);
-  await Promise.race([s, new Promise((r) => setTimeout(r, 1_500))]);
+  if (!fresh) await Promise.race([s, new Promise((r) => setTimeout(r, 1_500))]);
   const body = history(kind, address || undefined);
   if (body.to === "-1") return Response.json({ error: "unavailable" }, { status: 503 });
   return Response.json(body, { headers: { "cache-control": `public, s-maxage=${body.complete ? 30 : 5}` } });

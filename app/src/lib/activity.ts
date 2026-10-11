@@ -65,6 +65,9 @@ export function loadActivity(me: Address): Promise<Item[]> {
 
 const last = new Map<string, Item[]>();
 
+/** Last list loaded for `me` in the current mode, if any (no fetch): Activity shows it while refreshing. */
+export const cachedActivity = (me: Address): Item[] | null => last.get(`${getMode()}:${me.toLowerCase()}`) ?? null;
+
 async function scan(me: Address): Promise<Item[]> {
   const main = getMode() === "main";
   const k = `${main ? "main" : "test"}:${me.toLowerCase()}`;

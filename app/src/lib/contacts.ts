@@ -112,16 +112,26 @@ export async function registerMe(look?: Look): Promise<void> {
 export type Invites = { invited: { name: string; at: number }[]; invitedBy: string | null };
 export const listInvites = () => api<Invites>("/api/invites");
 
-export const listContacts = () => api<Phonebook>("/api/contacts");
+// One phonebook fetch shared by Home, pickers and People (30 s TTL, per account); the last good one is kept so
+// People renders instantly and refreshes behind it.
+let bookCache: { who?: string; at: number; p: Promise<Phonebook> } | null = null;
+let lastBook: { who?: string; book: Phonebook } | null = null;
 
-// One fetch shared by every picker on a screen (pickers remount per pick); 30 s TTL, per account.
-let recentCache: { who?: string; at: number; p: Promise<Person[]> } | null = null;
+export function listContacts(): Promise<Phonebook> {
+  const who = savedAddress();
+  if (bookCache && bookCache.who === who && Date.now() - bookCache.at < 30_000) return bookCache.p;
+  const p = api<Phonebook>("/api/contacts");
+  bookCache = { who, at: Date.now(), p };
+  p.then((book) => (lastBook = { who, book }), () => bookCache?.p === p && (bookCache = null));
+  return p;
+}
+
+/** Last phonebook loaded for this account, if any (no fetch). */
+export const cachedContacts = (): Phonebook | null => (lastBook && lastBook.who === savedAddress() ? lastBook.book : null);
 
 /** Recent + frequent people for pickers (recents first, then saved contacts). Never throws. */
 export function recentPeople(): Promise<Person[]> {
-  const who = savedAddress();
-  if (recentCache && recentCache.who === who && Date.now() - recentCache.at < 30_000) return recentCache.p;
-  const p = listContacts()
+  return listContacts()
     .then((book) => {
       const seen = new Set<string>();
       return [...book.recents, ...book.contacts]
@@ -129,13 +139,12 @@ export function recentPeople(): Promise<Person[]> {
         .slice(0, 8)
         .map(({ address, name }) => ({ address, name }));
     })
-    .catch(() => ((recentCache = null), [] as Person[]));
-  recentCache = { who, at: Date.now(), p };
-  return p;
+    .catch(() => [] as Person[]);
 }
 
 /** Save someone with a nickname ("Mum"). */
-export const addContact = (p: Person, label = "") => api<{ ok: true }>("/api/contacts", "POST", { address: p.address, label });
+export const addContact = (p: Person, label = "") =>
+  api<{ ok: true }>("/api/contacts", "POST", { address: p.address, label }).finally(() => (bookCache = lastBook = null));
 
 /** Ask `to` for `amount` base units, optionally "pay by" `due` (unix ms). */
 export const createRequest = (to: Address, amount: bigint, note: string, due: number | null = null) =>

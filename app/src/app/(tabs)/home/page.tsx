@@ -6,7 +6,7 @@ import { BellButton, MeButton } from "@/components/core/NavBar";
 import type { Person } from "@/components/PersonPicker";
 import { Amount, Avatar, Ico, Screen } from "@/components/ui";
 import { useRequireAccount } from "@/lib/account";
-import { getBalance } from "@/lib/activity";
+import { cachedActivity, getBalance, loadActivity } from "@/lib/activity";
 import { recentPeople } from "@/lib/contacts";
 import { formatMoney } from "@/lib/money";
 import { useCurrencySymbol } from "@/lib/useCurrencySymbol";
@@ -27,6 +27,11 @@ export default function Home() {
     setBalance(null);
     if (me) getBalance(me).then(setBalance).catch(() => setFailed(true));
   }
+
+  // Warm Activity so its tab opens with the list ready.
+  useEffect(() => {
+    if (me && !cachedActivity(me)) loadActivity(me).catch(() => {});
+  }, [me]);
 
   // People need a read session (or unlocked) — Home never pops Face ID.
   useEffect(() => {

@@ -6,7 +6,7 @@ import type { Address } from "viem";
 import { ActivityRow } from "@/components/core/ActivityRow";
 import { Band, Button, Chip, ErrorText, Ico, IconTile, Row, Screen, Tabs, funBg } from "@/components/ui";
 import { useRequireAccount } from "@/lib/account";
-import { ago, loadActivity, type Item } from "@/lib/activity";
+import { ago, cachedActivity, loadActivity, type Item } from "@/lib/activity";
 import { categoryOf } from "@/lib/categories";
 import { forgetLink, myLinkIds, readLink, refundLink } from "@/lib/claimLink";
 import { humanError } from "@/lib/errors";
@@ -52,7 +52,8 @@ export default function Activity() {
   const { profile } = useRequireAccount();
   const me = profile?.address;
   const mode = useMode();
-  const [items, setItems] = useState<Item[] | null>(null);
+  const [loaded, setItems] = useState<Item[] | null>(null);
+  const items = loaded ?? (me ? cachedActivity(me) : null); // last list right away; refresh() replaces it
   const [links, setLinks] = useState<Pending[]>([]);
   const [filter, setFilter] = useState<Filter>("all");
   const [busy, setBusy] = useState<bigint | null>(null);
