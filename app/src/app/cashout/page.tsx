@@ -3,76 +3,113 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { formatUnits } from "viem";
 import { AmountInput, useSignedIn } from "@/components/social/bits";
-import { Button, Card, Chip, Delivered, ErrorText, Field, Ico, Screen, inputClass } from "@/components/ui";
+import { Button, Card, Chip, Delivered, ErrorText, Ico, Screen } from "@/components/ui";
 import { getBalance } from "@/lib/activity";
-import { inr, rupeesFor, saveCashout, UPI_RE } from "@/lib/cashout";
+import { inr, rupeesFor, saveCashout } from "@/lib/cashout";
 import { ROUTES } from "@/lib/cashoutRoutes";
 import { humanError } from "@/lib/errors";
 import type { IconName } from "@/lib/icons";
 import { useMode } from "@/lib/mode";
-import { formatMoney, fromLocal } from "@/lib/money";
+import { fromLocal } from "@/lib/money";
 import { cashOutVia, quoteVia, venueStatus, type Hop } from "@/lib/offramp";
 import { onrampQuote, type OnrampQuote } from "@/lib/onrampWidget";
 
-// One cash-out: amount + UPI ID → Agora's fixed price → one Identity check → dollars settle through Agora
-// (KinCashoutV2, Instant Settlement pair) → Onramp prices the rupees → rupees to the UPI ID.
-// Practice money: the settlement is real (testnet); the rupee payout is the practice part. Real money shows the
-// same route as "coming soon" until Agora onboarding (Via) and Onramp's payout are switched on.
+// Cash out = AUSD → USDC with Agora → INR with Onramp. Amount → Agora's fixed price + Onramp's rupee quote →
+// one Identity check → AUSD settles into USDC through Agora (KinCashoutV2, Instant Settlement pair) → Onramp prices
+// the USDC in rupees → rupees to the bank verified with Onramp. Practice money: the Agora leg is real (testnet, test
+// USDC); the rupee payout is the practice part. Real money shows the same route as "coming soon".
+// AUSD/USDC are named on this screen on purpose (user decision, Oct 11; docs/PRODUCT.md).
 
 type StepState = "todo" | "doing" | "done" | "practice";
 type Step = { icon: IconName; title: string; sub?: string; state: StepState };
-type Run = { phase: 1 | 2 | 3; hash?: string; hops?: Hop[]; rupees?: number; quote?: OnrampQuote };
+type Run = { phase: 1 | 2 | 3; hash?: string; hops?: Hop[]; usdc?: number; rupees?: number; quote?: OnrampQuote };
 
 export default function CashOut() {
   const mode = useMode();
-  return <Screen title="Cash out to UPI" back="/money">{mode === "main" ? <RealSoon /> : <Practice />}</Screen>;
+  return <Screen title="Cash out" back="/money">{mode === "main" ? <RealSoon /> : <Practice />}</Screen>;
+}
+
+const usd = (n: number) => n.toFixed(2);
+
+/** AUSD —Agora→ USDC —Onramp→ INR, with the amount at each stop. */
+function Route({ ausd, usdc, rupees, live }: { ausd?: number; usdc?: number; rupees?: number; live?: 0 | 1 | 2 | 3 }) {
+  const stops = [
+    ["AUSD", ausd !== undefined ? usd(ausd) : "—"],
+    ["USDC", usdc !== undefined ? usd(usdc) : "—"],
+    ["INR", rupees !== undefined ? inr(rupees) : "—"],
+  ] as const;
+  const by = ["Agora", "Onramp"];
+  return (
+    <Card className="flex items-center justify-between gap-1 text-center">
+      {stops.map(([coin, amt], i) => (
+        <div key={coin} className="contents">
+          <div className={`flex min-w-0 flex-col ${live !== undefined && live < i + 1 ? "opacity-50" : ""}`}>
+            <span className="text-xs font-semibold text-muted">{coin}</span>
+            <span className="tabular truncate font-display text-lg">{amt}</span>
+          </div>
+          {i < 2 && (
+            <div className="flex shrink-0 flex-col items-center text-xs text-muted">
+              <span>{by[i]}</span>
+              <span aria-hidden className="text-lg leading-none">→</span>
+            </div>
+          )}
+        </div>
+      ))}
+    </Card>
+  );
 }
 
 function Practice() {
   const me = useSignedIn()?.address;
   const [amount, setAmount] = useState("");
-  const [upi, setUpi] = useState("");
   const [ready, setReady] = useState<boolean | null>(null);
-  const [q, setQ] = useState<{ units: bigint; out: bigint } | null>(null);
+  const [q, setQ] = useState<{ units: bigint; out: bigint; quote?: OnrampQuote } | null>(null);
   const [run, setRun] = useState<Run | null>(null);
   const [err, setErr] = useState("");
 
   const units = Number(amount) > 0 ? fromLocal(amount) : 0n;
-  const upiOk = UPI_RE.test(upi.trim());
   const settle = ROUTES.test.settle;
 
   useEffect(() => {
     venueStatus("test").then((s) => setReady(s.agora.ok), () => setReady(false));
   }, []);
 
-  // Re-quote as the amount changes (debounced): Agora's live fixed price on its settlement pair.
+  // Re-quote as the amount changes (debounced): Agora's fixed price, then Onramp's rupees for that USDC.
   useEffect(() => {
     if (units === 0n || !ready) return;
     let live = true;
-    const t = setTimeout(() => quoteVia("test", "agora", units).then((out) => live && setQ({ units, out }), () => live && setQ(null)), 300);
+    const t = setTimeout(async () => {
+      try {
+        const out = await quoteVia("test", "agora", units);
+        const quote = await onrampQuote(formatUnits(out, settle.decimals).replace(/(\.\d{6})\d+$/, "$1")).catch(() => undefined);
+        if (live) setQ({ units, out, quote });
+      } catch {
+        if (live) setQ(null);
+      }
+    }, 300);
     return () => {
       live = false;
       clearTimeout(t);
     };
-  }, [units, ready]);
+  }, [units, ready, settle.decimals]);
   const shown = q && q.units === units ? q : null;
-  const dollars = shown ? Number(formatUnits(shown.out, settle.decimals)) : 0;
-  const est = rupeesFor(dollars);
+  const usdc = shown ? Number(formatUnits(shown.out, settle.decimals)) : 0;
+  const est = rupeesFor(usdc);
+  const rupees = shown?.quote?.rupees ?? est.inr;
 
   async function submit() {
     if (!me || !shown) return;
-    const to = upi.trim();
     setErr("");
     setRun({ phase: 1 });
     try {
       if ((await getBalance(me)) < shown.units) throw new Error("insufficient balance");
-      const l1 = await cashOutVia("test", "agora", shown.units, shown.out, to);
-      setRun({ phase: 2, hash: l1.hash, hops: l1.hops });
-      const got = formatUnits(l1.received, settle.decimals).replace(/(\.\d{6})\d+$/, "$1");
-      const quote = await onrampQuote(got).catch(() => undefined);
-      const rupees = quote?.rupees ?? rupeesFor(Number(got)).inr;
-      saveCashout(l1.hash, { upi: to, rupees, practice: true });
-      setRun({ phase: 3, hash: l1.hash, hops: l1.hops, rupees, quote });
+      const l1 = await cashOutVia("test", "agora", shown.units, shown.out, "");
+      const got = Number(formatUnits(l1.received, settle.decimals));
+      setRun({ phase: 2, hash: l1.hash, hops: l1.hops, usdc: got });
+      const quote = await onrampQuote(got.toFixed(6)).catch(() => undefined);
+      const paid = quote?.rupees ?? rupeesFor(got).inr;
+      saveCashout(l1.hash, { rupees: paid, practice: true });
+      setRun({ phase: 3, hash: l1.hash, hops: l1.hops, usdc: got, rupees: paid, quote });
     } catch (e) {
       setRun(null);
       setErr(humanError(e));
@@ -81,21 +118,28 @@ function Practice() {
 
   if (run) {
     const at = (p: number): StepState => (run.phase > p ? "done" : run.phase === p ? "doing" : "todo");
+    const ausd = Number(formatUnits(shown?.units ?? 0n, 6));
     const steps: Step[] = [
-      { icon: "lock", title: "Price locked with Agora", sub: `${formatMoney(shown?.units ?? 0n, "USD")} at Agora's fixed price`, state: "done" },
-      { icon: "dollar", title: "Your dollars settle through Agora", sub: run.phase === 1 ? "Confirm with your Identity check" : "Settled in about a second", state: at(1) },
+      { icon: "lock", title: "Price locked", sub: `${usd(ausd)} AUSD at Agora's fixed price`, state: "done" },
+      {
+        icon: "dollar",
+        title: "AUSD → USDC with Agora",
+        sub: run.phase === 1 ? "Confirm with your Identity check" : `${usd(run.usdc ?? 0)} USDC settled in about a second`,
+        state: at(1),
+      },
       {
         icon: "payout",
-        title: "Onramp prices your rupees",
-        sub: run.quote ? `₹${run.quote.rate.toFixed(2)} per dollar · fees and 1% tax included` : run.phase === 3 ? "Estimated at today's rate" : undefined,
+        title: "USDC → INR with Onramp",
+        sub: run.quote ? `₹${run.quote.rate.toFixed(2)} per USDC · fees and 1% tax included` : run.phase === 3 ? "Estimated at today's rate" : undefined,
         state: at(2),
       },
-      { icon: "send", title: run.rupees ? `${inr(run.rupees)} to ${upi.trim()}` : `Rupees to ${upi.trim()}`, sub: "Practice money: no rupees move", state: run.phase === 3 ? "practice" : "todo" },
+      { icon: "send", title: run.rupees ? `${inr(run.rupees)} to your bank` : "Rupees to your bank", sub: "Practice money: no rupees move", state: run.phase === 3 ? "practice" : "todo" },
     ];
     const body = (
       <div className="flex flex-col gap-4 text-left">
+        <Route ausd={ausd} usdc={run.usdc} rupees={run.rupees} live={run.phase === 3 ? 3 : run.phase === 2 ? 2 : 1} />
         <Steps steps={steps} />
-        {run.hops && <Flow hops={run.hops} rupees={run.rupees} upi={upi.trim()} />}
+        {run.hops && <Flow hops={run.hops} rupees={run.rupees} />}
         {run.hash && (
           <Link href={`/details?tx=${run.hash}`} className="block text-center text-sm font-semibold text-brand">
             Proof of payment
@@ -106,7 +150,7 @@ function Practice() {
     if (run.phase < 3) return body;
     return (
       <>
-        <Delivered sound="cashout" title={`${inr(run.rupees!)} on its way`} subtitle={`To ${upi.trim()} · Practice cash-out`}>
+        <Delivered sound="cashout" title={`${inr(run.rupees!)} on its way`} subtitle="AUSD → USDC → INR · Practice cash-out">
           {body}
         </Delivered>
         <div className="mt-auto pt-2">
@@ -120,30 +164,40 @@ function Practice() {
     <>
       <AmountInput label="How much?" value={amount} onChange={(v) => (setAmount(v), setErr(""))} />
 
-      <Field label="Your UPI ID" hint={upi && !upiOk ? "Looks like name@bank" : undefined}>
-        <input className={inputClass} placeholder="name@okbank" value={upi} onChange={(e) => (setUpi(e.target.value), setErr(""))}
-          autoCapitalize="none" autoCorrect="off" spellCheck={false} inputMode="email" maxLength={100} />
-      </Field>
+      <Route ausd={units ? Number(formatUnits(units, 6)) : undefined} usdc={shown ? usdc : undefined} rupees={shown ? rupees : undefined} />
 
       {ready === false && <ErrorText>Cash out is resting right now. Try again soon.</ErrorText>}
 
       {shown && (
         <Card className="flex flex-col gap-2 text-sm">
           <div className="flex items-center justify-between">
-            <span className="font-semibold">You get about</span>
-            <span className="font-display text-2xl">{inr(est.inr)}</span>
+            <span className="font-semibold">You get {shown.quote ? "" : "about"}</span>
+            <span className="font-display text-2xl">{inr(rupees)}</span>
           </div>
-          <Row k={`${formatMoney(shown.units, "USD")} at ${inr(est.rate)} / $1`} v={inr(est.gross)} />
-          <Row k="Payout fee" v={`− ${inr(est.fee)}`} />
-          <Row k="Tax deducted (TDS 1%)" v={`− ${inr(est.tds)}`} />
-          <p className="pt-1 text-xs text-muted">Agora settles your dollars at a fixed price · Onramp pays the rupees · Practice money</p>
+          <Row k="AUSD → USDC with Agora" v={`${usd(usdc)} USDC`} />
+          {shown.quote ? (
+            <>
+              <Row k={`USDC → INR at ₹${shown.quote.rate.toFixed(2)}`} v={inr(usdc * shown.quote.rate)} />
+              <Row k="Onramp + bank fees" v={`− ${inr(shown.quote.fees.onramp + shown.quote.fees.gateway)}`} />
+              <Row k="Tax deducted (TDS 1%)" v={`− ${inr(shown.quote.fees.tds)}`} />
+            </>
+          ) : (
+            <>
+              <Row k={`USDC → INR at ${inr(est.rate)}`} v={inr(est.gross)} />
+              <Row k="Payout fee" v={`− ${inr(est.fee)}`} />
+              <Row k="Tax deducted (TDS 1%)" v={`− ${inr(est.tds)}`} />
+            </>
+          )}
+          <p className="pt-1 text-xs text-muted">
+            Practice money: Agora settles into its test USDC; Onramp {shown.quote?.sandbox ? "quotes from its sandbox" : "rate estimated"}; rupees go to the bank you verify once with Onramp.
+          </p>
         </Card>
       )}
 
       <ErrorText>{err}</ErrorText>
       <div className="mt-auto pt-2">
-        <Button onClick={submit} disabled={!shown || !upiOk || est.inr <= 0}>
-          {shown ? `Cash out ${inr(est.inr)}` : "Cash out"}
+        <Button onClick={submit} disabled={!shown || rupees <= 0}>
+          {shown ? `Cash out ${inr(rupees)}` : "Cash out"}
         </Button>
       </div>
     </>
@@ -153,17 +207,16 @@ function Practice() {
 /** Real money: the same route, switched on once Agora onboarding and Onramp's payout are live. */
 function RealSoon() {
   const steps: Step[] = [
-    { icon: "lock", title: "Agora quotes a fixed price", sub: "Locked for 3 minutes", state: "todo" },
-    { icon: "dollar", title: "Your dollars settle through Agora", sub: "One Identity check, no fees from Kin", state: "todo" },
-    { icon: "payout", title: "Onramp pays rupees to your UPI ID", sub: "Verified once with Onramp", state: "todo" },
+    { icon: "dollar", title: "AUSD → USDC with Agora", sub: "Fixed price, locked for 3 minutes", state: "todo" },
+    { icon: "payout", title: "USDC → INR with Onramp", sub: "Live rate, fees and 1% tax shown first", state: "todo" },
+    { icon: "send", title: "Rupees to your bank", sub: "Verified once with Onramp", state: "todo" },
   ];
   return (
     <>
+      <Route />
       <Card className="flex flex-col gap-2">
         <Chip tone="warn">Coming soon</Chip>
-        <p className="text-sm text-muted">
-          Real-money cash-out to Indian bank accounts is in onboarding with Agora and Onramp. Here&apos;s how it will work.
-        </p>
+        <p className="text-sm text-muted">Real-money cash-out is in onboarding with Agora and Onramp. Here&apos;s how it will work.</p>
       </Card>
       <Steps steps={steps} />
       <p className="px-1 text-sm text-muted">Turn off Real money in Me to try a practice cash-out now.</p>
@@ -199,7 +252,7 @@ function Steps({ steps }: { steps: Step[] }) {
 }
 
 /** Every money movement in the cash-out, read from the receipt, plus the rupee leg. */
-function Flow({ hops, rupees, upi }: { hops: Hop[]; rupees?: number; upi: string }) {
+function Flow({ hops, rupees }: { hops: Hop[]; rupees?: number }) {
   return (
     <Card className="flex flex-col gap-2 text-sm">
       <span className="font-semibold">Where your money goes</span>
@@ -211,7 +264,7 @@ function Flow({ hops, rupees, upi }: { hops: Hop[]; rupees?: number; upi: string
           </li>
         ))}
         <li className="flex items-start justify-between gap-3 text-muted">
-          <span>{hops.length + 1}. Onramp → {upi}</span>
+          <span>{hops.length + 1}. Onramp → your bank</span>
           <span className="tabular shrink-0">{rupees ? `${inr(rupees)} · practice` : "…"}</span>
         </li>
       </ol>

@@ -200,7 +200,7 @@ export function Proof() {
         <Card className="mx-5 mb-4 flex flex-col gap-1">
           <span className="text-sm text-muted">Cashed out</span>
           <span className="font-display text-3xl">{inr(cash.rupees)}</span>
-          <span className="text-sm text-muted">To {cash.upi}{cash.practice ? " · Practice: no rupees moved" : ""}</span>
+          <span className="text-sm text-muted">AUSD → USDC with Agora → INR with Onramp{cash.practice ? " · Practice: no rupees moved" : ""}</span>
         </Card>
       )}
 

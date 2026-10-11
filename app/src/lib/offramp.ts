@@ -77,8 +77,8 @@ export function hopsFrom(net: Mode, logs: Log[], me: Address, hash: Hex): Hop[] 
     .map((l) => ({
       from: label(net, l.args.from, me),
       to: label(net, l.args.to, me),
-      // Both sides are dollars (practice: Agora's settlement dollar; real: USDC). Never name the coins in the UI.
-      amount: `$${Number(formatUnits(l.args.value, isAddressEqual(l.address, ausd) ? 6 : s.decimals)).toFixed(2)}`,
+      // Cash-out names the coins (user decision, Oct 11). Practice settles into Agora's test USDC (CTK).
+      amount: isAddressEqual(l.address, ausd) ? `${Number(formatUnits(l.args.value, 6)).toFixed(2)} AUSD` : `${Number(formatUnits(l.args.value, s.decimals)).toFixed(2)} USDC`,
       proof: `${explorer}/tx/${hash}`,
     }));
 }

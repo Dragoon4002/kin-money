@@ -1,7 +1,7 @@
 "use client";
 import { isAddressEqual, parseEventLogs, type Address, type Hex } from "viem";
 import { KinCircleAbi, KinEscrowAbi, KinGiftLinkAbi, KinMandateAbi, KinPotAbi, KinStreamAbi } from "./abi";
-import { cashoutOf } from "./cashout";
+import { cashoutOf, inr } from "./cashout";
 import { ROUTES } from "./cashoutRoutes";
 import { addr, publicClient } from "./chain";
 import { nameOf, shortAddr } from "./names";
@@ -66,8 +66,8 @@ function fallback(other: Address): string {
 
 async function read(hash: Hex, other: Address, dir: "in" | "out", me: Address): Promise<string> {
   if (isCashout(other)) {
-    const rec = cashoutOf(hash); // UPI ID is remembered on this phone only (never on-chain)
-    return rec ? `Cash out to ${rec.upi}` : "Cash out";
+    const rec = cashoutOf(hash); // rupees are remembered on this phone only (never on-chain)
+    return rec ? `Cash out · ${inr(rec.rupees)}` : "Cash out";
   }
   const { logs } = await publicClient.getTransactionReceipt({ hash });
   const mine = logs.filter((l) => isAddressEqual(l.address, other));
