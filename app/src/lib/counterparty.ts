@@ -1,6 +1,8 @@
 "use client";
 import { isAddressEqual, parseEventLogs, type Address, type Hex } from "viem";
 import { KinCircleAbi, KinEscrowAbi, KinGiftLinkAbi, KinMandateAbi, KinPotAbi, KinStreamAbi } from "./abi";
+import { cashoutOf } from "./cashout";
+import { ROUTES } from "./cashoutRoutes";
 import { addr, publicClient } from "./chain";
 import { nameOf, shortAddr } from "./names";
 import { getEscrow, getPot, getStream, isJar, ZERO, type EscrowKind } from "./programs";
@@ -9,8 +11,10 @@ import { getEscrow, getPot, getStream, isJar, ZERO, type EscrowKind } from "./pr
 // contract address, which has no @name. This turns it into what the payment was *for*, read from the
 // contract's own event in the same transaction: "Chore for @b", "Allowance from @mum", "Savings jar"…
 
+const CASHOUTS = [addr.cashout, ROUTES.test.cashout, ROUTES.main.cashout].filter((a): a is Address => !!a);
+const isCashout = (a: Address) => CASHOUTS.some((k) => isAddressEqual(k, a));
 const KIN = (a: Address) =>
-  [addr.escrow, addr.stream, addr.pot, addr.circle, addr.mandate, addr.giftlink, addr.cashout].some((k) => isAddressEqual(k, a));
+  isCashout(a) || [addr.escrow, addr.stream, addr.pot, addr.circle, addr.mandate, addr.giftlink].some((k) => isAddressEqual(k, a));
 export const isKinContract = KIN;
 
 const names = new Map<string, Promise<string>>();
@@ -56,11 +60,15 @@ function fallback(other: Address): string {
   if (isAddressEqual(other, addr.circle)) return "Savings circle";
   if (isAddressEqual(other, addr.mandate)) return "AutoPay";
   if (isAddressEqual(other, addr.giftlink)) return "Gift link";
-  if (isAddressEqual(other, addr.cashout)) return "Cash out";
+  if (isCashout(other)) return "Cash out";
   return "Kin";
 }
 
 async function read(hash: Hex, other: Address, dir: "in" | "out", me: Address): Promise<string> {
+  if (isCashout(other)) {
+    const rec = cashoutOf(hash); // UPI ID is remembered on this phone only (never on-chain)
+    return rec ? `Cash out to ${rec.upi}` : "Cash out";
+  }
   const { logs } = await publicClient.getTransactionReceipt({ hash });
   const mine = logs.filter((l) => isAddressEqual(l.address, other));
 

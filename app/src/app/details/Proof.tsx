@@ -7,6 +7,7 @@ import { share } from "@/components/core/share";
 import { MyKinko } from "@/components/kinko/PersonKinko";
 import { Amount, Band, Button, Card, Chip, Ico, IconTile, Row, Screen } from "@/components/ui";
 import { useRequireAccount } from "@/lib/account";
+import { cashoutOf, inr } from "@/lib/cashout";
 import { CATEGORIES, categoryOf, setCategory, noteOf } from "@/lib/categories";
 import { money as moneyNet, networks, type Network } from "@/lib/chain";
 import { savedLook } from "@/lib/kinko";
@@ -93,6 +94,7 @@ export function Proof() {
   const [failed, setFailed] = useState(false);
   // Client-only under Suspense (useSearchParams), so localStorage reads are safe here.
   const [cat, setCat] = useState(() => (hash ? categoryOf(hash) : null));
+  const [cash] = useState(() => (hash ? cashoutOf(hash) : null)); // UPI + rupees, remembered on this phone
   const [editing, setEditing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [cardCopied, setCardCopied] = useState(false);
@@ -193,6 +195,14 @@ export function Proof() {
           </Link>
         )}
       </Card>
+
+      {cash && (
+        <Card className="mx-5 mb-4 flex flex-col gap-1">
+          <span className="text-sm text-muted">Cashed out</span>
+          <span className="font-display text-3xl">{inr(cash.rupees)}</span>
+          <span className="text-sm text-muted">To {cash.upi}{cash.practice ? " · Practice: no rupees moved" : ""}</span>
+        </Card>
+      )}
 
       {r.out && cat && (
         <section className="flex flex-col">

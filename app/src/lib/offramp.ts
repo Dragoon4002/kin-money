@@ -77,7 +77,8 @@ export function hopsFrom(net: Mode, logs: Log[], me: Address, hash: Hex): Hop[] 
     .map((l) => ({
       from: label(net, l.args.from, me),
       to: label(net, l.args.to, me),
-      amount: isAddressEqual(l.address, ausd) ? `$${formatUnits(l.args.value, 6)} AUSD` : `${formatUnits(l.args.value, s.decimals)} ${s.symbol}`,
+      // Both sides are dollars (practice: Agora's settlement dollar; real: USDC). Never name the coins in the UI.
+      amount: `$${Number(formatUnits(l.args.value, isAddressEqual(l.address, ausd) ? 6 : s.decimals)).toFixed(2)}`,
       proof: `${explorer}/tx/${hash}`,
     }));
 }
