@@ -109,7 +109,7 @@ export async function registerMe(look?: Look): Promise<void> {
   await api("/api/contacts/me", "POST", { look, ref: HANDLE_RE.test(ref) ? ref : undefined }).catch(() => {});
 }
 
-export type Invites = { invited: { name: string; at: number }[]; invitedBy: string | null };
+export type Invites = { invited: { name: string; at: number; active: boolean }[]; invitedBy: string | null };
 export const listInvites = () => api<Invites>("/api/invites");
 
 // One phonebook fetch shared by Home, pickers and People (30 s TTL, per account). The last good one is also kept

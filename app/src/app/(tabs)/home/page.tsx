@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { RefPrompt } from "@/components/referral/RefPrompt";
 import { Keypad } from "@/components/core/Keypad";
 import { BellButton, MeButton } from "@/components/core/NavBar";
 import type { Person } from "@/components/PersonPicker";
@@ -50,6 +51,7 @@ export default function Home() {
 
   return (
     <>
+      <RefPrompt enabled={canRead} />
       <Screen>
         <header className="flex h-12 items-center gap-3">
           <p className="flex-1 truncate text-lg font-semibold">Hi{profile?.name ? `, ${profile.name}` : ""}</p>

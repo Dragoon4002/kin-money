@@ -43,9 +43,10 @@ export const ITEMS: Item[] = [
 
 // ---------- referrals ----------
 
-/** Store `?ref=<handle>` from the URL (first one wins; not for people already on Kin). Call once on `/`. Sent to the server by registerMe. */
+/** Store `?ref=<handle>` (or `?u=`) from the URL (first one wins; not for people already on Kin). Call once on `/`. Sent to the server by registerMe. */
 export function captureRef() {
-  const ref = new URLSearchParams(location.search).get("ref")?.toLowerCase();
+  const sp = new URLSearchParams(location.search);
+  const ref = (sp.get("ref") ?? sp.get("u"))?.toLowerCase();
   if (ref && HANDLE_RE.test(ref) && !localStorage.getItem("kin.ref") && !localStorage.getItem("kin.account")) localStorage.setItem("kin.ref", ref);
 }
 

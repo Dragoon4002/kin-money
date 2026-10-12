@@ -1,13 +1,28 @@
 "use client";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Kinko } from "@/components/kinko/Kinko";
 import { Avatar, Button, Card, Ico, Row, Screen } from "@/components/ui";
-import { useRequireAccount } from "@/lib/account";
+import { useAccount, useRequireAccount } from "@/lib/account";
 import { ago } from "@/lib/activity";
 import { listInvites, type Invites } from "@/lib/contacts";
 import { noteInvite, useKinko } from "@/lib/kinko";
+import { inviteLink, PERKS } from "@/lib/referralPerks";
 
-export default function Invite() {
+/** /invite?u=<handle> is the shareable link; /invite alone is my own page. */
+export default function InvitePage() {
+  const router = useRouter();
+  const { ready, profile } = useAccount();
+  const u = ready ? new URLSearchParams(location.search).get("u")?.toLowerCase() : null;
+  useEffect(() => {
+    if (!u) return;
+    router.replace(profile ? "/invite" : `/?ref=${encodeURIComponent(u)}`); // new visitor → signup carrying the referrer
+  }, [u, profile, router]);
+  if (!ready || u) return <Screen><p className="m-auto text-muted">One moment…</p></Screen>;
+  return <Invite />;
+}
+
+function Invite() {
   const { profile, canRead } = useRequireAccount();
   const { look } = useKinko(profile?.address);
   const [copied, setCopied] = useState(false);
@@ -18,7 +33,7 @@ export default function Invite() {
   }, [canRead]);
 
   const handle = profile?.name;
-  const link = typeof window === "undefined" || !handle ? "" : `${location.origin}/?ref=${encodeURIComponent(handle)}`;
+  const link = typeof window === "undefined" || !handle ? "" : inviteLink(location.origin, handle);
   const text = `Join me on Kin, money for family and friends. We both get a party hat for our Kinko 🎉 ${link}`;
 
   async function share() {
@@ -64,13 +79,15 @@ export default function Invite() {
         </Card>
       )}
 
+      {invites && <Progress invites={invites} />}
+
       {invites && (
         <section>
           <h3 className="mb-2 px-1 text-sm font-semibold text-muted">People who joined with your link</h3>
           <div className="overflow-hidden rounded-[28px] border border-line bg-surface">
             {invites.invited.length ? (
               invites.invited.map((p) => (
-                <Row key={p.name} icon={<Avatar name={p.name} />} title={`@${p.name}`} trail={<span className="shrink-0 text-sm text-muted">{ago(p.at)}</span>} />
+                <Row key={p.name} icon={<Avatar name={p.name} />} title={`@${p.name}`} sub={p.active ? "Made a payment ✓" : "Hasn't paid yet"} trail={<span className="shrink-0 text-sm text-muted">{ago(p.at)}</span>} />
               ))
             ) : (
               <p className="px-5 py-4 text-sm text-muted">No one yet. Friends who join with your link show up here.</p>
@@ -95,5 +112,34 @@ export default function Invite() {
         </Button>
       </div>
     </Screen>
+  );
+}
+
+function Progress({ invites }: { invites: Invites }) {
+  const joined = invites.invited.length;
+  const active = invites.invited.filter((p) => p.active).length;
+  const next = PERKS.find((k) => k.at > active);
+  const prev = [...PERKS].reverse().find((k) => k.at <= active)?.at ?? 0;
+  const pct = next ? Math.round(((active - prev) / (next.at - prev)) * 100) : 100;
+  return (
+    <Card className="flex flex-col gap-3">
+      <div className="flex gap-3 text-center">
+        <div className="flex-1"><p className="font-display text-4xl">{joined}</p><p className="text-sm text-muted">joined</p></div>
+        <div className="flex-1"><p className="font-display text-4xl">{active}</p><p className="text-sm text-muted">made a payment</p></div>
+      </div>
+      <div role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} className="h-3 overflow-hidden rounded-full bg-surface-2">
+        <div className="h-full rounded-full bg-brand transition-all" style={{ width: `${pct}%` }} />
+      </div>
+      <p className="text-center text-sm text-muted">
+        {next ? `${next.at - active} more friend${next.at - active > 1 ? "s" : ""} making a payment unlocks: ${next.label}` : "All perks unlocked 🎉"}
+      </p>
+      <ul className="flex flex-col gap-1.5">
+        {PERKS.map((k) => (
+          <li key={k.at} className={`flex items-center gap-2 text-sm ${active >= k.at ? "font-semibold" : "text-muted"}`}>
+            <Ico name={active >= k.at ? "check" : "lock"} size={16} /> {k.at} friend{k.at > 1 ? "s" : ""}: {k.label}
+          </li>
+        ))}
+      </ul>
+    </Card>
   );
 }
