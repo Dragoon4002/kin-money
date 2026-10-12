@@ -4,6 +4,7 @@ import { confirmPayment, getAccount } from "./account";
 import { networks, type Mode } from "./chain";
 import { payoutRef } from "./cashout";
 import { ROUTES, termsNonce, venueId, type Venue } from "./cashoutRoutes";
+import { ADD_MONEY, addMoneyNonce } from "./addMoneyTerms";
 
 // Cash-out through KinCashoutV2 on either network: quote per venue, one Identity check, relay submits, then the
 // receipt's transfers become the "where your money goes" hops. Exchanged money lands in the user's own account;
@@ -145,4 +146,36 @@ export async function payOut(usdc: bigint, deposit: Address): Promise<{ hash: He
   const receipt = await relay("main", { kind: "usdc", auth, signature });
   const hash = receipt.transactionHash;
   return { hash, hop: { from: "You", to: "Onramp", amount: `${formatUnits(usdc, s.decimals)} ${s.symbol}`, proof: `${networks.main.explorer}/tx/${hash}` } };
+}
+
+/**
+ * Add money (real money): USDC that arrived from another chain (Aurora Intents) → dollars in the user's own account
+ * via KinAddMoney (Uniswap v4 AUSD/USDC pool). One Identity check; up to 0.5% slack on the quote.
+ */
+export async function convertToDollars(usdc: bigint): Promise<{ hash: Hex; ausdOut: bigint }> {
+  if (!ADD_MONEY) throw new Error("not available");
+  const { client, ausd, chain } = networks.main;
+  const s = ROUTES.main.settle;
+  const u = ROUTES.main.uniswap!;
+  const zeroForOne = BigInt(s.address) < BigInt(ausd); // USDC in
+  const [c0, c1] = zeroForOne ? [s.address, ausd] : [ausd, s.address];
+  const [out] = await client.readContract({
+    address: u.quoter, abi: quoterAbi, functionName: "quoteExactInputSingle",
+    args: [{ poolKey: { currency0: c0, currency1: c1, fee: u.fee, tickSpacing: u.tickSpacing, hooks: ZERO }, zeroForOne, exactAmount: usdc, hookData: "0x" }],
+  });
+  await confirmPayment(usdc);
+  const account = await getAccount();
+  const terms = { to: account.address, minOut: (out * 995n) / 1000n, salt: salt() };
+  const auth = { from: account.address, to: ADD_MONEY, value: usdc, validAfter: 0n, validBefore: now() + 3600n, nonce: addMoneyNonce(terms) };
+  const signature = await account.signTypedData({
+    domain: { name: "USDC", version: "2", chainId: chain.id, verifyingContract: s.address }, // Circle USDC on Monad (checked on-chain)
+    types: { ReceiveWithAuthorization: AUTH },
+    primaryType: "ReceiveWithAuthorization",
+    message: auth,
+  });
+  const receipt = await relay("main", { kind: "addmoney", from: auth.from, terms, value: usdc, validAfter: auth.validAfter, validBefore: auth.validBefore, signature });
+  const ausdOut = parseEventLogs({ abi: transferAbi, logs: receipt.logs, eventName: "Transfer" })
+    .filter((l) => isAddressEqual(l.address, ausd) && isAddressEqual(l.args.to, account.address))
+    .reduce((sum, l) => sum + l.args.value, 0n);
+  return { hash: receipt.transactionHash, ausdOut };
 }

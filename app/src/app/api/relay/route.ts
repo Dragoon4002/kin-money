@@ -1,5 +1,6 @@
 import { isAddress, isHex, parseAbi, type Address, type Hex } from "viem";
-import { KinCashoutV2Abi, KinForwarderAbi } from "@/lib/abi";
+import { KinAddMoneyAbi, KinCashoutV2Abi, KinForwarderAbi } from "@/lib/abi";
+import { ADD_MONEY, addMoneyNonce } from "@/lib/addMoneyTerms";
 import { addr, networks, publicClient } from "@/lib/chain";
 import { ROUTES, termsNonce, VENUES } from "@/lib/cashoutRoutes";
 import { allowShared, releaseShared } from "@/lib/server/graph";
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
   try {
     // Real money (mainnet): plain sends only. Programs and links stay on the practice network.
     const net = body?.net === "main" ? "main" : "test";
-    if (net === "main" && body?.kind !== "3009" && body?.kind !== "cashout" && body?.kind !== "usdc") return bad("not available");
+    if (net === "main" && body?.kind !== "3009" && body?.kind !== "cashout" && body?.kind !== "usdc" && body?.kind !== "addmoney") return bad("not available");
     // "usdc": the cash-out's second leg — exchanged USDC (EIP-3009) to the payout deposit account. Real money only.
     if (body?.kind === "usdc" && net !== "main") return bad("not available");
     if (body?.kind === "3009" || body?.kind === "usdc") {
@@ -70,6 +71,28 @@ export async function POST(req: Request) {
           args: [from as Address, terms, BigInt(value), BigInt(validAfter), BigInt(validBefore), signature as Hex],
         },
         GAS_CAP,
+        net,
+      );
+      return Response.json({ hash });
+    }
+    if (body?.kind === "addmoney") {
+      // KinAddMoney (real money only): USDC that arrived from another chain (Aurora Intents) → dollars. One signed
+      // EIP-3009 USDC pull whose nonce commits to {to, minOut, salt} (lib/addMoneyTerms.ts), so the relay can't alter them.
+      if (net !== "main" || !ADD_MONEY) return bad("not available");
+      const { from, terms: t, value, validAfter, validBefore, signature } = body;
+      if (!isAddress(from) || !isAddress(t?.to) || !(isHex(t.salt) && t.salt.length === 66) || !isHex(signature)) return bad("invalid");
+      if (![value, validAfter, validBefore, t.minOut].every(uint) || BigInt(value) < MIN_MAIN_VALUE) return bad("invalid");
+      if (!allow(`from:${from.toLowerCase()}`, 10)) return bad("slow down", 429);
+      if (!(await allowShared(`relay-from:${from.toLowerCase()}`, 200, 86_400_000))) return bad("slow down", 429);
+      const terms = { to: t.to as Address, minOut: BigInt(t.minOut), salt: t.salt as Hex };
+      const k = `addmoney:${from.toLowerCase()}:${addMoneyNonce(terms)}`;
+      if (!once(k) || !(await allowShared(k, 1, 3_600_000))) return bad("duplicate", 409);
+      const hash = await submit(
+        {
+          address: ADD_MONEY, abi: KinAddMoneyAbi, functionName: "addMoney",
+          args: [from as Address, terms, BigInt(value), BigInt(validAfter), BigInt(validBefore), signature as Hex],
+        },
+        400_000n, // fork-measured 322,583
         net,
       );
       return Response.json({ hash });

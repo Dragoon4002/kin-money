@@ -95,6 +95,14 @@ export default function Money() {
         </section>
         <ErrorText>{err}</ErrorText>
 
+        <Link href="/add" className="flex min-h-16 items-center gap-4 rounded-[24px] border border-line bg-surface p-4 transition active:scale-[0.98]">
+          <span className="min-w-0 flex-1">
+            <span className="block font-semibold">Add money</span>
+            <span className="block text-sm text-muted">From another account or exchange</span>
+          </span>
+          <Ico name="chevron" className="text-muted" />
+        </Link>
+
         <Link href="/cashout" className="flex min-h-16 items-center gap-4 rounded-[24px] border border-line bg-surface p-4 transition active:scale-[0.98]">
           <span className="min-w-0 flex-1">
             <span className="block font-semibold">Cash out to UPI</span>
