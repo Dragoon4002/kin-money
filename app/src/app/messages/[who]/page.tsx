@@ -187,7 +187,7 @@ export default function ChatPage() {
           if (m.kind === "payment")
             return (
               <div key={m.id} className="my-1 flex justify-center">
-                <Chip tone="good">{mine ? "You paid" : `${name} paid you`} {formatMoney(BigInt(m.ref || "0"))} ✓✓</Chip>
+                <Chip tone="good">{mine ? "You paid" : `${name} paid you`} {formatMoney(BigInt(m.ref || "0"))} ✓</Chip>
               </div>
             );
           if (m.kind === "request" && m.req) {
@@ -206,7 +206,7 @@ export default function ChatPage() {
                   )}
                   {paying === m.ref && <p className="mt-1 text-sm text-muted">{slow ? `Delivering to ${name}…` : "Sending…"}</p>}
                   {r.status !== "open" && (
-                    <span className="mt-1"><Chip tone={r.status === "paid" ? "good" : "muted"}>{r.status === "paid" ? "Paid ✓✓" : "Declined"}</Chip></span>
+                    <span className="mt-1"><Chip tone={r.status === "paid" ? "good" : "muted"}>{r.status === "paid" ? "Paid ✓" : "Declined"}</Chip></span>
                   )}
                 </Bubble>
               </div>

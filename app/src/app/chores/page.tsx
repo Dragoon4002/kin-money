@@ -64,7 +64,7 @@ export default function ChoresPage() {
         <ErrorText>{error}</ErrorText>
       </Pad>
       {!data && !error && <Loading />}
-      {data && !all.length && <Empty icon="chores" title="No chores yet" sub="Post a chore with a reward. They tap “I did it!”, you check and pay." />}
+      {data && !all.length && <Empty icon="chores" title="No chores yet" sub="Post a chore with a reward. They tap 'I did it!', you check and pay." />}
 
       {check.length > 0 && (
         <section>
@@ -168,7 +168,7 @@ function NewChore({ me, onClose }: { me?: Address; onClose: () => void }) {
   if (posted) {
     return (
       <Screen>
-        <Delivered title="Chore posted" subtitle={`${formatMoney(value)} is held safely. @${kid!.name} gets it when you OK their “${t}”.`}>
+        <Delivered title="Chore posted" subtitle={`${formatMoney(value)} is held safely. @${kid!.name} gets it when you OK their '${t}'.`}>
           <div className="flex flex-col gap-2">
             <Button onClick={tell}>Tell @{kid!.name}</Button>
             <Button variant="ghost" onClick={onClose}>Done</Button>

@@ -262,7 +262,7 @@ export default function TripPage() {
                         <Chip>Reminded ✓</Chip>
                       )
                     ) : x.from === me ? (
-                      paidTo.includes(`${x.to}:${x.amount}`) ? <Chip good>Paid ✓✓</Chip> : <Pill title="Pay" onPress={() => pay([x])} disabled={paying} />
+                      paidTo.includes(`${x.to}:${x.amount}`) ? <Chip good>Paid ✓</Chip> : <Pill title="Pay" onPress={() => pay([x])} disabled={paying} />
                     ) : undefined
                   }
                 />

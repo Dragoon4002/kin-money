@@ -68,7 +68,7 @@ export default function InvoicePage() {
             onPress={() => router.push({ pathname: "/invoice/[id]", params: { id: list.map((x) => x.id).join("-") } })}
             icon={<WhoAvatar a={other} size={44} />}
             title={<>{iWork ? "From" : "To"} <Who a={other} me={me} /></>}
-            sub={left ? <Text style={{ color: t.warn }}>{left} part{left > 1 ? "s" : ""} waiting</Text> : <Text style={{ color: t.good }}>All paid ✓✓</Text>}
+            sub={left ? <Text style={{ color: t.warn }}>{left} part{left > 1 ? "s" : ""} waiting</Text> : <Text style={{ color: t.good }}>All paid ✓</Text>}
             trail={<Serif size={24}>{formatMoney(total)}</Serif>}
           />
         );

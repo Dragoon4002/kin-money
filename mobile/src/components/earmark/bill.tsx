@@ -32,7 +32,7 @@ export async function loadBillFor(ids: bigint[]): Promise<Record<string, BillFor
 /** One-line state, as text (renders inside a Row's sub). */
 export function BillState({ e, me }: { e: Escrow; me?: Address }) {
   const t = useTheme();
-  if (e.settled) return <Text style={{ color: t.good }}>Done ✓✓</Text>;
+  if (e.settled) return <Text style={{ color: t.good }}>Done ✓</Text>;
   if (e.approver === ZERO || e.approved) return <Text style={{ color: t.brand }}>Ready for <Who a={e.to} me={me} you="you" /> to collect</Text>;
   return <Text style={{ color: t.warn }}>Waiting for <Who a={e.approver} me={me} you="your" />{same(e.approver, me) ? "" : "'s"} OK</Text>;
 }

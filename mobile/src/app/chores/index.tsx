@@ -67,7 +67,7 @@ export default function ChoresPage() {
       </View>
       <ErrorText>{error}</ErrorText>
       {!data && !error && <Loading />}
-      {data && !all.length && <Empty icon="chores" title="No chores yet" sub="Post a chore with a reward. They tap “I did it!”, you check and pay." />}
+      {data && !all.length && <Empty icon="chores" title="No chores yet" sub="Post a chore with a reward. They tap 'I did it!', you check and pay." />}
 
       {check.length > 0 && (
         <>
@@ -180,7 +180,7 @@ function NewChore({ me, onClose }: { me?: Address; onClose: () => void }) {
   if (posted) {
     return (
       <Screen>
-        <Delivered title="Chore posted" subtitle={`${formatMoney(value)} is held safely. @${kid!.name} gets it when you OK their “${t}”.`} />
+        <Delivered title="Chore posted" subtitle={`${formatMoney(value)} is held safely. @${kid!.name} gets it when you OK their '${t}'.`} />
         <Footer>
           <Button title={`Tell @${kid!.name}`} onPress={tell} />
           <Button title="Done" variant="ghost" onPress={onClose} />

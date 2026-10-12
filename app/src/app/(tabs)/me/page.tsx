@@ -214,7 +214,7 @@ export default function Me() {
 
         <Band>Backup</Band>
         <p className="px-5 py-4 text-sm text-muted">
-          {"Your account is backed up with your phone’s screen lock and password manager (iCloud Keychain or Google Password Manager). On a new phone, open Kin and tap “Already have Kin on another phone?”."}
+          {"Your account is backed up with your phone’s screen lock and password manager (iCloud Keychain or Google Password Manager). On a new phone, open Kin and tap 'Already have Kin on another phone?'."}
         </p>
         <Row href="/security" icon={<IconTile name="safe" size={44} />} title="Security" sub="Recovery phrase, other accounts" trail={<Chev />} />
 

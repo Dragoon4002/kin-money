@@ -3,7 +3,7 @@ import { allowShared, addrOf, bad, q, route, UPSERT_ME, UPSERT_THEM, validAmount
 import { saveMessage } from "@/lib/server/messages";
 import { paidValue } from "@/lib/server/paid";
 
-// The amount here only feeds my own recents/"frequent". The "paid you ✓✓" card in the other person's chat is only
+// The amount here only feeds my own recents/"frequent". The "paid you ✓" card in the other person's chat is only
 // written for a delivered on-chain transfer (hash checked, amount read from the log) — never from client input (audit).
 /** Upsert PAID {count, total, last} after a delivered payment; with `hash`, also post the payment card in our chat. */
 export function POST(req: Request) {

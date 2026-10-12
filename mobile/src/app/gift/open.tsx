@@ -112,7 +112,7 @@ export default function OpenGiftLink() {
       <>
         <Kinko size={120} mood="celebrate" />
         <Serif size={36}>{info.settled ? "Opened ✓" : justBound ? `This gift is now yours${profile?.name ? `, @${profile.name}` : ""}` : `Your gift from ${from}`}</Serif>
-        {!!link.message && <Text style={[center, { color: t.ink, fontSize: 18 }]}>“{link.message}”</Text>}
+        {!!link.message && <Text style={[center, { color: t.ink, fontSize: 18 }]}>'{link.message}'</Text>}
         <Amount value={money} />
         {info.settled ? (
           <Text style={{ color: t.muted }}>It&apos;s in your balance.</Text>
@@ -133,7 +133,7 @@ export default function OpenGiftLink() {
           <IconTile icon={ICON.gift} size={72} brand />
         </View>
         <Text style={{ color: t.ink, fontSize: 18 }}>A gift from {from}</Text>
-        {!!link.message && <Serif size={26}>“{link.message}”</Serif>}
+        {!!link.message && <Serif size={26}>'{link.message}'</Serif>}
         <Amount value={money} />
         <Text style={[center, { color: t.muted }]}>
           {info.settled ? "This gift is no longer available."

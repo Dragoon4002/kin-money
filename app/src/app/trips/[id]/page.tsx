@@ -280,7 +280,7 @@ export default function TripPage() {
                           )
                         ) : t.from === me ? (
                           paidTo.includes(`${t.to}:${t.amount}`) ? (
-                            <Chip tone="good">Paid ✓✓</Chip>
+                            <Chip tone="good">Paid ✓</Chip>
                           ) : (
                             <button
                               onClick={() => pay([t])}

@@ -206,11 +206,11 @@ function Story({ l, me }: { l: HistoryLog; me?: Address }) {
   const who = <Who a={a.member ?? a.to} me={me} />;
   const turn = a.round !== undefined ? Number(a.round) + 1 : 0;
   const line: Record<string, ReactNode> = {
-    PaidOut: <>Turn {turn}: {who} took home {formatMoney(a.amount ?? 0n)} ✓✓</>,
+    PaidOut: <>Turn {turn}: {who} took home {formatMoney(a.amount ?? 0n)} ✓</>,
     Defaulted: <>{who} missed turn {turn}. Their deposit covered {formatMoney(a.covered ?? 0n)}.</>,
     Forfeited: <>Turn {turn}&apos;s pot is shared at the end, since {who} missed a round.</>,
-    DepositReturned: <>{who} got {formatMoney(a.amount ?? 0n)} deposit back ✓✓</>,
-    ForfeitShared: <>{who} got {formatMoney(a.amount ?? 0n)} as their share for staying honest ✓✓</>,
+    DepositReturned: <>{who} got {formatMoney(a.amount ?? 0n)} deposit back ✓</>,
+    ForfeitShared: <>{who} got {formatMoney(a.amount ?? 0n)} as their share for staying honest ✓</>,
   };
   if (!line[l.eventName]) return null;
   return <Text style={{ paddingVertical: 12, color: t.ink, fontSize: 14, fontWeight: "500" }}>{line[l.eventName]}</Text>;

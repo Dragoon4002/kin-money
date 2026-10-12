@@ -51,7 +51,7 @@ function Invoice() {
           <Who a={first.from} me={me} /> → <Who a={first.to} me={me} you="you" />
         </p>
         <Amount value={formatMoney(total)} size="xl" />
-        {paid === total ? <Chip tone="good">All paid ✓✓</Chip> : <Chip>{formatMoney(paid)} paid so far</Chip>}
+        {paid === total ? <Chip tone="good">All paid ✓</Chip> : <Chip>{formatMoney(paid)} paid so far</Chip>}
       </Card>
       {data.map((e, i) => {
         const n = inv?.escrows.indexOf(String(e.id)) ?? -1;
@@ -89,7 +89,7 @@ function Part({ e, n, many, me, iWork, meta, onDone }: { e: Escrow; n: number; m
       </div>
       {p && <p><PartChip p={p} settled={e.settled} iWork={iWork} /></p>}
       {e.settled ? (
-        !p && <p><Chip tone="good">Paid ✓✓</Chip></p>
+        !p && <p><Chip tone="good">Paid ✓</Chip></p>
       ) : due ? (
         <p className="text-sm text-muted">No reply in time — ready to pay out.</p>
       ) : (

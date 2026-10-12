@@ -48,7 +48,7 @@ function Chore({ e, done, meta, me, onDone }: { e: Escrow; done: boolean; meta: 
   type Item = { icon: IconName; title: string; sub: string; on: boolean };
   const items: Item[] = [
     { icon: "post", title: "Posted", sub: `${formatMoney(e.amount)} held safely`, on: true },
-    { icon: "check", title: "Done", sub: said || paid ? (iDo ? "You said it's done" : "They said it's done") : "Waiting for “I did it!”", on: said || paid },
+    { icon: "check", title: "Done", sub: said || paid ? (iDo ? "You said it's done" : "They said it's done") : "Waiting for 'I did it!'", on: said || paid },
     e.settled
       ? paid
         ? { icon: "payout", title: "Paid", sub: iDo ? "It's in your balance" : "Sent from what you set aside", on: true }

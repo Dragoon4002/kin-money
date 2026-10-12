@@ -19,7 +19,7 @@ import { useTheme } from "@/theme";
 
 type Lists = { incoming: MoneyRequest[]; outgoing: MoneyRequest[] };
 
-const STATUS = { open: "Waiting", paid: "Paid ✓✓", declined: "Declined" } as const;
+const STATUS = { open: "Waiting", paid: "Paid ✓", declined: "Declined" } as const;
 
 /** Open requests with a date first, soonest (overdue) on top; the rest keep newest-first. */
 const rank = (r: MoneyRequest) => (r.status === "open" && r.due ? r.due : Number.MAX_SAFE_INTEGER);
@@ -133,7 +133,7 @@ export default function Requests() {
               )}
             </View>
           ) : (
-            <Pill tone={r.status === "paid" ? "good" : "muted"}>{r.status === "paid" ? "You paid ✓✓" : "You declined"}</Pill>
+            <Pill tone={r.status === "paid" ? "good" : "muted"}>{r.status === "paid" ? "You paid ✓" : "You declined"}</Pill>
           )}
         </View>
       ))}

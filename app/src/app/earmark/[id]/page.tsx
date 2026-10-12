@@ -51,7 +51,7 @@ export default function BillPage() {
       : []),
     back
       ? { text: <>Came back to <Who a={e.from} me={me} you="you" /></>, at: data.refunded, done: true }
-      : { text: e.settled ? <>Paid to <Who a={e.to} me={me} you="you" /> ✓✓</> : <><Who a={e.to} me={me} /> collects it</>, at: data.released, done: e.settled },
+      : { text: e.settled ? <>Paid to <Who a={e.to} me={me} you="you" /> ✓</> : <><Who a={e.to} me={me} /> collects it</>, at: data.released, done: e.settled },
   ];
 
   return (

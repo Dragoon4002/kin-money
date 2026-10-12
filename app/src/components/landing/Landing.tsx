@@ -106,7 +106,7 @@ export function Landing({ onStart, onUnlock, busy, err }: { onStart: () => void;
           <div className="relative -mt-4 w-64 rounded-[28px] border border-line bg-surface p-4 shadow-xl shadow-ink/5">
             <p className="text-sm text-muted">Sent to @mama</p>
             <Amount value="$50.00" size="md" />
-            <div className="mt-2"><Chip tone="good">Delivered ✓✓</Chip></div>
+            <div className="mt-2"><Chip tone="good">Delivered ✓</Chip></div>
           </div>
         </div>
       </section>
@@ -199,7 +199,7 @@ export function Landing({ onStart, onUnlock, busy, err }: { onStart: () => void;
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <Chip><span className="inline-flex items-center gap-1.5"><Ico name="safe" size={14} />Identity check only</span></Chip>
           <Chip><span className="inline-flex items-center gap-1.5"><Ico name="dollar" size={14} />Free to send</span></Chip>
-          <Chip><span className="inline-flex items-center gap-1.5"><Ico name="check" size={14} />Delivered ✓✓</span></Chip>
+          <Chip><span className="inline-flex items-center gap-1.5"><Ico name="check" size={14} />Delivered ✓</span></Chip>
         </div>
       </section>
 

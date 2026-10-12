@@ -44,7 +44,7 @@ export default function JarsPage() {
             href={`/jars/${potPath(p)}`}
             icon={<IconTile name={icon} />}
             title={name}
-            sub={p.round > 0n ? <Chip tone="good">Goal reached ✓✓</Chip> : `${formatMoney(p.balance)} of ${formatMoney(p.target)}`}
+            sub={p.round > 0n ? <Chip tone="good">Goal reached ✓</Chip> : `${formatMoney(p.balance)} of ${formatMoney(p.target)}`}
             trail={
               <Ring value={pct} size={44} stroke={5}>
                 <span className="text-[10px] font-bold tabular">{Math.floor(pct * 100)}%</span>

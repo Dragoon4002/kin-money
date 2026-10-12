@@ -65,7 +65,7 @@ export default function InvoicePage() {
             href={`/invoice/${list.map((x) => x.id).join("-")}`}
             icon={<WhoAvatar a={other} size={44} />}
             title={<>{iWork ? "From" : "To"} <Who a={other} me={me} /></>}
-            sub={left ? <Chip tone="warn">{left} part{left > 1 ? "s" : ""} waiting</Chip> : <Chip tone="good">All paid ✓✓</Chip>}
+            sub={left ? <Chip tone="warn">{left} part{left > 1 ? "s" : ""} waiting</Chip> : <Chip tone="good">All paid ✓</Chip>}
             trail={<span className="font-display text-2xl tabular">{formatMoney(total)}</span>}
           />
         );

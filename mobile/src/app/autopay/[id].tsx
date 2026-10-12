@@ -66,7 +66,7 @@ function Actions({ m, ready, isPayer, onDone }: { m: Mandate; ready: number; isP
       return true;
     });
     if (ok) {
-      setDone(`${formatMoney(amt)} added to your balance ✓✓`);
+      setDone(`${formatMoney(amt)} added to your balance ✓`);
       onDone();
     }
   }
@@ -85,7 +85,7 @@ function Actions({ m, ready, isPayer, onDone }: { m: Mandate; ready: number; isP
     setConfirm(false);
     if (ok) {
       if (split.keep) void recordPayment(m.payee, split.keep);
-      setDone(`Stopped. ${formatMoney(split.back)} is back in your balance ✓✓`);
+      setDone(`Stopped. ${formatMoney(split.back)} is back in your balance ✓`);
       onDone();
     }
   }

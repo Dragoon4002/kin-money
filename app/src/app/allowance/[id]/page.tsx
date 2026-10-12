@@ -104,7 +104,7 @@ function Actions({ s, isPayer, onDone }: { s: Stream; isPayer: boolean; onDone: 
       return true;
     });
     if (ok) {
-      setDone(`${formatMoney(amt)} added to your balance ✓✓`);
+      setDone(`${formatMoney(amt)} added to your balance ✓`);
       onDone();
     }
   }
@@ -117,7 +117,7 @@ function Actions({ s, isPayer, onDone }: { s: Stream; isPayer: boolean; onDone: 
     setConfirm(false);
     if (ok) {
       void recordPayment(s.payee, split.keep);
-      setDone(`Stopped. ${formatMoney(split.back)} is back in your balance ✓✓`);
+      setDone(`Stopped. ${formatMoney(split.back)} is back in your balance ✓`);
       onDone();
     }
   }
@@ -197,7 +197,7 @@ function Emergency({ s, me, reserve, asked, isPayer, onDone }: { s: Stream; me?:
   }
 
   if (note === "sent") {
-    return <p className="rounded-2xl bg-good/10 px-4 py-3 text-center font-medium text-good">Emergency money delivered ✓✓</p>;
+    return <p className="rounded-2xl bg-good/10 px-4 py-3 text-center font-medium text-good">Emergency money delivered ✓</p>;
   }
 
   if (isPayer && !reserve) {

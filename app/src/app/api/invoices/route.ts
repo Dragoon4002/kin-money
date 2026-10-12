@@ -93,8 +93,8 @@ export function POST(req: Request) {
       await q(`${UPSERT_ME} WITH me ${UPSERT_THEM} WITH p MATCH (i:Invoice {id: $id}) SET i.sentTo = $them`, { me, meName, them, themName, id: inv.id });
       const total = usd(partsTotal(inv.parts));
       const path = `/invoice/new?i=${inv.id}`;
-      await saveMessage(me, them, "text", `Invoice: “${inv.title}” — ${total}. Pay here: https://getkin.space${path}`);
-      await notify(them, { title: `@${meName ?? "someone"} sent you an invoice for ${total}`, body: `“${inv.title}”. Tap to see it.`, url: path, tag: `inv-${inv.id}` });
+      await saveMessage(me, them, "text", `Invoice: '${inv.title}' — ${total}. Pay here: https://getkin.space${path}`);
+      await notify(them, { title: `@${meName ?? "someone"} sent you an invoice for ${total}`, body: `'${inv.title}'. Tap to see it.`, url: path, tag: `inv-${inv.id}` });
       return { ok: true };
     }
 
@@ -111,7 +111,7 @@ export function POST(req: Request) {
       if (to) {
         await notify(to, {
           title: `${p.name} is done — pay ${usd(p.amount)}`,
-          body: `@${meName ?? "someone"} finished part of “${inv.title}”. Take a look and OK it.`,
+          body: `@${meName ?? "someone"} finished part of '${inv.title}'. Take a look and OK it.`,
           url: payPath(inv),
           tag: `inv-${inv.id}-${n}`,
         });
@@ -133,7 +133,7 @@ export function POST(req: Request) {
       await q(`MATCH (i:Invoice {id: $id}) WHERE size(coalesce(i.escrows, [])) = 0 SET i.escrows = $ids, i.payer = $me`, { id: inv.id, ids, me });
       const meName = await verifiedName(me);
       await notify(owner, {
-        title: `${meName ? `@${meName}` : "Your client"} paid “${inv.title}”`,
+        title: `${meName ? `@${meName}` : "Your client"} paid '${inv.title}'`,
         body: `${usd(partsTotal(inv.parts))} is held safely for you until they OK each part.`,
         url: `/invoice/${ids.join("-")}`,
         tag: `inv-${inv.id}`,

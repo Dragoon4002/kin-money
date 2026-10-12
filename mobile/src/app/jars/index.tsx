@@ -45,7 +45,7 @@ export default function JarsPage() {
             onPress={() => router.push(`/jars/${potPath(p)}`)}
             icon={<IconTile icon={ICON[icon]} />}
             title={name}
-            sub={p.round > 0n ? <Text style={{ color: t.good, fontWeight: "600" }}>Goal reached ✓✓</Text> : `${formatMoney(p.balance)} of ${formatMoney(p.target)}`}
+            sub={p.round > 0n ? <Text style={{ color: t.good, fontWeight: "600" }}>Goal reached ✓</Text> : `${formatMoney(p.balance)} of ${formatMoney(p.target)}`}
             trail={<PctRing value={Number(p.balance) / Number(p.target)} />}
           />
         );

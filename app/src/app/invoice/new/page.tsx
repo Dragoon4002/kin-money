@@ -91,7 +91,7 @@ function Pay({ to, title, days, parts, inv, reload, here }: { to: string; title:
         <WhoAvatar a={payee} size={56} />
         <p className="text-sm text-muted"><Who a={payee} me={me} /> {self ? "ask" : "asks"} for</p>
         <Amount value={formatMoney(total)} size="xl" />
-        {title && <p className="font-semibold">“{title}”</p>}
+        {title && <p className="font-semibold">‘{title}’</p>}
       </Card>
       {(parts.length > 1 || inv) && (
         <ol className="flex flex-col gap-2">

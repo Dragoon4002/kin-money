@@ -46,7 +46,7 @@ export default function Invoice() {
           <Who a={first.from} me={me} /> → <Who a={first.to} me={me} you="you" />
         </Text>
         <Amount value={formatMoney(total)} size={64} />
-        <View style={{ alignItems: "center" }}>{paid === total ? <Chip good>All paid ✓✓</Chip> : <Chip>{formatMoney(paid)} paid so far</Chip>}</View>
+        <View style={{ alignItems: "center" }}>{paid === total ? <Chip good>All paid ✓</Chip> : <Chip>{formatMoney(paid)} paid so far</Chip>}</View>
       </Card>
       {data.map((e, i) => {
         const n = inv?.escrows.indexOf(String(e.id)) ?? -1;
@@ -85,7 +85,7 @@ function Part({ e, n, many, me, iWork, meta, onDone }: { e: Escrow; n: number; m
       </View>
       {p && <PartChip p={p} settled={e.settled} iWork={iWork} />}
       {e.settled ? (
-        !p && <Chip good>Paid ✓✓</Chip>
+        !p && <Chip good>Paid ✓</Chip>
       ) : due ? (
         <Text style={{ color: t.muted, fontSize: 14 }}>No reply in time — ready to pay out.</Text>
       ) : (

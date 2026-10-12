@@ -151,7 +151,7 @@ export function Proof() {
   const secs = ms > 0 ? (ms / 1000).toFixed(1) : null;
 
   async function shareReceipt() {
-    const text = `${r!.out ? `Paid ${money} to ${other}` : `Got ${money} from ${other}`} with Kin${note ? ` · ${note}` : ""}. Delivered ✓✓`;
+    const text = `${r!.out ? `Paid ${money} to ${other}` : `Got ${money} from ${other}`} with Kin${note ? ` · ${note}` : ""}. Delivered ✓`;
     if ((await share(text)) === "copied") setCopied(true);
   }
 
@@ -175,9 +175,9 @@ export function Proof() {
           <span className="font-display text-3xl text-muted">{r.out ? "Paid" : "Received"}</span>
           <Amount value={money} />
         </div>
-        {r.ok && fresh && secs && <Chip tone="good">Delivered in {secs}s ✓✓</Chip>}
-        {r.ok && !fresh && <Chip tone="good">Delivered ✓✓</Chip>}
-        {note && <Chip>“{note}”</Chip>}
+        {r.ok && fresh && secs && <Chip tone="good">Delivered in {secs}s ✓</Chip>}
+        {r.ok && !fresh && <Chip tone="good">Delivered ✓</Chip>}
+        {note && <Chip>‘{note}’</Chip>}
       </section>
 
       <Card className="mx-5 mb-4 flex flex-col gap-1">
@@ -240,7 +240,7 @@ export function Proof() {
       <div className="flex flex-col gap-2 px-5">
         <Button variant="ink" onClick={shareReceipt}>{copied ? "Receipt copied ✓" : "Share receipt"}</Button>
         {card && (
-          <Button variant="ghost" onClick={async () => (await shareCard(card, `${r.out ? "Sent" : "Got"} ${money} with Kin. Delivered ✓✓`)) === "copied" && setCardCopied(true)}>
+          <Button variant="ghost" onClick={async () => (await shareCard(card, `${r.out ? "Sent" : "Got"} ${money} with Kin. Delivered ✓`)) === "copied" && setCardCopied(true)}>
             {cardCopied ? "Link copied ✓" : "Share card"}
           </Button>
         )}

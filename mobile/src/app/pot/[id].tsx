@@ -117,7 +117,7 @@ export default function PotDetail() {
           <Text style={muted}>{formatMoney(left)} to go — then it pays out by itself{split > 1 ? `, split between ${split} people` : ""}.</Text>
         )}
         {payouts.length > 0 && (
-          <Chip tone="good">Paid out {payouts.length}× · {formatMoney(payouts.reduce((a, p) => a + p.amount, 0n))} ✓✓</Chip>
+          <Chip tone="good">Paid out {payouts.length}× · {formatMoney(payouts.reduce((a, p) => a + p.amount, 0n))} ✓</Chip>
         )}
       </View>
 

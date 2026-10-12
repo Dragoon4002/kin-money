@@ -195,7 +195,7 @@ export default function Chat() {
           {msgs?.map((m) => {
             const mine = same(m.from, me);
             if (m.kind === "payment")
-              return <View key={m.id} style={{ marginVertical: 4 }}>{chip(`${mine ? "You paid" : `${name} paid you`} ${formatMoney(BigInt(m.ref || "0"))} ✓✓`, t.good)}</View>;
+              return <View key={m.id} style={{ marginVertical: 4 }}>{chip(`${mine ? "You paid" : `${name} paid you`} ${formatMoney(BigInt(m.ref || "0"))} ✓`, t.good)}</View>;
             if (m.kind === "request" && m.req) {
               const r = m.req;
               const amount = formatMoney(BigInt(r.amount));
@@ -214,7 +214,7 @@ export default function Chat() {
                     </View>
                   )}
                   {paying === m.ref && <Text accessibilityLiveRegion="polite" style={{ color: t.muted, fontSize: 14 }}>{payNote}</Text>}
-                  {r.status !== "open" && chip(r.status === "paid" ? "Paid ✓✓" : "Declined", r.status === "paid" ? t.good : t.muted)}
+                  {r.status !== "open" && chip(r.status === "paid" ? "Paid ✓" : "Declined", r.status === "paid" ? t.good : t.muted)}
                 </View>
               );
             }

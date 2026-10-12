@@ -127,7 +127,7 @@ export default function PotDetail() {
           </p>
         )}
         {payouts.length > 0 && (
-          <Chip tone="good">Paid out {payouts.length}× · {formatMoney(payouts.reduce((a, p) => a + p.amount, 0n))} ✓✓</Chip>
+          <Chip tone="good">Paid out {payouts.length}× · {formatMoney(payouts.reduce((a, p) => a + p.amount, 0n))} ✓</Chip>
         )}
       </Pad>
 

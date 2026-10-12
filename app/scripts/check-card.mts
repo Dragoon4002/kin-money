@@ -37,4 +37,19 @@ assert.equal(p(`kind=gift&look=${encodeURIComponent('{"skin":"evil"}')}&from=amy
 // default skin is stable per name
 assert.equal(p("kind=received&from=amy")?.skin, p("kind=received&from=amy")?.skin);
 
+// receipt: the whole ticket
+const id = "0x" + "ab".repeat(32);
+const r = p(`kind=receipt&dir=out&amount=25000000&to=maya&from=sam&secs=0.8&cat=food&id=${id}&when=${encodeURIComponent("Oct 13, 2026 · 3:32 AM (GMT+5:30)")}&note=${encodeURIComponent("Dinner\u0000 last\n night")}`);
+assert.equal(r?.out, true);
+assert.equal(r?.cat, "food");
+assert.equal(r?.note, "Dinner last night");
+assert.equal(r?.id, id);
+assert.equal(p(`kind=receipt&dir=in&from=0x1a2b…9f0e`)?.from, "0x1a2b…9f0e"); // not on Kin: short account ok on receipts
+assert.equal(p(`kind=sent&from=0x1a2b…9f0e`), null); // …but nowhere else
+assert.equal(p("kind=receipt"), null); // dir required
+assert.equal(p("kind=receipt&dir=out&cat=evil"), null);
+assert.equal(p("kind=receipt&dir=out&id=0x12"), null);
+assert.equal(p(`kind=receipt&dir=out&note=${"x".repeat(300)}`)?.note?.length, 200);
+assert.equal(p("kind=sent&note=hi")?.note, undefined); // extras only on receipts
+
 console.log("check-card: ok");

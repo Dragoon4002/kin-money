@@ -94,7 +94,7 @@ function GiftCard({ e, me, onOpened, onDone }: { e: Escrow; me?: Address; onOpen
             {mine ? <>From <Who a={e.from} me={me} /></> : <>For <Who a={e.to} me={me} /></>}
           </p>
           <p className="truncate text-sm text-muted">
-            {e.settled ? "Opened ✓✓" : locked ? `Opens ${dateLabel(e.unlockAt)}` : needsOk ? <>Waiting for <Who a={e.approver} me={me} you="your" />{same(e.approver, me) ? "" : "'s"} OK</> : "Ready to open"}
+            {e.settled ? "Opened ✓" : locked ? `Opens ${dateLabel(e.unlockAt)}` : needsOk ? <>Waiting for <Who a={e.approver} me={me} you="your" />{same(e.approver, me) ? "" : "'s"} OK</> : "Ready to open"}
           </p>
         </div>
         <p className="font-display text-2xl tabular">{mine && locked && !e.settled ? <span aria-label="Hidden until it opens"><Ico name="lock" size={24} /></span> : formatMoney(e.amount)}</p>
@@ -129,8 +129,8 @@ function GiftLinkCard({ g, me, onOpened, onDone }: { g: GiftLink; me?: Address; 
   }
 
   const sub = mine
-    ? g.settled ? "Opened ✓✓" : locked ? `Opens ${dateLabel(g.unlockAt)}` : "Ready to open"
-    : g.settled ? (isBound(g) ? "Opened ✓✓" : "Back in your balance")
+    ? g.settled ? "Opened ✓" : locked ? `Opens ${dateLabel(g.unlockAt)}` : "Ready to open"
+    : g.settled ? (isBound(g) ? "Opened ✓" : "Back in your balance")
     : isBound(g) ? <>Accepted by <Who a={g.recipient} me={me} /> · opens {dateLabel(g.unlockAt)}</> : "Waiting to be accepted";
 
   return (

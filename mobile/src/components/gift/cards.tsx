@@ -53,7 +53,7 @@ export function GiftCard({ e, me, onOpened, onDone }: { e: Escrow; me?: Address;
       <Head
         icon={e.settled ? "celebrate" : locked ? "lock" : "gift"}
         title={mine ? <>From <Who a={e.from} me={me} /></> : <>For <Who a={e.to} me={me} /></>}
-        sub={e.settled ? "Opened ✓✓" : locked ? `Opens ${dateLabel(e.unlockAt)}` : needsOk ? <>Waiting for <Who a={e.approver} me={me} you="your" />{same(e.approver, me) ? "" : "'s"} OK</> : "Ready to open"}
+        sub={e.settled ? "Opened ✓" : locked ? `Opens ${dateLabel(e.unlockAt)}` : needsOk ? <>Waiting for <Who a={e.approver} me={me} you="your" />{same(e.approver, me) ? "" : "'s"} OK</> : "Ready to open"}
         amount={e.amount}
         hidden={mine && locked && !e.settled}
       />
@@ -81,8 +81,8 @@ export function GiftLinkCard({ g, me, onOpened, onDone }: { g: GiftLink; me?: Ad
   }
 
   const sub = mine
-    ? g.settled ? "Opened ✓✓" : locked ? `Opens ${dateLabel(g.unlockAt)}` : "Ready to open"
-    : g.settled ? (isBound(g) ? "Opened ✓✓" : "Back in your balance")
+    ? g.settled ? "Opened ✓" : locked ? `Opens ${dateLabel(g.unlockAt)}` : "Ready to open"
+    : g.settled ? (isBound(g) ? "Opened ✓" : "Back in your balance")
     : isBound(g) ? <>Accepted by <Who a={g.recipient} me={me} /> · opens {dateLabel(g.unlockAt)}</> : "Waiting to be accepted";
 
   return (

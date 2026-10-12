@@ -31,7 +31,7 @@ export async function loadBillFor(ids: bigint[]): Promise<Record<string, BillFor
 }
 
 export function BillState({ e, me }: { e: Escrow; me?: Address }): ReactNode {
-  if (e.settled) return <Chip tone="good">Done ✓✓</Chip>;
+  if (e.settled) return <Chip tone="good">Done ✓</Chip>;
   if (e.approver === ZERO || e.approved) return <Chip tone="brand">Ready for <Who a={e.to} me={me} you="you" /> to collect</Chip>;
   return <Chip tone="warn">Waiting for <Who a={e.approver} me={me} you="your" />{same(e.approver, me) ? "" : "'s"} OK</Chip>;
 }

@@ -82,7 +82,7 @@ export default function JarDetail() {
         {pot.closed ? (
           <Chip>This jar is closed</Chip>
         ) : pot.round > 0n ? (
-          <Chip tone="good">Goal reached {pot.round > 1n ? `${pot.round}× ` : ""}✓✓ · saving again</Chip>
+          <Chip tone="good">Goal reached {pot.round > 1n ? `${pot.round}× ` : ""}✓ · saving again</Chip>
         ) : (
           <Text style={{ color: t.muted, fontSize: 14 }}>{formatMoney(left)} to go</Text>
         )}

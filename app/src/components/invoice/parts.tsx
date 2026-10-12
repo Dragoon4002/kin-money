@@ -22,7 +22,7 @@ export async function fetchInvoice(id: string): Promise<Invoice | null> {
 /** Status chip for one part. `iWork` = I'm the one getting paid. */
 export function PartChip({ p, settled, iWork }: { p: Part; settled: boolean; iWork: boolean }) {
   const s = partStatus(p, settled);
-  if (s === "paid") return <Chip tone="good">Paid ✓✓</Chip>;
+  if (s === "paid") return <Chip tone="good">Paid ✓</Chip>;
   if (s === "done") return <Chip tone="brand">{iWork ? "Done — waiting for their OK" : "Done — ready for your OK"}</Chip>;
   if (s === "overdue") return <Chip tone="warn">Overdue</Chip>;
   return <Chip>{p.due ? dueLabel(p.due) : "In progress"}</Chip>;
@@ -60,7 +60,7 @@ export function SendSheet({ inv, open, onClose }: { inv: Invoice; open: boolean;
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const link = `${location.origin}/invoice/new?i=${inv.id}`;
-  const text = `Pay for “${inv.title}” on Kin:`;
+  const text = `Pay for '${inv.title}' on Kin:`;
 
   async function send() {
     if (!to) return;

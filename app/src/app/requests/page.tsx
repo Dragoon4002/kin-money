@@ -19,7 +19,7 @@ function ago(at: number) {
   return "just now";
 }
 
-const STATUS = { open: "Waiting", paid: "Paid ✓✓", declined: "Declined" } as const;
+const STATUS = { open: "Waiting", paid: "Paid ✓", declined: "Declined" } as const;
 
 /** Open requests with a date first, soonest (overdue) on top; the rest keep newest-first. */
 const byDue = (a: MoneyRequest, b: MoneyRequest) => rank(a) - rank(b);
@@ -148,7 +148,7 @@ export default function RequestsPage() {
               )}
             </div>
           ) : (
-            <span><Chip tone={r.status === "paid" ? "good" : "muted"}>{r.status === "paid" ? "You paid ✓✓" : "You declined"}</Chip></span>
+            <span><Chip tone={r.status === "paid" ? "good" : "muted"}>{r.status === "paid" ? "You paid ✓" : "You declined"}</Chip></span>
           )}
         </article>
       ))}

@@ -4,13 +4,19 @@ import { share } from "@/components/core/share";
 import { getCurrency } from "./money";
 
 export type CardParams = {
-  kind: "sent" | "received" | "goal" | "gift" | "settled";
+  kind: "sent" | "received" | "goal" | "gift" | "settled" | "receipt";
   amount?: bigint;
   to?: string;
   from?: string;
   secs?: string;
   title?: string;
   look?: Look;
+  /** Receipt: the whole ticket (see app/api/card). */
+  dir?: "in" | "out";
+  note?: string;
+  cat?: string;
+  when?: string;
+  id?: string;
 };
 
 /** Public image URL for a share card (see app/api/card). */

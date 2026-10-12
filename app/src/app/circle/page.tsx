@@ -48,7 +48,7 @@ export default function CirclePage() {
             trail={
               phase === "gathering" ? <Chip tone="brand">{c.joined}/{c.seats} joined</Chip>
                 : phase === "stalled" ? <Chip tone="warn">Didn&apos;t start</Chip>
-                : phase === "done" ? <Chip tone="good">Finished ✓✓</Chip>
+                : phase === "done" ? <Chip tone="good">Finished ✓</Chip>
                 : <Chip tone="good">Live</Chip>
             }
           />

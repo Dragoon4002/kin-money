@@ -68,7 +68,7 @@ export default function Claim() {
   if (phase === "done") {
     return (
       <Screen>
-        <Delivered sound="received" title={`${money} is yours`} subtitle={`From ${from} · Delivered in ${secs}s ✓✓`} />
+        <Delivered sound="received" title={`${money} is yours`} subtitle={`From ${from} · Delivered in ${secs}s ✓`} />
         <Footer><Button title="See my balance" onPress={home} /></Footer>
       </Screen>
     );

@@ -149,7 +149,7 @@ export default function Details() {
   const card: CardParams | null = !r.ok ? null : r.out
     ? { kind: "sent", amount: r.amount, to: at(r.to), from: profile?.name, secs: fresh && ms > 0 && ms < 60_000 ? (ms / 1000).toFixed(1) : undefined }
     : { kind: "received", amount: r.amount, from: at(r.from) };
-  const shareReceipt = () => share(`${r.out ? `Paid ${money} to ${other}` : `Got ${money} from ${other}`} with Kin${note ? ` · ${note}` : ""}. Delivered ✓✓`);
+  const shareReceipt = () => share(`${r.out ? `Paid ${money} to ${other}` : `Got ${money} from ${other}`} with Kin${note ? ` · ${note}` : ""}. Delivered ✓`);
 
   return (
     <Screen title="Receipt" back scroll>
@@ -177,8 +177,8 @@ export default function Details() {
           <Serif size={30} color={t.muted}>{r.out ? "Paid" : "Received"}</Serif>
           <Serif size={56}>{money}</Serif>
         </View>
-        {r.ok && <Chip good>{fresh && secs ? `Delivered in ${secs}s ✓✓` : "Delivered ✓✓"}</Chip>}
-        {!!note && <Chip>“{note}”</Chip>}
+        {r.ok && <Chip good>{fresh && secs ? `Delivered in ${secs}s ✓` : "Delivered ✓"}</Chip>}
+        {!!note && <Chip>'{note}'</Chip>}
       </View>
 
       <View style={{ gap: 4, borderRadius: 28, borderWidth: 1, borderColor: t.line, backgroundColor: t.surface, padding: 20 }}>
@@ -253,7 +253,7 @@ export default function Details() {
       </View>
 
       <Footer>
-        {card && <Button title="Share card" variant="ghost" onPress={() => void shareCard(card, `${r.out ? "Sent" : "Got"} ${money} with Kin. Delivered ✓✓`)} />}
+        {card && <Button title="Share card" variant="ghost" onPress={() => void shareCard(card, `${r.out ? "Sent" : "Got"} ${money} with Kin. Delivered ✓`)} />}
         <Button title="Share receipt" onPress={() => void shareReceipt()} />
       </Footer>
     </Screen>

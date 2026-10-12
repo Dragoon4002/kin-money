@@ -84,7 +84,7 @@ function Pay({ to, title, days, parts, inv, reload }: { to: string; title: strin
         <WhoAvatar a={payee} size={56} />
         <Text style={{ color: t.muted, fontSize: 14 }}><Who a={payee} me={me} /> {self ? "ask" : "asks"} for</Text>
         <Amount value={formatMoney(total)} size={64} />
-        {!!title && <Text style={{ color: t.ink, fontWeight: "600" }}>“{title}”</Text>}
+        {!!title && <Text style={{ color: t.ink, fontWeight: "600" }}>'{title}'</Text>}
       </Card>
       {(parts.length > 1 || !!inv) &&
         parts.map((p, i) => (

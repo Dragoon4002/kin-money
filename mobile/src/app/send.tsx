@@ -125,15 +125,15 @@ export default function Send() {
       <Screen>
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12 }}>
           <Animated.View entering={ZoomIn.springify().damping(12)}>
-            <Text style={{ color: t.good, fontSize: 20, fontWeight: "700" }}>Delivered ✓✓ in {(done.ms / 1000).toFixed(1)}s</Text>
+            <Text style={{ color: t.good, fontSize: 20, fontWeight: "700" }}>Delivered ✓ in {(done.ms / 1000).toFixed(1)}s</Text>
           </Animated.View>
           <Animated.View entering={FadeInDown.delay(120)}><Serif size={64}>{formatMoney(done.units, currency)}</Serif></Animated.View>
-          <Text style={{ color: t.muted }}>to {label(done.name)}{note.trim() ? ` · “${note.trim()}”` : ""}</Text>
+          <Text style={{ color: t.muted }}>to {label(done.name)}{note.trim() ? ` · '${note.trim()}'` : ""}</Text>
         </View>
         <View style={{ gap: 8 }}>
           <Button title="Share card" variant="soft"
             onPress={() => shareCard({ kind: "sent", amount: done.units, to: done.name || undefined, from: getProfile()?.name, secs: done.ms < 60_000 ? (done.ms / 1000).toFixed(1) : undefined },
-              `Sent ${formatMoney(done.units, currency)} with Kin. Delivered ✓✓`)} />
+              `Sent ${formatMoney(done.units, currency)} with Kin. Delivered ✓`)} />
           <Button title="Done" onPress={() => (router.canGoBack() ? router.back() : router.replace("/tabs"))} />
         </View>
       </Screen>
