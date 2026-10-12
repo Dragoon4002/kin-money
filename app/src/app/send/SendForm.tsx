@@ -130,7 +130,7 @@ export function SendForm() {
       <Screen>
         <div className="flex flex-1 flex-col items-center justify-center gap-5 text-center">
           <div className="relative">
-            <Avatar name={mode === "link" ? "Link" : person?.name} size={88} />
+            <Avatar name={mode === "link" ? "Link" : person?.name} size={88} plain={mode !== "link" && !!person && !person.name} />
             <span className="absolute -inset-2 animate-spin rounded-full border-4 border-brand border-t-transparent" />
           </div>
           <p className="font-display tabular text-6xl leading-none">{formatMoney(units, currency)}</p>
@@ -150,7 +150,7 @@ export function SendForm() {
         ) : (
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-3 rounded-[28px] border border-line bg-surface p-3">
-              <Avatar name={person.name} size={48} />
+              <Avatar name={person.name} size={48} plain={!person.name} />
               <span className="flex-1">
                 <span className="block text-xs text-muted">To</span>
                 <span className="font-semibold">{who}</span>

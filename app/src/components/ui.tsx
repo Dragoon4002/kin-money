@@ -218,12 +218,20 @@ export const funIndex = (name = "") => [...name].reduce((h, c) => h + c.charCode
 export const funBg = (name = "") => FUN[funIndex(name)];
 
 /** Person's picture = their Kinko character (published look, or a stable default from their name). */
-export function Avatar({ name, size = 44 }: { name?: string; size?: number }) {
+/** `plain` = an account outside Kin (pasted/scanned address): generic person, not a Kinko. */
+export function Avatar({ name, size = 44, plain = false }: { name?: string; size?: number; plain?: boolean }) {
   const handle = name?.replace(/^@/, "");
   const look = useAvatarLook(handle);
   return (
     <span className="grid shrink-0 place-items-end overflow-hidden rounded-full bg-surface-2" style={{ width: size, height: size }} aria-label={handle ? `@${handle}` : undefined}>
-      <Kinko look={look} size={size} avatar />
+      {plain ? (
+        <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden className="text-muted">
+          <circle cx="12" cy="9" r="4" fill="currentColor" />
+          <path d="M4 22c0-4.4 3.6-7 8-7s8 2.6 8 7" fill="currentColor" />
+        </svg>
+      ) : (
+        <Kinko look={look} size={size} avatar />
+      )}
     </span>
   );
 }
