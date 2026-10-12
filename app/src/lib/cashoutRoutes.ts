@@ -29,7 +29,7 @@ export const ROUTES: Record<Mode, Route> = {
     agora: "0xf33286E3222D1c829dACeac48c0Ec651F6452470",
     uniswap: {
       poolManager: "0x188d586Ddcf52439676Ca21A244753fA19F9Ea8e",
-      quoter: "0xa222Dd357A9076d1091Ed6Aa2E16C9742dD26891",
+      quoter: "0xa222Dd357A9076d1091Ed6Aa2e16C9742dD26891",
       fee: 50,
       tickSpacing: 1,
     },
