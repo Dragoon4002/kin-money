@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import { PayQr } from "@/components/core/PayQr";
 import { useSignedIn } from "@/components/social/bits";
 import { Button, Card, Delivered, ErrorText, Field, Ico, Screen, inputClass } from "@/components/ui";
-import { SOURCES, type AddQuote, type AddStatus } from "@/lib/addMoney";
+import { MONAD_USDC, SOURCES, type AddQuote, type AddStatus } from "@/lib/addMoney";
+import { networks } from "@/lib/chain";
+import { erc20Abi } from "viem";
 import { convertToDollars } from "@/lib/offramp";
 import { humanError } from "@/lib/errors";
 import type { IconName } from "@/lib/icons";
@@ -65,7 +67,54 @@ function Add() {
     setPending(p);
   }
 
-  return pending ? <Tracking p={pending} onReset={() => start(null)} /> : <Form onQuote={start} />;
+  return pending ? <Tracking p={pending} onReset={() => start(null)} /> : <><Waiting /><Form onQuote={start} /></>;
+}
+
+/** Money that already arrived in the user's account but isn't dollars yet (e.g. the screen was closed before the
+ *  last tap) → one tap turns all of it into dollars. */
+function Waiting() {
+  const me = useSignedIn()?.address;
+  const [units, setUnits] = useState(0n);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [done, setDone] = useState<{ hash: string; ausdOut: bigint } | null>(null);
+
+  useEffect(() => {
+    if (!me) return;
+    networks.main.client
+      .readContract({ address: MONAD_USDC, abi: erc20Abi, functionName: "balanceOf", args: [me] })
+      .then(setUnits)
+      .catch(() => {});
+  }, [me, done]);
+
+  async function convert() {
+    setBusy(true);
+    setErr("");
+    try {
+      setDone(await convertToDollars(units));
+    } catch (e) {
+      setErr(humanError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (done)
+    return (
+      <Card className="mb-4 flex flex-col gap-2 text-center">
+        <p className="font-display text-2xl">{formatMoney(done.ausdOut)} added</p>
+        <Link href={`/details?tx=${done.hash}`} className="text-sm font-semibold text-brand">Proof of payment</Link>
+      </Card>
+    );
+  if (units < 10_000n) return null; // under a cent: not worth a tap
+  return (
+    <Card className="mb-4 flex flex-col gap-3">
+      <p className="font-semibold">{formatMoney(units)} arrived and is waiting</p>
+      <p className="text-sm text-muted">Add it to your balance to send or spend it.</p>
+      <Button onClick={convert} busy={busy} disabled={busy}>Add {formatMoney(units)} to your balance</Button>
+      <ErrorText>{err}</ErrorText>
+    </Card>
+  );
 }
 
 function Form({ onQuote }: { onQuote: (p: Pending) => void }) {
