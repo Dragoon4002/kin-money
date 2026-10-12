@@ -12,7 +12,7 @@ export function toDollars(units: bigint): number {
 }
 
 // Built-in table = fallback. In the browser, live rates (Chainlink CRE → KinKeeper onchain, via /api/rates) replace it.
-export const FX_STATIC: Record<string, number> = { USD: 1, INR: 88.5, PHP: 57.5, MXN: 18.4, NGN: 1530, AED: 3.67, GBP: 0.75, EUR: 0.86 };
+export const FX_STATIC: Record<string, number> = { USD: 1, INR: 96.8, PHP: 62.8, MXN: 18.4, NGN: 1331, AED: 3.67, GBP: 0.756, EUR: 0.893 };
 export const FX: Record<string, number> = { ...FX_STATIC };
 // ponytail: screens rendered before this lands show the table rate until their next render.
 if (typeof window !== "undefined") {

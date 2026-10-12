@@ -15,7 +15,7 @@ export function toDollars(units: bigint): number {
 }
 
 // Built-in table = fallback; live rates (Chainlink CRE → KinKeeper onchain, via /api/rates) replace it. Same as web.
-export const FX_STATIC: Record<string, number> = { USD: 1, INR: 88.5, PHP: 57.5, MXN: 18.4, NGN: 1530, AED: 3.67, GBP: 0.75, EUR: 0.86 };
+export const FX_STATIC: Record<string, number> = { USD: 1, INR: 96.8, PHP: 62.8, MXN: 18.4, NGN: 1331, AED: 3.67, GBP: 0.756, EUR: 0.893 };
 export const FX: Record<string, number> = { ...FX_STATIC };
 /** Pull live rates into FX (app start + back to foreground). Cash-out quotes read FX.INR, so they follow. */
 export const loadRates = () =>
