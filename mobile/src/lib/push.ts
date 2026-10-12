@@ -2,6 +2,7 @@ import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
 import { useEffect, useState } from "react";
 import { Platform } from "react-native";
+import { getProfile } from "./account";
 import { api } from "./contacts";
 import { openKin } from "./nav";
 
@@ -16,17 +17,18 @@ const channel = Platform.OS === "android"
   ? Notifications.setNotificationChannelAsync("payments", { name: "Payments", importance: Notifications.AndroidImportance.HIGH }).catch(() => null)
   : Promise.resolve(null);
 
-let registered = false;
+const registered = new Set<string>(); // addresses whose push token the server has
 
-/** Token → server. Only call when unlocked (signing would otherwise prompt Face ID). */
+/** Token → server, once per account. Only call when unlocked (signing would otherwise prompt Face ID). */
 async function register() {
-  if (registered) return;
+  const me = getProfile()?.address;
+  if (!me || registered.has(me)) return;
   try {
     await channel;
     const projectId = Constants.expoConfig?.extra?.eas?.projectId as string | undefined;
     const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
     await api("/api/push/subscribe", "POST", { kind: "expo", token });
-    registered = true;
+    registered.add(me);
   } catch {} // ponytail: retried next app start; no FCM creds / Expo Go just means no pushes
 }
 

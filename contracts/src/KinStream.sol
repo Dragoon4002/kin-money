@@ -51,7 +51,7 @@ contract KinStream is ERC2771Context, ReentrancyGuardTransient {
         bytes32 nonce,
         bytes calldata signature
     ) external nonReentrant returns (uint256 id) {
-        if (payee == address(0) || duration == 0 || value == 0 || value > type(uint96).max) revert InvalidTerms();
+        if (payee == address(0) || payee == address(this) || payee == ausd || duration == 0 || value == 0 || value > type(uint96).max) revert InvalidTerms();
         address payer = _msgSender();
         uint40 start = uint40(block.timestamp);
         id = ++count;

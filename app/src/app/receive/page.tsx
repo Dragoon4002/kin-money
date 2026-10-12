@@ -98,7 +98,7 @@ export default function Receive() {
             <p className="mt-3 text-sm text-muted">{SCAN_LINE}</p>
             {profile && (
               <button type="button" onClick={copyAddress} className="mt-2 flex min-h-11 flex-col items-center rounded-full px-4 py-1 active:bg-brand-soft">
-                <span className="text-sm font-semibold text-brand">{addrCopied ? "Copied ✓" : "Copy wallet address"}</span>
+                <span className="text-sm font-semibold text-brand">{addrCopied ? "Copied ✓" : "Copy account code"}</span>
                 <span className="font-mono text-xs text-muted">{shortAddr(profile.address)}</span>
               </button>
             )}

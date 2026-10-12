@@ -41,6 +41,7 @@ contract KinCashout is ERC2771Context, ReentrancyGuardTransient {
 
     error InvalidTerms();
     error PairMismatch();
+    error ZeroMinOut();
 
     constructor(address forwarder, address ausd_, address pair_) ERC2771Context(forwarder) {
         address t0 = IAgoraStableSwapPair(pair_).token0();
@@ -64,6 +65,7 @@ contract KinCashout is ERC2771Context, ReentrancyGuardTransient {
         bytes calldata signature
     ) external nonReentrant returns (uint256 id, uint256 out) {
         if (value == 0 || payoutRef == bytes32(0) || to == address(0) || to == address(this)) revert InvalidTerms();
+        if (minOut == 0) revert ZeroMinOut();
         address user = _msgSender();
         IERC3009(ausd).receiveWithAuthorization(user, address(this), value, validAfter, validBefore, nonce, signature);
 

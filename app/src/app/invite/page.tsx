@@ -81,7 +81,7 @@ export default function Invite() {
 
       <div className="mt-auto flex flex-col gap-3">
         <a
-          href={`https://wa.me/?text=${encodeURIComponent(text)}`}
+          href={link ? `https://wa.me/?text=${encodeURIComponent(text)}` : undefined}
           target="_blank"
           rel="noopener noreferrer"
           onClick={noteInvite}

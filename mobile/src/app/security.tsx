@@ -168,7 +168,8 @@ function CopyBtn({ text, label }: { text: string; label: string }) {
   async function copy() {
     await Clipboard.setStringAsync(text);
     setCopied(true);
-    setTimeout(() => (void Clipboard.setStringAsync(""), setCopied(false)), 60_000);
+    // Only wipe our own copy: leave anything the user copied since.
+    setTimeout(() => (void Clipboard.getStringAsync().then((s) => s === text && Clipboard.setStringAsync("")), setCopied(false)), 60_000);
   }
   return <Button variant="soft" title={copied ? "Copied. Clears in 1 minute" : label} onPress={copy} />;
 }
@@ -195,6 +196,14 @@ function Add({ kinAddress, onDone }: { kinAddress?: string; onDone: () => void }
     return () => void (live = false);
   }, [address]);
   const name = found?.address === address ? found.name : "";
+
+  // Pasted phrase/key leaves the screen when the app goes to the background (same as the Show step).
+  // Not while adding: the Face ID sheet itself makes the app inactive.
+  useEffect(() => {
+    if (busy) return;
+    const sub = AppState.addEventListener("change", (s) => s !== "active" && setText(""));
+    return () => sub.remove();
+  }, [busy]);
 
   async function add() {
     const p = parseSecret(text);

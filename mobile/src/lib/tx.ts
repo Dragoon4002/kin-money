@@ -20,9 +20,9 @@ const randomNonce = () => toHex(crypto.getRandomValues(new Uint8Array(32)));
 
 async function relay(body: unknown, client: Pick<PublicClient, "waitForTransactionReceipt"> = publicClient): Promise<Hex> {
   const res = await fetch(`${API_BASE}/api/relay`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body, (_, v) => (typeof v === "bigint" ? v.toString() : v)) });
-  const json = await res.json();
+  const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(`relay: ${json.error ?? res.status}`);
-  const receipt = await client.waitForTransactionReceipt({ hash: json.hash });
+  const receipt = await client.waitForTransactionReceipt({ hash: json.hash, timeout: 60_000 });
   if (receipt.status !== "success") throw new Error("relay: reverted");
   return json.hash;
 }
@@ -37,6 +37,17 @@ export async function sendDollars(to: Address, value: bigint): Promise<Hex> {
   const domain = { ...AUSD_DOMAIN, chainId: net.chain.id, verifyingContract: net.ausd };
   const signature = await account.signTypedData({ domain, types: { TransferWithAuthorization: AUTH_FIELDS }, primaryType: "TransferWithAuthorization", message: auth });
   return relay({ kind: "3009", net: net.mode, auth, signature }, net.client);
+}
+
+/** Practice cash-out (KinCashoutV2): one signed EIP-3009 pull whose nonce commits to every term (lib/cashout.ts
+ *  termsNonce), so the relay can't change any. Same body as web app/src/lib/offramp.ts cashOutVia. */
+export async function cashOutSigned(target: Address, value: bigint, terms: { to: Address; venue: number; minOut: bigint; payoutRef: Hex; salt: Hex }, nonce: Hex): Promise<Hex> {
+  if (getMode() === "main") throw new Error("practice only");
+  await confirmPayment(value);
+  const account = await getAccount();
+  const auth = { from: account.address, to: target, value, validAfter: 0n, validBefore: now() + 3600n, nonce };
+  const signature = await account.signTypedData({ domain: AUSD_DOMAIN, types: { ReceiveWithAuthorization: AUTH_FIELDS }, primaryType: "ReceiveWithAuthorization", message: auth });
+  return relay({ kind: "cashout", net: "test", from: auth.from, terms, value, validAfter: auth.validAfter, validBefore: auth.validBefore, signature });
 }
 
 /** Signed pull of `value` into `target` — the 5 trailing "fund" args every Kin fund function takes. */

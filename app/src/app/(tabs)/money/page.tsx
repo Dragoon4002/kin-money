@@ -30,12 +30,14 @@ export default function Money() {
   const [jars, setJars] = useState<string | null | undefined>(undefined); // undefined = loading
   const [adding, setAdding] = useState<"idle" | "busy" | "done" | "had">("idle");
   const [err, setErr] = useState("");
+  const [failed, setFailed] = useState(false); // only until the first good balance; later poll misses keep the last value
+  const [retry, setRetry] = useState(0);
   const hide = usePrivate();
 
   useEffect(() => {
     if (!me) return;
     let on = true;
-    const tick = () => getBalance(me).then((v) => on && setBal({ mode, v })).catch(() => {});
+    const tick = () => getBalance(me).then((v) => on && (setBal({ mode, v }), setFailed(false)), () => on && setFailed(true));
     tick();
     jarLine(me).then((j) => on && setJars(j), () => on && setJars(null));
     const t = setInterval(() => document.visibilityState === "visible" && tick(), 6000); // hidden tabs don't poll
@@ -43,7 +45,7 @@ export default function Money() {
       on = false;
       clearInterval(t);
     };
-  }, [me, mode]);
+  }, [me, mode, retry]);
 
   async function addMoney() {
     if (!me) return;
@@ -79,7 +81,11 @@ export default function Money() {
             <Chip>{mode === "main" ? "Real money" : "Practice money"}</Chip>
           </div>
           <div className="relative mt-3 min-h-16">
-            {balance === null ? (
+            {balance === null && failed ? (
+              <button type="button" onClick={() => (setFailed(false), setRetry((n) => n + 1))} className="flex min-h-11 items-center text-sm font-semibold text-muted active:opacity-70">
+                Couldn&apos;t load. Try again.
+              </button>
+            ) : balance === null ? (
               <div className="h-14 w-52 animate-pulse rounded-2xl bg-surface-2" />
             ) : (
               <Amount value={formatMoney(balance)} size="xl" secret />

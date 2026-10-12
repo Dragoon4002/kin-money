@@ -1,6 +1,7 @@
 import { isAddressEqual, parseEventLogs, type Address, type Hex } from "viem";
 import { KinCircleAbi, KinEscrowAbi, KinGiftLinkAbi, KinMandateAbi, KinPotAbi, KinStreamAbi } from "./abi";
-import { CASHOUT, addr, publicClient } from "./config";
+import { cashoutOf, inr } from "./cashout";
+import { CASHOUT, CASHOUT_V1, addr, publicClient } from "./config";
 import { nameOf, shortAddr } from "./names";
 
 // Port of app/src/lib/counterparty.ts: money moving in/out of a Kin contract is a transfer to a contract
@@ -12,7 +13,8 @@ const GIFTLINK: Address = "0x7ad1C20D0B96BaE5aE72462137384A1924e36BDb";
 const ZERO = "0x0000000000000000000000000000000000000000";
 const CHORE_MARK = 1;
 
-const KIN = [addr.escrow, addr.stream, addr.pot, addr.circle, MANDATE, GIFTLINK, CASHOUT];
+const KIN = [addr.escrow, addr.stream, addr.pot, addr.circle, MANDATE, GIFTLINK, CASHOUT, CASHOUT_V1];
+const isCashout = (a: Address) => isAddressEqual(a, CASHOUT) || isAddressEqual(a, CASHOUT_V1);
 export const isKinContract = (a: Address) => KIN.some((k) => isAddressEqual(k, a));
 
 const names = new Map<string, Promise<string>>();
@@ -64,11 +66,15 @@ function fallback(other: Address): string {
   if (isAddressEqual(other, addr.circle)) return "Savings circle";
   if (isAddressEqual(other, MANDATE)) return "AutoPay";
   if (isAddressEqual(other, GIFTLINK)) return "Gift link";
-  if (isAddressEqual(other, CASHOUT)) return "Cash out";
+  if (isCashout(other)) return "Cash out";
   return "Kin";
 }
 
 async function read(hash: Hex, other: Address, dir: "in" | "out", me: Address): Promise<string> {
+  if (isCashout(other)) {
+    const rec = cashoutOf(hash); // rupees are remembered on this phone only (never on-chain)
+    return rec ? `Cash out · ${inr(rec.rupees)}` : "Cash out";
+  }
   const { logs } = await publicClient.getTransactionReceipt({ hash });
   const mine = logs.filter((l) => isAddressEqual(l.address, other));
 

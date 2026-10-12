@@ -78,7 +78,7 @@ export function SendSheet({ inv, open, onClose }: { inv: Invoice; open: boolean;
   }
 
   return (
-    <Sheet open={open} onClose={() => !busy && onClose()}>
+    <Sheet open={open} onClose={() => !busy && onClose()} label="Send invoice">
       <h2 className="font-display text-3xl">Send invoice</h2>
       {sent ? (
         <p className="text-good">Sent to @{sent} ✓ They&apos;ll get a notification.</p>

@@ -179,7 +179,7 @@ export default function CircleDetail() {
         {mine && phase === "gathering" && open > 0 && <Button variant="soft" onClick={openInvite}>Invite to circle</Button>}
       </Pad>
 
-      <Sheet open={inviting} onClose={() => !busy && setInviting(false)}>
+      <Sheet open={inviting} onClose={() => !busy && setInviting(false)} label="Invite to circle">
         <h2 className="font-display text-3xl">Invite to circle</h2>
         <p className="text-muted">
           {open} {open === 1 ? "spot is" : "spots are"} open. Whoever opens your link first takes the next turn. You can turn it off any time.

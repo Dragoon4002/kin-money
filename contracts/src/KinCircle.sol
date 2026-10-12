@@ -106,7 +106,9 @@ contract KinCircle is ERC2771Context, ReentrancyGuardTransient {
         circles[id] = Circle(contribution, roundLength, 0, 0, 0, 0, 0, 0, uint40(block.timestamp + 3 days), seats);
         for (uint256 i; i < n; ++i) {
             Member storage m = memberInfo[id][members[i]];
-            if (members[i] == address(0) || m.isMember) revert InvalidTerms();
+            if (members[i] == address(0) || members[i] == address(this) || members[i] == ausd || m.isMember) {
+                revert InvalidTerms();
+            }
             m.isMember = true;
             m.slot = uint8(i);
         }
@@ -138,6 +140,7 @@ contract KinCircle is ERC2771Context, ReentrancyGuardTransient {
 
     /// @notice Give `member` the next open seat. `signature` is by `inviter`'s invite key over
     ///         EIP-191 keccak256(abi.encode(this, chainid, id, inviter, member)). Anyone may submit.
+    ///         One seat per link: the key is cleared on use; the inviter sets a new one for the next seat.
     function claimSeat(uint256 id, address inviter, address member, bytes calldata signature) external {
         Circle storage c = circles[id];
         if (c.roundStart != 0 || block.timestamp >= c.joinBy) revert NotActive();
@@ -146,12 +149,13 @@ contract KinCircle is ERC2771Context, ReentrancyGuardTransient {
         address key = inviteKeyOf[id][inviter]; // only members can set one
         if (key == address(0)) revert NotMember();
         Member storage m = memberInfo[id][member];
-        if (member == address(0)) revert InvalidTerms();
+        if (member == address(0) || member == address(this) || member == ausd) revert InvalidTerms();
         if (m.isMember) revert AlreadyJoined();
         bytes32 digest = MessageHashUtils.toEthSignedMessageHash(
             keccak256(abi.encode(address(this), block.chainid, id, inviter, member))
         );
         if (ECDSA.recover(digest, signature) != key) revert BadSignature();
+        delete inviteKeyOf[id][inviter]; // one seat per link
         m.isMember = true;
         m.slot = uint8(members.length);
         members.push(member);

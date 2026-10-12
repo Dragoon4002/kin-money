@@ -19,7 +19,7 @@ contract KinStreamTest is KinTest {
     }
 
     function test_BoundaryRounding() public {
-        uint256 t0 = block.timestamp;
+        uint256 t0 = vm.getBlockTimestamp(); // block.timestamp is cached under --ir-minimum
         uint256 id = _create(10, 3); // rate 3.33/s
         assertEq(stream.accrued(id), 0);
         vm.expectRevert(KinStream.NothingToWithdraw.selector);
@@ -81,6 +81,12 @@ contract KinStreamTest is KinTest {
         vm.expectRevert(KinStream.InvalidTerms.selector);
         vm.prank(alice);
         stream.create(bob, 0, a.value, a.validAfter, a.validBefore, a.nonce, a.sig);
+        vm.expectRevert(KinStream.InvalidTerms.selector); // funds would be stuck in the contract
+        vm.prank(alice);
+        stream.create(address(stream), 10, a.value, a.validAfter, a.validBefore, a.nonce, a.sig);
+        vm.expectRevert(KinStream.InvalidTerms.selector);
+        vm.prank(alice);
+        stream.create(address(ausd), 10, a.value, a.validAfter, a.validBefore, a.nonce, a.sig);
     }
 
     function test_WithdrawViaForwarder() public {

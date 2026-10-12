@@ -323,7 +323,7 @@ export default function TripPage() {
         </>
       )}
 
-      <Sheet open={sheet !== null} onClose={() => setSheet(null)}>
+      <Sheet open={sheet !== null} onClose={() => setSheet(null)} label={sheet === "add" ? "Add expense" : sheet === "date" ? "Settle by" : sheet === "member" ? "Add someone to the trip" : "Expense details"}>
         {sheet === "add" && <AddExpense members={members} me={me} onAdd={onAdd} />}
         {sheet === "date" && (
           <>

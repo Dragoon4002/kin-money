@@ -77,6 +77,7 @@ contract KinCashoutV2 is ReentrancyGuardTransient {
     error NotPoolManager();
     error PartialFill();
     error InsufficientOutput();
+    error ZeroMinOut();
 
     constructor(
         address ausd_,
@@ -126,6 +127,7 @@ contract KinCashoutV2 is ReentrancyGuardTransient {
         bytes calldata signature
     ) external nonReentrant returns (uint256 id, uint256 out) {
         if (value == 0 || t.payoutRef == bytes32(0) || t.to == address(0) || t.to == address(this)) revert InvalidTerms();
+        if (t.venue == Venue.UniswapV4 && t.minOut == 0) revert ZeroMinOut(); // open pool: no slippage floor = sandwich
         IERC3009(ausd).receiveWithAuthorization(from, address(this), value, validAfter, validBefore, termsNonce(t), signature);
         out = t.venue == Venue.Agora ? _viaAgora(value, t.minOut, t.to) : _viaUniswap(value, t.minOut, t.to);
         id = ++count;

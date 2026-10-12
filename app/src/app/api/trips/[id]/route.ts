@@ -77,8 +77,6 @@ export async function POST(req: Request, { params }: Ctx) {
       // request paid. Tag payments with a purpose onchain if that ever matters.
       if ((await q(`MATCH (s:Settlement {hash: $hash}) RETURN s.hash`, { hash })).length) return bad("used");
       if (!(await paidOnchain(b.hash, me, to, BigInt(b.amount), trip.createdAt))) return bad("unpaid");
-      constraint ??= q("CREATE CONSTRAINT settlement_hash IF NOT EXISTS FOR (s:Settlement) REQUIRE s.hash IS UNIQUE");
-      await constraint;
       await q(
         `MATCH (t:Trip {id: $id}), (f:Person {address: $me}), (to:Person {address: $to})
          MERGE (s:Settlement {hash: $hash}) ON CREATE SET s.amount = $amount, s.at = timestamp()
@@ -127,8 +125,6 @@ export async function DELETE(req: Request, { params }: Ctx) {
     return r?.n ? { ok: true } : bad("not found", 404);
   });
 }
-
-let constraint: Promise<unknown> | null = null;
 
 /** Delivered AUSD Transfer from → to of ≥ min, made after the trip was created (ms). */
 async function paidOnchain(hash: Hex, from: Address, to: Address, min: bigint, sinceMs: number): Promise<boolean> {

@@ -1,4 +1,5 @@
 import * as SecureStore from "expo-secure-store";
+import { API_BASE } from "./config";
 
 // AUSD has 6 decimals. All onchain amounts are bigint base units.
 export const DECIMALS = 6;
@@ -13,8 +14,14 @@ export function toDollars(units: bigint): number {
   return Number(units) / Number(UNIT);
 }
 
-// ponytail: static demo FX table, swap for a live rate API when cash-out is real.
-export const FX: Record<string, number> = { USD: 1, INR: 88.5, PHP: 57.5, MXN: 18.4, NGN: 1530, AED: 3.67, GBP: 0.75, EUR: 0.86 };
+// Built-in table = fallback; live rates (Chainlink CRE → KinKeeper onchain, via /api/rates) replace it. Same as web.
+export const FX_STATIC: Record<string, number> = { USD: 1, INR: 88.5, PHP: 57.5, MXN: 18.4, NGN: 1530, AED: 3.67, GBP: 0.75, EUR: 0.86 };
+export const FX: Record<string, number> = { ...FX_STATIC };
+/** Pull live rates into FX (app start + back to foreground). Cash-out quotes read FX.INR, so they follow. */
+export const loadRates = () =>
+  fetch(`${API_BASE}/api/rates`).then((r) => r.json()).then((j: { rates?: Record<string, number> }) => void Object.assign(FX, j.rates)).catch(() => {});
+// ponytail: screens rendered before this lands show the table rate until their next render.
+void loadRates();
 
 const CURRENCY = "kin.currency";
 let currency: string | null = null;

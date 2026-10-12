@@ -5,7 +5,7 @@ import type { Address, Hex } from "viem";
 import { useAccount } from "./account";
 import { PUSHER } from "./config";
 import { api } from "./contacts";
-import { formatMoney } from "./money";
+import { formatMoney, loadRates } from "./money";
 import { play } from "./sound";
 
 // Messages + notification center (port of app/src/lib/live.ts). Realtime over Pusher
@@ -94,7 +94,7 @@ function startLive(me: Address): () => void {
   } catch {} // ponytail: no socket = polling below
   // Fallback / catch-up: counts every 30s while foregrounded and offline; on return to the app.
   const t = setInterval(() => isActive() && !connected && refreshCounts(), 30_000);
-  const sub = AppState.addEventListener("change", (s) => s === "active" && refreshCounts());
+  const sub = AppState.addEventListener("change", (s) => s === "active" && (refreshCounts(), loadRates()));
   return () => {
     on = false;
     connected = false;

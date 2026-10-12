@@ -39,7 +39,7 @@ const configSchema = z.object({
 	giftLink: z.string(),
 	circle: z.string(),
 	escrow: z.string(),
-	scan: z.number(), // newest N ids per contract to check
+	scan: z.number(), // ids per multicall batch
 	maxJobs: z.number(), // per report, bounds gas
 	gasLimit: z.string(),
 })
@@ -64,6 +64,16 @@ const mid = (xs: number[]) => {
 	return s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2
 }
 
+// With >=3 sources, drop any that deviates >5% from the median of the others; with <3 keep plain average/median.
+const robustMid = (xs: number[]) => {
+	if (xs.length < 3) return mid(xs)
+	const kept = xs.filter((x, i) => {
+		const m = mid(xs.filter((_, j) => j !== i))
+		return Math.abs(x - m) <= 0.05 * m
+	})
+	return mid(kept.length ? kept : xs)
+}
+
 // Runs on every node; each node returns its own per-currency median, then CRE takes the median across nodes.
 const fetchRates = (http: HTTPSendRequester): Rates => {
 	const seen: Record<string, number[]> = {}
@@ -78,7 +88,7 @@ const fetchRates = (http: HTTPSendRequester): Rates => {
 	const out = {} as Rates
 	for (const c of CODES) {
 		if (!seen[c]?.length) throw new Error(`no rate for ${c}`)
-		out[c] = mid(seen[c])
+		out[c] = robustMid(seen[c])
 	}
 	return out
 }
@@ -129,31 +139,34 @@ const findDueJobs = (runtime: Runtime<Config>, evm: InstanceType<typeof cre.capa
 		})),
 	).map((r) => (r.success ? BigInt(r.returnData) : 0n))
 
-	const candidates: { kind: number; id: bigint; call: Call3 }[] = []
+	// Scan every id newest→oldest in batches of cfg.scan, per kind, until that kind hits its job cap.
+	// ponytail: at most MAX_BATCHES batches per kind (CRE caps EVM calls per run); add a cursor to reach older ids.
+	const MAX_BATCHES = 3
+	const cap = Math.ceil(cfg.maxJobs / JOBS.length)
+	const due: bigint[][] = [[], [], [], []]
+	let scanned = 0
 	JOBS.forEach((j, kind) => {
-		for (let id = counts[kind]; id >= 1n && counts[kind] - id < BigInt(cfg.scan); id--) {
-			candidates.push({
-				kind,
-				id,
-				call: {
+		let batches = 0
+		for (let hi = counts[kind]; hi >= 1n && due[kind].length < cap && batches < MAX_BATCHES; hi -= BigInt(cfg.scan), batches++) {
+			const lo = hi - BigInt(cfg.scan) + 1n > 1n ? hi - BigInt(cfg.scan) + 1n : 1n
+			const ids: bigint[] = []
+			for (let id = hi; id >= lo; id--) ids.push(id)
+			const results = aggregate(
+				runtime,
+				evm,
+				ids.map((id) => ({
 					target: cfg[j.key] as Address,
 					allowFailure: true,
 					callData: encodeFunctionData({ abi: jobAbi, functionName: j.fn, args: [id] }),
-				},
+				})),
+			)
+			scanned += ids.length
+			results.forEach((r, i) => {
+				if (r.success && due[kind].length < cap) due[kind].push(ids[i])
 			})
 		}
 	})
-	const results = candidates.length ? aggregate(runtime, evm, candidates.map((c) => c.call)) : []
-
-	const due: bigint[][] = [[], [], [], []]
-	let n = 0
-	results.forEach((r, i) => {
-		if (r.success && n < cfg.maxJobs) {
-			due[candidates[i].kind].push(candidates[i].id)
-			n++
-		}
-	})
-	runtime.log(`scanned ${candidates.length} · due collect=${due[0]} open=${due[1]} settle=${due[2]} release=${due[3]}`)
+	runtime.log(`scanned ${scanned} · due collect=${due[0]} open=${due[1]} settle=${due[2]} release=${due[3]}`)
 	return due
 }
 

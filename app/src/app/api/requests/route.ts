@@ -62,15 +62,29 @@ export function POST(req: Request) {
 export function PATCH(req: Request) {
   return route(req, { ok: true }, async (me, b) => {
     if (typeof b.id !== "string" || (b.status !== "paid" && b.status !== "declined")) return bad();
-    const [open] = await q<{ from: Address; amount: string }>(
+    const [open] = await q<{ from: Address; amount: string; at: number }>(
       `MATCH (a:Person)-[r:REQUESTED {id: $id}]->(:Person {address: $me}) WHERE r.status = 'open'
-       RETURN a.address AS \`from\`, r.amount AS amount`,
+       RETURN a.address AS \`from\`, r.amount AS amount, r.at AS at`,
       { me, id: b.id },
     );
     if (!open) return bad("not found", 404);
-    if (b.status === "paid" && !(typeof b.hash === "string" && isHash(b.hash) && (await paidOnchain(b.hash, me, open.from, BigInt(open.amount))))) return bad("unpaid");
-    await q(`MATCH ()-[r:REQUESTED {id: $id}]->() WHERE r.status = 'open' SET r.status = $status`, { id: b.id, status: b.status });
-    return { ok: true };
+    if (b.status === "declined") {
+      await q(`MATCH ()-[r:REQUESTED {id: $id}]->() WHERE r.status = 'open' SET r.status = 'declined'`, { id: b.id });
+      return { ok: true };
+    }
+    if (typeof b.hash !== "string" || !isHash(b.hash)) return bad("unpaid");
+    const hash = b.hash.toLowerCase();
+    if ((await q(`MATCH (u:RequestPayment {hash: $hash}) RETURN u.hash`, { hash })).length) return bad("used");
+    if (!(await paidOnchain(b.hash, me, open.from, BigInt(open.amount), open.at))) return bad("unpaid");
+    // One payment settles one request: RequestPayment.hash is unique (constraint in graph.ts), MERGE claims it.
+    const [r] = await q<{ n: number }>(
+      `MATCH ()-[r:REQUESTED {id: $id}]->() WHERE r.status = 'open'
+       MERGE (u:RequestPayment {hash: $hash}) ON CREATE SET u.request = $id
+       WITH r, u WHERE u.request = $id
+       SET r.status = 'paid' RETURN count(r) AS n`,
+      { id: b.id, hash },
+    );
+    return r?.n ? { ok: true } : bad("used");
   });
 }
 
@@ -90,9 +104,12 @@ async function remind(me: Address, id: unknown) {
   return { ok: true };
 }
 
-async function paidOnchain(hash: Hex, from: Address, to: Address, min: bigint): Promise<boolean> {
+/** Delivered AUSD Transfer from → to of ≥ min, made after the request was created (ms). */
+async function paidOnchain(hash: Hex, from: Address, to: Address, min: bigint, sinceMs: number): Promise<boolean> {
   const receipt = await publicClient.getTransactionReceipt({ hash }).catch(() => null);
   if (receipt?.status !== "success") return false;
   const logs = parseEventLogs({ abi: erc20Abi, eventName: "Transfer", logs: receipt.logs.filter((l) => isAddressEqual(l.address, addr.ausd)) });
-  return logs.some((l) => isAddressEqual(l.args.from, from) && isAddressEqual(l.args.to, to) && l.args.value >= min);
+  if (!logs.some((l) => isAddressEqual(l.args.from, from) && isAddressEqual(l.args.to, to) && l.args.value >= min)) return false;
+  const block = await publicClient.getBlock({ blockNumber: receipt.blockNumber }).catch(() => null);
+  return !!block && Number(block.timestamp) * 1000 >= sinceMs - 60_000; // 1 min clock slack
 }

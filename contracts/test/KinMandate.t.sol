@@ -43,7 +43,7 @@ contract KinMandateTest is KinTest {
     }
 
     function test_EarlyCollectReverts() public {
-        uint256 t0 = block.timestamp;
+        uint256 t0 = vm.getBlockTimestamp(); // block.timestamp is cached under --ir-minimum
         uint256 id = _create(uint80(100 * USD), MONTH, 3);
         vm.expectRevert(KinMandate.NothingDue.selector);
         mandate.collect(id);
@@ -58,7 +58,7 @@ contract KinMandateTest is KinTest {
     }
 
     function test_CancelMidway() public {
-        uint256 t0 = block.timestamp;
+        uint256 t0 = vm.getBlockTimestamp(); // block.timestamp is cached under --ir-minimum
         uint256 id = _create(uint80(100 * USD), MONTH, 5);
         vm.warp(t0 + MONTH);
         mandate.collect(id); // 1 paid

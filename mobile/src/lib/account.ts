@@ -9,10 +9,11 @@ import { reactNativeWebAuthnClient } from "@category-labs/mera/react-native-weba
 import { toViemAccount } from "@category-labs/mera/viem";
 import { entropyToMnemonic } from "@scure/bip39";
 import { wordlist } from "@scure/bip39/wordlists/english.js";
+import { Directory, File, Paths } from "expo-file-system";
 import * as SecureStore from "expo-secure-store";
 import { useSyncExternalStore } from "react";
 import { bytesToHex, type Address, type Hex, type LocalAccount } from "viem";
-import { API_BASE, RP_ID } from "./config";
+import { API_BASE, RP_ID, setMode } from "./config";
 import { keyAddress, nodeFromPhrase, seal, unseal, type Sealed } from "./keys";
 
 // Mera is the entire account layer: passkey PRF (32B) → BIP39 → m/44'/60'/0'/0/0 EOA (same as web).
@@ -24,6 +25,7 @@ const TOKEN = "kin.session"; // read-only server session (app/src/lib/server/ses
 const PAY_CHECK = "kin.payCheck";
 const IMPORTED = "kin.imported"; // Imported[]
 const ACTIVE = "kin.active"; // address of the imported account in use; absent = Kin account
+const KEY_INDEX = "kin.keyindex"; // string[] of per-account keys signOut must delete (SecureStore can't list keys)
 const IDLE_MS = 5 * 60_000;
 const rp = { id: RP_ID, name: "Kin" };
 const webAuthnClient = reactNativeWebAuthnClient;
@@ -221,10 +223,34 @@ export function setName(name: string) {
 }
 
 /** Forgets Kin and every imported account on this phone (UI confirms first). */
+/** Record a per-account SecureStore key (link keys, categories…) so signOut can delete it. */
+export function trackKey(k: string) {
+  try {
+    const list = JSON.parse(SecureStore.getItem(KEY_INDEX) ?? "[]") as string[];
+    // ponytail: one SecureStore value (~2 KB soft limit on Android); past it new keys go untracked. Move to a file if it fills.
+    if (!list.includes(k)) SecureStore.setItem(KEY_INDEX, JSON.stringify([...list, k]));
+  } catch {}
+}
+
 export async function signOut() {
-  const keys = [STORE, TOKEN, IMPORTED, ACTIVE, ...importedAccounts().map((i) => tokenKey(i.address))];
+  let tracked: string[] = [];
+  try {
+    tracked = JSON.parse(SecureStore.getItem(KEY_INDEX) ?? "[]") as string[];
+  } catch {}
+  const keys = [STORE, TOKEN, IMPORTED, ACTIVE, "kin.ref", "kin.invited", KEY_INDEX, ...tracked, ...importedAccounts().map((i) => tokenKey(i.address))];
   lock();
-  await Promise.all(keys.map((k) => SecureStore.deleteItemAsync(k)));
+  await Promise.all(keys.map((k) => SecureStore.deleteItemAsync(k).catch(() => {})));
+  // Every account is gone, so every saved phonebook goes too (lib/contacts.ts peopleFile).
+  let files: unknown[] = [];
+  try {
+    files = new Directory(Paths.document).list();
+  } catch {}
+  for (const f of files)
+    if (f instanceof File && /^kin-people-.*\.json$/.test(f.name))
+      try {
+        f.delete();
+      } catch {} // one stuck file must not keep the rest
+  setMode("test"); // next account starts on practice money (onboarding needs it)
   refresh();
 }
 
@@ -232,7 +258,9 @@ export async function signOut() {
 export async function getAccount(): Promise<LocalAccount> {
   if (!current()) await unlock();
   touch();
-  return current()!;
+  const a = current();
+  if (!a) throw new Error("no account");
+  return a;
 }
 
 /**
@@ -286,7 +314,9 @@ async function startReadSession() {
     const sig = await a.signMessage({ message: `Kin session ${a.address} ${ts}` });
     const res = await fetch(`${API_BASE}/api/session`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ address: a.address, ts, sig }) });
     if (!res.ok) return; // ponytail: no token = reads fall back to per-request signatures while unlocked
-    SecureStore.setItem(tokenKey(a.address), ((await res.json()) as { token: string }).token);
+    const { token } = (await res.json()) as { token: string };
+    if (active()?.address !== a.address) return; // switched / signed out mid-request: don't save a stale token
+    SecureStore.setItem(tokenKey(a.address), token);
     refresh();
   } catch {}
 }

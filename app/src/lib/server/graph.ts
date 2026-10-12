@@ -50,7 +50,15 @@ export async function q<T = Record<string, unknown>>(cypher: string, params: Rec
       driver.executeQuery("CREATE CONSTRAINT person_address IF NOT EXISTS FOR (p:Person) REQUIRE p.address IS UNIQUE"),
       driver.executeQuery("CREATE CONSTRAINT rate_key IF NOT EXISTS FOR (r:Rate) REQUIRE r.key IS UNIQUE"),
       driver.executeQuery("CREATE CONSTRAINT chore_id IF NOT EXISTS FOR (c:Chore) REQUIRE c.id IS UNIQUE"),
+      driver.executeQuery("CREATE CONSTRAINT settlement_hash IF NOT EXISTS FOR (s:Settlement) REQUIRE s.hash IS UNIQUE"),
+      driver.executeQuery("CREATE CONSTRAINT request_payment_hash IF NOT EXISTS FOR (u:RequestPayment) REQUIRE u.hash IS UNIQUE"),
     ]);
+    const failed = driver;
+    ready.catch(() => {
+      if (driver !== failed) return;
+      failed.close().catch(() => {});
+      driver = null; // retry setup next call instead of caching the failure
+    });
   }
   await ready;
   const { records } = await driver.executeQuery(cypher, params);

@@ -100,7 +100,7 @@ export default function Receive() {
               if (Platform.OS === "android") ToastAndroid.show("Copied", ToastAndroid.SHORT);
               setAddrCopied(true);
             })}>
-            <Text style={{ color: t.brand, fontWeight: "600" }}>{addrCopied ? "Copied ✓" : "Copy wallet address"}</Text>
+            <Text style={{ color: t.brand, fontWeight: "600" }}>{addrCopied ? "Copied ✓" : "Copy account code"}</Text>
             <Text style={{ color: t.muted, fontSize: 12, fontFamily: "monospace" }}>{shortAddr(profile.address)}</Text>
           </Pressable>
         )}

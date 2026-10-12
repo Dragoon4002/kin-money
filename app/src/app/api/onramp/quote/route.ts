@@ -1,4 +1,5 @@
 import { createHmac } from "node:crypto";
+import { allowShared } from "@/lib/server/graph";
 import { allow, clientIp } from "@/lib/server/relayer";
 
 // Onramp white-label off-ramp quote: { usdc: "10" } → rupees out + rate + fees, from Onramp's own API (sandbox or live,
@@ -30,7 +31,8 @@ async function quote(fromAmount: string, chain: string) {
 
 export async function POST(req: Request) {
   if (!process.env.ONRAMP_API_KEY || !process.env.ONRAMP_API_SECRET) return Response.json({ error: "not connected" }, { status: 503 });
-  if (!allow(`onramp-quote:${clientIp(req)}`, 30)) return Response.json({ error: "slow down" }, { status: 429 });
+  const ip = clientIp(req);
+  if (!allow(`onramp-quote:${ip}`, 30) || !(await allowShared(`onramp-quote:${ip}`, 120, 3_600_000))) return Response.json({ error: "slow down" }, { status: 429 });
   const { usdc } = await req.json().catch(() => ({}));
   if (typeof usdc !== "string" || !/^\d{1,7}(\.\d{1,6})?$/.test(usdc) || Number(usdc) <= 0) return Response.json({ error: "invalid" }, { status: 400 });
   try {

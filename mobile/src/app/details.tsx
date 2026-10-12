@@ -11,6 +11,7 @@ import { Kinko } from "@/components/Kinko";
 import { Band, Button, Chip, Footer, IconTile, Row, Screen, Serif, Text } from "@/components/ui";
 import { useAccount } from "@/lib/account";
 import { categoryOf } from "@/lib/activity";
+import { cashoutOf, inr } from "@/lib/cashout";
 import { CATEGORIES, setCategory } from "@/lib/categories";
 import { API_BASE, money as moneyNet, networks, type Network } from "@/lib/config";
 import { describe, isKinContract } from "@/lib/counterparty";
@@ -106,6 +107,7 @@ export default function Details() {
   const [cat, setCat] = useState(() => (hash ? (categoryOf(hash) ?? OTHER) : OTHER));
   const [editing, setEditing] = useState(false);
   const [note] = useState(() => (hash ? noteOf(hash) : ""));
+  const [cash] = useState(() => (hash ? cashoutOf(hash) : null)); // rupees, remembered on this phone
 
   useEffect(() => {
     if (hash) load(hash, me).then(setR).catch(() => setFailed(true));
@@ -197,6 +199,14 @@ export default function Details() {
           </Pressable>
         )}
       </View>
+
+      {cash && (
+        <View style={{ gap: 4, borderRadius: 28, borderWidth: 1, borderColor: t.line, backgroundColor: t.surface, padding: 20 }}>
+          <Text style={{ color: t.muted, fontSize: 14 }}>Cash out</Text>
+          <Serif size={30}>{inr(cash.rupees)}</Serif>
+          <Text style={{ color: t.muted, fontSize: 14 }}>{cash.practice ? "Practice cash-out: no rupees moved" : "Cashed out to your bank"}</Text>
+        </View>
+      )}
 
       {r.out && (
         <View>

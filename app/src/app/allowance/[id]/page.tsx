@@ -139,7 +139,7 @@ function Actions({ s, isPayer, onDone }: { s: Stream; isPayer: boolean; onDone: 
       {isPayer && open && nowSec() < s.end && (
         <Button variant="ghost" onClick={askStop} disabled={busy}>Stop allowance</Button>
       )}
-      <Sheet open={confirm} onClose={() => !busy && setConfirm(false)}>
+      <Sheet open={confirm} onClose={() => !busy && setConfirm(false)} label="Stop allowance">
         <h2 className="text-xl font-bold">Stop this allowance?</h2>
         <p className="text-muted">
           They keep {formatMoney(split.keep)} they&apos;ve already got. You get {formatMoney(split.back)} back, right away.

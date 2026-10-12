@@ -161,6 +161,38 @@ contract KinKeeperTest is KinTest {
         keeper.onReport("", rep);
     }
 
+    function _setInr(uint64 v0) internal {
+        bytes3[] memory c = new bytes3[](1);
+        uint64[] memory v = new uint64[](1);
+        (c[0], v[0]) = ("INR", v0);
+        vm.prank(cre);
+        keeper.onReport("", _report(c, v, new uint256[](0), new uint256[](0), new uint256[](0), new uint256[](0)));
+    }
+
+    /// @dev First set unbounded; after that each report may move a rate at most 15% either way.
+    function test_RateJumpBounded() public {
+        _setInr(88_000_000); // first set: any value
+        _setInr(101_200_000); // +15% exactly: ok
+        _setInr(86_020_000); // -15% exactly: ok
+
+        bytes3[] memory c = new bytes3[](1);
+        uint64[] memory v = new uint64[](1);
+        (c[0], v[0]) = ("INR", 98_923_001); // +15% + 1
+        bytes memory rep = _report(c, v, new uint256[](0), new uint256[](0), new uint256[](0), new uint256[](0));
+        vm.expectRevert(abi.encodeWithSelector(KinKeeper.RateJump.selector, bytes3("INR"), uint64(86_020_000), v[0]));
+        vm.prank(cre);
+        keeper.onReport("", rep);
+
+        v[0] = 73_116_999; // -15% - 1
+        rep = _report(c, v, new uint256[](0), new uint256[](0), new uint256[](0), new uint256[](0));
+        vm.expectRevert(abi.encodeWithSelector(KinKeeper.RateJump.selector, bytes3("INR"), uint64(86_020_000), v[0]));
+        vm.prank(cre);
+        keeper.onReport("", rep);
+
+        (uint64 val,) = keeper.rateOf("INR");
+        assertEq(val, 86_020_000);
+    }
+
     /// @dev 7 rates + one job of each kind; all four pay their payee, keeper keeps nothing.
     function test_AllJobsRun() public {
         for (uint256 i; i < 3; ++i) {

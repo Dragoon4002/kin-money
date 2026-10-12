@@ -5,42 +5,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {KinTest} from "./KinTest.sol";
 import {Mock3009} from "./Mock3009.sol";
 import {KinAddMoney} from "../src/KinAddMoney.sol";
-import {PoolKey, SwapParams} from "../src/KinCashoutV2.sol";
-
-/// @notice Uniswap v4 PoolManager stand-in: fixed rate (bps), exact-input swaps, sync/settle/take flash accounting.
-contract MockPoolManager {
-    uint256 public rateBps = 9_990;
-    address synced;
-    uint256 syncedBal;
-    int256 owed; // input still to be paid in the current unlock
-
-    function unlock(bytes calldata data) external returns (bytes memory r) {
-        r = KinAddMoney(msg.sender).unlockCallback(data);
-        require(owed == 0, "unsettled");
-    }
-
-    function swap(PoolKey memory key, SwapParams memory p, bytes calldata) external returns (int256) {
-        require(key.currency0 < key.currency1 && p.amountSpecified < 0, "bad swap");
-        int128 amtIn = int128(-p.amountSpecified);
-        int128 amtOut = int128(int256(uint256(uint128(amtIn)) * rateBps / 10_000));
-        owed += amtIn;
-        (int128 d0, int128 d1) = p.zeroForOne ? (-amtIn, amtOut) : (amtOut, -amtIn);
-        return (int256(d0) << 128) | int256(uint256(uint128(d1)));
-    }
-
-    function sync(address c) external {
-        (synced, syncedBal) = (c, IERC20(c).balanceOf(address(this)));
-    }
-
-    function settle() external payable returns (uint256 paid) {
-        paid = IERC20(synced).balanceOf(address(this)) - syncedBal;
-        owed -= int256(paid);
-    }
-
-    function take(address c, address to, uint256 amount) external {
-        IERC20(c).transfer(to, amount);
-    }
-}
+import {MockPoolManager} from "./MockPoolManager.sol";
 
 abstract contract AddMoneySigning is KinTest {
     bytes32 constant RECEIVE_TYPEHASH = keccak256(
@@ -117,7 +82,7 @@ contract KinAddMoneyTest is AddMoneySigning {
         vm.expectRevert("invalid signature"); // different recipient
         add.addMoney(alice, KinAddMoney.Terms(bob, 9 * USD, SALT), 10 * USD, 0, before, sig);
         vm.expectRevert("invalid signature"); // lower min out
-        add.addMoney(alice, KinAddMoney.Terms(TO, 0, SALT), 10 * USD, 0, before, sig);
+        add.addMoney(alice, KinAddMoney.Terms(TO, 1, SALT), 10 * USD, 0, before, sig);
         vm.expectRevert("invalid signature"); // different salt
         add.addMoney(alice, KinAddMoney.Terms(TO, 9 * USD, bytes32(0)), 10 * USD, 0, before, sig);
         vm.expectRevert("invalid signature"); // more money
@@ -129,12 +94,20 @@ contract KinAddMoneyTest is AddMoneySigning {
     }
 
     function test_ReplayFails() public {
-        KinAddMoney.Terms memory t = KinAddMoney.Terms(TO, 0, SALT);
+        KinAddMoney.Terms memory t = KinAddMoney.Terms(TO, 1, SALT);
         (uint256 before, bytes memory sig) = _sig(t, 10 * USD);
         add.addMoney(alice, t, 10 * USD, 0, before, sig);
         vm.expectRevert("authorization is used");
         add.addMoney(alice, t, 10 * USD, 0, before, sig);
         assertEq(usdc.balanceOf(alice), 990 * USD);
+    }
+
+    function test_RevertsZeroMinOut() public {
+        KinAddMoney.Terms memory t = KinAddMoney.Terms(TO, 0, SALT);
+        (uint256 before, bytes memory sig) = _sig(t, 10 * USD);
+        vm.expectRevert(KinAddMoney.ZeroMinOut.selector);
+        add.addMoney(alice, t, 10 * USD, 0, before, sig);
+        assertEq(usdc.balanceOf(alice), 1_000 * USD);
     }
 
     function test_RevertsBadTerms() public {
@@ -144,6 +117,43 @@ contract KinAddMoneyTest is AddMoneySigning {
         add.addMoney(alice, KinAddMoney.Terms(address(0), 0, SALT), 1, 0, 1, "");
         vm.expectRevert(KinAddMoney.InvalidTerms.selector);
         add.addMoney(alice, KinAddMoney.Terms(address(add), 0, SALT), 1, 0, 1, "");
+    }
+
+    function test_PartialFillReverts() public {
+        pm.setFill(9_999); // pool only takes part of the input
+        KinAddMoney.Terms memory t = KinAddMoney.Terms(TO, 1, SALT);
+        (uint256 before, bytes memory sig) = _sig(t, 10 * USD);
+        vm.expectRevert(KinAddMoney.PartialFill.selector);
+        add.addMoney(alice, t, 10 * USD, 0, before, sig);
+        assertEq(usdc.balanceOf(alice), 1_000 * USD);
+    }
+
+    function test_WrongDeltaReverts() public {
+        pm.setFlipDelta(true); // pool reports input/output in the wrong currency slots
+        KinAddMoney.Terms memory t = KinAddMoney.Terms(TO, 1, SALT);
+        (uint256 before, bytes memory sig) = _sig(t, 10 * USD);
+        vm.expectRevert(KinAddMoney.PartialFill.selector);
+        add.addMoney(alice, t, 10 * USD, 0, before, sig);
+        assertEq(usdc.balanceOf(alice), 1_000 * USD);
+        assertEq(ausd.balanceOf(TO), 0);
+    }
+
+    /// @dev Both currency orders (zeroForOne true/false): USDC placed below and above AUSD.
+    function test_AddsMoneyEitherCurrencyOrder() public {
+        address[2] memory spots = [address(0x10000), address(type(uint160).max - 0x10000)];
+        for (uint256 i; i < 2; i++) {
+            deployCodeTo("Mock3009.sol:Mock3009", spots[i]);
+            Mock3009 u = Mock3009(spots[i]);
+            u.mint(alice, 10 * USD);
+            KinAddMoney a = new KinAddMoney(address(u), address(ausd), address(pm), 50, 1, address(0));
+            KinAddMoney.Terms memory t = KinAddMoney.Terms(TO, 9_990_000, SALT);
+            (uint256 before, bytes memory sig) = _signAdd(ALICE_PK, address(u), "Agora Dollar", "1", a, t, 10 * USD);
+            uint256 out = a.addMoney(alice, t, 10 * USD, 0, before, sig);
+            assertEq(out, 9_990_000);
+            assertEq(u.balanceOf(alice), 0);
+            assertEq(u.balanceOf(address(pm)), 10 * USD);
+        }
+        assertEq(ausd.balanceOf(TO), 2 * 9_990_000);
     }
 
     function test_OnlyPoolManagerCanCallBack() public {
@@ -162,7 +172,7 @@ contract KinAddMoneyMainnetForkTest is AddMoneySigning {
     function setUp() public override {}
 
     function test_ForkUsdcToAusdToRecipient() public {
-        if (block.chainid != 143) return;
+        vm.skip(block.chainid != 143);
         KinAddMoney add = new KinAddMoney(USDC, AUSD, POOL_MANAGER, 50, 1, address(0));
         deal(USDC, alice, 10 * USD);
 

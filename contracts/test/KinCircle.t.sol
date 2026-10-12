@@ -340,7 +340,14 @@ contract KinCircleTest is KinTest {
         circle.setInviteKey(oid, vm.addr(KEY_B));
 
         circle.claimSeat(oid, alice, bob, _seatSig(KEY_A, oid, alice, bob));
-        vm.expectRevert(KinCircle.AlreadyJoined.selector); // replay
+        assertEq(circle.inviteKeyOf(oid, alice), address(0)); // one seat per link
+        vm.expectRevert(KinCircle.NotMember.selector); // replay: link used up
+        circle.claimSeat(oid, alice, bob, _seatSig(KEY_A, oid, alice, bob));
+        vm.expectRevert(KinCircle.NotMember.selector); // same link can't seat a second person
+        circle.claimSeat(oid, alice, carol, _seatSig(KEY_A, oid, alice, carol));
+        vm.prank(alice);
+        circle.setInviteKey(oid, vm.addr(KEY_A)); // fresh link (same key reused here for brevity)
+        vm.expectRevert(KinCircle.AlreadyJoined.selector);
         circle.claimSeat(oid, alice, bob, _seatSig(KEY_A, oid, alice, bob));
 
         vm.prank(bob);
@@ -358,6 +365,24 @@ contract KinCircleTest is KinTest {
         address dave = vm.addr(DAVE_PK);
         vm.expectRevert(KinCircle.Full.selector);
         circle.claimSeat(oid, alice, dave, _seatSig(KEY_A, oid, alice, dave));
+    }
+
+    function test_ClaimSeatRejectsContractOrToken() public {
+        uint256 oid = _openCircle();
+        vm.expectRevert(KinCircle.InvalidTerms.selector);
+        circle.claimSeat(oid, alice, address(circle), _seatSig(KEY_A, oid, alice, address(circle)));
+        vm.expectRevert(KinCircle.InvalidTerms.selector);
+        circle.claimSeat(oid, alice, address(ausd), _seatSig(KEY_A, oid, alice, address(ausd)));
+
+        address[] memory m = _members();
+        m[2] = address(circle);
+        vm.expectRevert(KinCircle.InvalidTerms.selector);
+        vm.prank(alice);
+        circle.create(m, 3, uint96(C), 1 days);
+        m[2] = address(ausd);
+        vm.expectRevert(KinCircle.InvalidTerms.selector);
+        vm.prank(alice);
+        circle.create(m, 3, uint96(C), 1 days);
     }
 
     function test_ClaimSeatAfterStartOrDeadline() public {

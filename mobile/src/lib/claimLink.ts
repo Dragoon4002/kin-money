@@ -12,6 +12,7 @@ import {
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { KinEscrowAbi } from "./abi";
 import { addr, API_BASE, chain, publicClient } from "./config";
+import { trackKey } from "./account";
 import { call } from "./tx";
 
 // Claim links: money held in KinEscrow, releasable by whoever holds the one-time key in the URL fragment
@@ -63,6 +64,7 @@ export function refundLink(id: bigint): Promise<Hex> {
 const store = (me: Address) => `kin.links.${me.toLowerCase()}`;
 
 function rememberLink(me: Address, id: bigint) {
+  trackKey(store(me));
   SecureStore.setItem(store(me), JSON.stringify([id.toString(), ...myLinkIds(me).map(String)]));
 }
 

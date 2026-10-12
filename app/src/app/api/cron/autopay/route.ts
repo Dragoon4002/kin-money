@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { zeroAddress, type Address } from "viem";
 import { KinGiftLinkAbi, KinMandateAbi } from "@/lib/abi";
 import { addr, publicClient } from "@/lib/chain";
@@ -13,10 +14,13 @@ import { loadTrip, planOf } from "@/app/api/trips/data";
 // ponytail: scans the newest 500 of each and sends ≤10 of each per run; shard or index if usage outgrows that.
 const SCAN = 500n;
 const MAX_COLLECTS = 10;
+export const maxDuration = 300;
 
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;
-  if (!secret || req.headers.get("authorization") !== `Bearer ${secret}`) return new Response("unauthorized", { status: 401 });
+  const got = Buffer.from(req.headers.get("authorization") ?? "");
+  const want = Buffer.from(`Bearer ${secret}`);
+  if (!secret || got.length !== want.length || !timingSafeEqual(got, want)) return new Response("unauthorized", { status: 401 });
 
   const count = await publicClient.readContract({ address: addr.mandate, abi: KinMandateAbi, functionName: "count" });
   const ids: bigint[] = [];
@@ -86,9 +90,9 @@ async function remindAll(): Promise<number> {
   for (const r of reqs) {
     const kind = cronNudge(r.due, now);
     if (sent >= MAX_NOTES || !kind || !canRemind(r.remindedAt, now)) continue;
-    await q(`MATCH ()-[r:REQUESTED {id: $id}]->() SET r.remindedAt = timestamp()`, { id: r.id });
     const what = `@${r.name || "someone"} is waiting for ${usd(r.amount)}${r.note ? ` for ${r.note}` : ""}`;
     await notify(r.to, { title: kind === "tomorrow" ? "Due tomorrow" : "Overdue", body: `${what}.`, url: "/requests", tag: `req-${r.id}` });
+    await q(`MATCH ()-[r:REQUESTED {id: $id}]->() SET r.remindedAt = timestamp()`, { id: r.id });
     sent++;
   }
 

@@ -1,5 +1,6 @@
 import { isAddress, parseUnits } from "viem";
 import { MONAD_USDC_ASSET, SOURCES, type AddQuote, type AddStatus } from "@/lib/addMoney";
+import { allowShared } from "@/lib/server/graph";
 import { allow, clientIp } from "@/lib/server/relayer";
 
 // Aurora Intents Swap API (docs.intents.aurora.dev): quote → one-time deposit address on the source chain → the
@@ -11,7 +12,8 @@ const key = () => process.env.AURORA_API_KEY;
 /** POST { source, amount, address, refundTo? } → AddQuote */
 export async function POST(req: Request) {
   if (!key()) return Response.json({ error: "not connected" }, { status: 503 });
-  if (!allow(`addmoney:${clientIp(req)}`, 30)) return Response.json({ error: "slow down" }, { status: 429 });
+  const ip = clientIp(req);
+  if (!allow(`addmoney:${ip}`, 30) || !(await allowShared(`addmoney:${ip}`, 120, 3_600_000))) return Response.json({ error: "slow down" }, { status: 429 });
   const { source, amount, address, refundTo } = await req.json().catch(() => ({}));
   const src = SOURCES.find((s) => s.id === source);
   if (!src || typeof amount !== "string" || !/^\d{1,7}(\.\d{1,18})?$/.test(amount) || Number(amount) <= 0 || !isAddress(address ?? ""))

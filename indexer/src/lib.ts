@@ -46,7 +46,7 @@ export function involved(params: Record<string, unknown>): string[] {
   const out = new Set<string>();
   for (const [k, v] of Object.entries(params)) {
     if (NOT_ACCOUNTS.has(k)) continue;
-    for (const x of Array.isArray(v) ? v : [v]) if (isAddr(x) && x !== ZERO) out.add(x.toLowerCase());
+    for (const x of Array.isArray(v) ? v : [v]) if (isAddr(x) && x !== ZERO && !KIN_CONTRACTS.has(x.toLowerCase())) out.add(x.toLowerCase());
   }
   return [...out];
 }
@@ -56,7 +56,7 @@ export function keepTransfer(from: string, to: string, touchesAccount: boolean):
   return touchesAccount || KIN_CONTRACTS.has(from.toLowerCase()) || KIN_CONTRACTS.has(to.toLowerCase());
 }
 
-const AMOUNT_KEYS = ["amount", "value", "total", "covered", "deposit", "ausdIn"];
+const AMOUNT_KEYS = ["amount", "value", "total", "covered", "deposit", "ausdIn", "toPayee", "toPayer", "contribution", "target", "settledOut"];
 export const json = (v: unknown) => JSON.stringify(v, (_, x) => (typeof x === "bigint" ? x.toString() : x));
 
 /** Rebuild the exact raw log (topics + data) from decoded params, so consumers can treat rows as plain logs. */
@@ -75,7 +75,7 @@ export type Log = { contract: ContractName; event: string; address: string; para
  *  Events naming nobody (e.g. Stream Cancelled, Circle Started) get one row keyed by the contract so no log is lost. */
 export function activityRows(l: Log) {
   const found = involved(l.params);
-  const people = found.length ? found : [l.address.toLowerCase()];
+  const people = found.length ? found : l.event === "Transfer" ? [] : [l.address.toLowerCase()];
   const amountKey = AMOUNT_KEYS.find((k) => typeof l.params[k] === "bigint");
   const raw = encodeRaw(l.contract, l.event, l.params);
   const base = {

@@ -10,8 +10,9 @@ import {KinEscrow} from "./KinEscrow.sol";
 
 /// @notice Chainlink CRE receiver: stores FX rates and runs permissionless Kin jobs, one report per workflow run.
 ///         Holds no funds; every job pays the position's payee, never the caller.
-/// @dev ponytail: trusts the forwarder only (no workflowId/owner check). Add a metadata check if the
-///      forwarder is shared with other workflows that could post here.
+///         Each rate may move at most MAX_MOVE_PCT from its previous value per report (first set unbounded).
+/// @dev ponytail: trusts the forwarder only (no workflowId/owner check). The CRE forwarder is shared, so any
+///      workflow can post here; the per-report rate bound caps what a rogue report can do. Jobs are permissionless.
 contract KinKeeper is IReceiver {
     struct Rate {
         uint64 value; // local currency per 1 USD, 1e6 scale
@@ -22,6 +23,7 @@ contract KinKeeper is IReceiver {
     uint8 public constant OPEN = 1;
     uint8 public constant SETTLE = 2;
     uint8 public constant RELEASE = 3;
+    uint256 public constant MAX_MOVE_PCT = 15;
 
     address public immutable forwarder;
     KinMandate public immutable mandate;
@@ -34,6 +36,7 @@ contract KinKeeper is IReceiver {
     error NotForwarder();
     error LengthMismatch();
     error ZeroRate(bytes3 code);
+    error RateJump(bytes3 code, uint64 previous, uint64 value);
 
     event RateUpdated(bytes3 indexed code, uint64 value);
     event JobRun(uint8 indexed kind, uint256 indexed id, bool ok);
@@ -65,6 +68,12 @@ contract KinKeeper is IReceiver {
         if (codes.length != values.length) revert LengthMismatch();
         for (uint256 i; i < codes.length; ++i) {
             if (values[i] == 0) revert ZeroRate(codes[i]);
+            uint256 prev = rates[codes[i]].value;
+            if (
+                prev != 0
+                    && (uint256(values[i]) * 100 > prev * (100 + MAX_MOVE_PCT)
+                        || uint256(values[i]) * 100 < prev * (100 - MAX_MOVE_PCT))
+            ) revert RateJump(codes[i], uint64(prev), values[i]);
             rates[codes[i]] = Rate(values[i], uint40(block.timestamp));
             emit RateUpdated(codes[i], values[i]);
         }

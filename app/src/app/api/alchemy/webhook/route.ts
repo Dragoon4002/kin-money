@@ -20,7 +20,12 @@ function signed(raw: string, sig: string | null): boolean {
 export async function POST(req: Request) {
   const raw = await req.text();
   if (!signed(raw, req.headers.get("x-alchemy-signature"))) return Response.json({ error: "unauthorized" }, { status: 401 });
-  const body = JSON.parse(raw) as Payload;
+  let body: Payload;
+  try {
+    body = JSON.parse(raw);
+  } catch {
+    return Response.json({ error: "invalid" }, { status: 400 });
+  }
   const id = process.env.ALCHEMY_WEBHOOK_ID;
   if (id && body.webhookId && body.webhookId !== id) return Response.json({ ok: true, skipped: "other webhook" });
 

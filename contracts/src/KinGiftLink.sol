@@ -13,7 +13,7 @@ import {IERC3009} from "./interfaces/IERC3009.sol";
 /// @notice Dated gift sent as a link. Sender locks AUSD behind an ephemeral `claimKey` (lives in the link).
 ///         Whoever opens the link first `bind`s it to their account (claimKey sig naming them), after which the
 ///         link is useless to anyone else. On/after `unlockAt` anyone may `open` it → paid to the bound recipient.
-///         Sender may `refund` after `expiresAt` if not yet opened (bound or not).
+///         Binding closes at `expiresAt`; after it the sender may `refund` if nobody bound it.
 contract KinGiftLink is ERC2771Context, ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
 
@@ -44,6 +44,7 @@ contract KinGiftLink is ERC2771Context, ReentrancyGuardTransient {
     error NotBound();
     error AlreadySettled();
     error NotExpired();
+    error Expired();
     error BadSignature();
 
     constructor(address forwarder, address ausd_) ERC2771Context(forwarder) {
@@ -75,8 +76,11 @@ contract KinGiftLink is ERC2771Context, ReentrancyGuardTransient {
     ///         keccak256(abi.encode(address(this), block.chainid, id, recipient)). Anyone may submit.
     function bind(uint256 id, address recipient, bytes calldata signature) external {
         Gift storage g = gifts[id];
-        if (g.claimKey == address(0) || recipient == address(0)) revert InvalidTerms();
+        if (g.claimKey == address(0) || recipient == address(0) || recipient == address(this) || recipient == ausd) {
+            revert InvalidTerms();
+        }
         if (g.settled) revert AlreadySettled();
+        if (block.timestamp >= g.expiresAt) revert Expired(); // past expiry the sender may refund; no late binds
         if (g.recipient != address(0)) revert AlreadyBound();
         bytes32 digest =
             MessageHashUtils.toEthSignedMessageHash(keccak256(abi.encode(address(this), block.chainid, id, recipient)));

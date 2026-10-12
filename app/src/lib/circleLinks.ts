@@ -8,7 +8,7 @@ import { call } from "./tx";
 
 // Circle invite links: every member may hold one link. KinCircle stores the address of a key that lives only in
 // the link fragment (#id.inviter.key), never sent to a server. Anyone with the link signs "seat me" with it and
-// takes the next open seat (next turn). The member keeps the key on this phone so the link can be shared again.
+// takes the next open seat (next turn). One seat per link: the contract clears the key after a claim, so make a new link for each person.
 const slot = (id: bigint, me: Address) => `kin.circlekey.${id}.${me.toLowerCase()}`;
 
 const linkUrl = (id: bigint, inviter: Address, key: Hex) => `${location.origin}/circle/join#${id}.${inviter}.${key}`;

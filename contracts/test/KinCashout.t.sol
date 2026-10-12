@@ -109,7 +109,7 @@ contract KinCashoutTest is KinTest {
         Auth memory a = _auth(ALICE_PK, address(other), 10 * USD);
         vm.expectRevert(MockStablePair.NotApproved.selector);
         vm.prank(alice);
-        other.cashOut(TO, 0, REF, a.value, a.validAfter, a.validBefore, a.nonce, a.sig);
+        other.cashOut(TO, 1, REF, a.value, a.validAfter, a.validBefore, a.nonce, a.sig);
     }
 
     function test_RevertsAuthForSomeoneElse() public {
@@ -117,7 +117,15 @@ contract KinCashoutTest is KinTest {
         Auth memory a = _auth(ALICE_PK, address(cash), 10 * USD);
         vm.expectRevert();
         vm.prank(bob);
+        cash.cashOut(TO, 1, REF, a.value, a.validAfter, a.validBefore, a.nonce, a.sig);
+    }
+
+    function test_RevertsZeroMinOut() public {
+        Auth memory a = _auth(ALICE_PK, address(cash), 10 * USD);
+        vm.expectRevert(KinCashout.ZeroMinOut.selector);
+        vm.prank(alice);
         cash.cashOut(TO, 0, REF, a.value, a.validAfter, a.validBefore, a.nonce, a.sig);
+        assertEq(ausd.balanceOf(alice), 1_000 * USD);
     }
 
     function test_RevertsZeroOrSelfRecipient() public {
@@ -148,7 +156,7 @@ contract KinCashoutForkTest is KinTest {
     function setUp() public override {}
 
     function test_ForkCashOutOnAgoraPair() public {
-        if (block.chainid != 10143) return;
+        vm.skip(block.chainid != 10143);
         KinCashout cash = new KinCashout(address(0xF0), AUSD, PAIR);
         (bool ok,) = WHITELISTER.call(abi.encodeWithSignature("setApprovedSwapper(address)", address(cash)));
         assertTrue(ok);

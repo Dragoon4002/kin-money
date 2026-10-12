@@ -5,11 +5,12 @@ import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { KinCircleAbi } from "./abi";
 import { addr, API_BASE, chain, publicClient } from "./config";
 import { same, ZERO } from "./programs";
+import { trackKey } from "./account";
 import { call } from "./tx";
 
 // Circle invite links: every member may hold one link. KinCircle stores the address of a key that lives only in
 // the link fragment (#id.inviter.key), never sent to a server. Anyone with the link signs "seat me" with it and
-// takes the next open seat (next turn). The member keeps the key on this phone so the link can be shared again.
+// takes the next open seat (next turn). One seat per link: the contract clears the key after a claim, so make a new link for each person.
 const slot = (id: bigint, me: Address) => `kin.circlekey.${id}.${me.toLowerCase()}`;
 
 const linkUrl = (id: bigint, inviter: Address, key: Hex) => `${API_BASE}/circle/join#${id}.${inviter}.${key}`;
@@ -33,6 +34,7 @@ export async function createCircleInvite(id: bigint, me: Address): Promise<strin
   await call(addr.circle, KinCircleAbi, "setInviteKey", [id, privateKeyToAccount(key).address]);
   try {
     SecureStore.setItem(slot(id, me), key);
+    trackKey(slot(id, me));
   } catch {} // private mode: make a new link later
   return linkUrl(id, me, key);
 }

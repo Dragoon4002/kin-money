@@ -4,11 +4,16 @@ import { privateKeyToAccount } from "viem/accounts";
 import { chain, networks, publicClient, type Mode } from "../chain";
 
 // Relayer pays MON gas only; never holds user funds. Same key on both networks (needs MON on each).
-const relayer = privateKeyToAccount(process.env.RELAYER_PRIVATE_KEY as Hex);
-const wallets = {
-  test: createWalletClient({ account: relayer, chain, transport: http(process.env.NEXT_PUBLIC_RPC_URL) }),
-  main: createWalletClient({ account: relayer, chain: networks.main.chain, transport: http(process.env.MAINNET_RPC_URL || networks.main.chain.rpcUrls.default.http[0]) }),
+// Built on first submit() so routes that only use allow/once/clientIp import fine with the key unset.
+const build = () => {
+  const relayer = privateKeyToAccount(process.env.RELAYER_PRIVATE_KEY as Hex);
+  return {
+    relayer,
+    test: createWalletClient({ account: relayer, chain, transport: http(process.env.NEXT_PUBLIC_RPC_URL) }),
+    main: createWalletClient({ account: relayer, chain: networks.main.chain, transport: http(process.env.MAINNET_RPC_URL || networks.main.chain.rpcUrls.default.http[0]) }),
+  };
 };
+let signer: ReturnType<typeof build> | undefined;
 
 /** Max gas a single user request may consume (Monad bills the limit). Circle settle with 20 members fits. */
 export const GAS_CAP = 1_500_000n;
@@ -32,6 +37,8 @@ export function once(key: string): boolean {
 /** Sliding-window limiter: at most `max` hits per `windowMs` for `key`. */
 export function allow(key: string, max: number, windowMs = 60_000): boolean {
   const t = Date.now();
+  // ponytail: prune keys idle > 1h (longest window any caller uses — faucet).
+  for (const [k, ts] of hits) if (ts[ts.length - 1] < t - 3_600_000) hits.delete(k);
   const list = (hits.get(key) ?? []).filter((x) => x > t - windowMs);
   if (list.length >= max) return false;
   list.push(t);
@@ -49,11 +56,14 @@ type Req = Parameters<typeof publicClient.simulateContract>[0];
 export function submit(req: Omit<Req, "account">, cap = GAS_CAP, net: Mode = "test"): Promise<Hex> {
   const client = net === "main" ? networks.main.client : publicClient;
   let sending: Promise<Hex> | null = null; // set once broadcasting starts
+  let aborted = false; // timed out before broadcast — client was told to retry, so never send
   const run = async () => {
+    const { relayer, ...wallets } = (signer ??= build());
     const { request } = await client.simulateContract({ ...req, account: relayer } as Req);
     const est = await client.estimateContractGas({ ...req, account: relayer } as never);
     const gas = (est * 12n) / 10n;
     if (gas > cap) throw new Error("gas over cap");
+    if (aborted) throw new Error("relay timeout");
     sending = wallets[net].writeContract({ ...request, gas } as never);
     return sending;
   };
@@ -63,7 +73,7 @@ export function submit(req: Omit<Req, "account">, cap = GAS_CAP, net: Mode = "te
     const work = run();
     return Promise.race([
       work,
-      new Promise<Hex>((res, rej) => setTimeout(() => (sending ? res(sending) : rej(new Error("relay timeout"))), TIMEOUT_MS)),
+      new Promise<Hex>((res, rej) => setTimeout(() => (sending ? res(sending) : ((aborted = true), rej(new Error("relay timeout")))), TIMEOUT_MS)),
     ]);
   };
   const next = queues[net].then(timed, timed);

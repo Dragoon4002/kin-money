@@ -4,6 +4,7 @@ pragma solidity 0.8.30;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {KinTest} from "./KinTest.sol";
 import {MockSettle, MockStablePair} from "./KinCashout.t.sol";
+import {MockPoolManager} from "./MockPoolManager.sol";
 import {KinCashoutV2} from "../src/KinCashoutV2.sol";
 
 abstract contract CashoutV2Signing is KinTest {
@@ -94,9 +95,9 @@ contract KinCashoutV2Test is CashoutV2Signing {
     }
 
     function test_UniswapVenueOffWhenNoPoolManager() public {
-        (uint256 before, bytes memory sig) = _signTerms(ALICE_PK, address(ausd), cash, KinCashoutV2.Terms(TO, UNI, 0, REF, SALT), 10 * USD);
+        (uint256 before, bytes memory sig) = _signTerms(ALICE_PK, address(ausd), cash, KinCashoutV2.Terms(TO, UNI, 1, REF, SALT), 10 * USD);
         vm.expectRevert(KinCashoutV2.VenueOff.selector);
-        cash.cashOut(alice, KinCashoutV2.Terms(TO, UNI, 0, REF, SALT), 10 * USD, 0, before, sig);
+        cash.cashOut(alice, KinCashoutV2.Terms(TO, UNI, 1, REF, SALT), 10 * USD, 0, before, sig);
     }
 
     function test_AgoraVenueOffWhenNoPair() public {
@@ -122,6 +123,68 @@ contract KinCashoutV2Test is CashoutV2Signing {
         cash.unlockCallback(abi.encode(uint256(1), uint256(0), TO));
     }
 
+    /// @dev Uniswap-only cash-out whose settle token sits at `at` (below/above AUSD flips zeroForOne).
+    function _uni(address at) internal returns (KinCashoutV2 c, MockSettle s, MockPoolManager pm) {
+        deployCodeTo("KinCashout.t.sol:MockSettle", at);
+        s = MockSettle(at);
+        pm = new MockPoolManager();
+        s.mint(address(pm), 1_000_000 * USD);
+        c = new KinCashoutV2(address(ausd), at, address(0), address(pm), 50, 1, address(0));
+    }
+
+    /// @dev `err` != 0: expect that revert from cashOut (set after signing, which itself calls `c`).
+    function _uniCashOut(KinCashoutV2 c, uint256 minOut, bytes4 err) internal returns (uint256 id, uint256 out) {
+        KinCashoutV2.Terms memory t = KinCashoutV2.Terms(TO, UNI, minOut, REF, SALT);
+        (uint256 before, bytes memory sig) = _signTerms(ALICE_PK, address(ausd), c, t, 10 * USD);
+        if (err != 0) vm.expectRevert(err);
+        vm.prank(relayer);
+        return c.cashOut(alice, t, 10 * USD, 0, before, sig);
+    }
+
+    function test_UniswapVenueEitherCurrencyOrder() public {
+        address[2] memory spots = [address(0x10000), address(type(uint160).max - 0x10000)];
+        for (uint256 i; i < 2; i++) {
+            (KinCashoutV2 c, MockSettle s, MockPoolManager pm) = _uni(spots[i]);
+            vm.expectEmit(address(c));
+            emit KinCashoutV2.CashedOut(1, alice, TO, UNI, 10 * USD, 9_990_000, REF);
+            (uint256 id, uint256 out) = _uniCashOut(c, 9_990_000, 0);
+            assertEq(id, 1);
+            assertEq(out, 9_990_000);
+            assertEq(s.balanceOf(TO), 9_990_000);
+            assertEq(ausd.balanceOf(address(pm)), 10 * USD);
+            assertEq(ausd.balanceOf(address(c)), 0); // nothing held
+            assertEq(s.balanceOf(address(c)), 0);
+        }
+        assertEq(ausd.balanceOf(alice), 980 * USD);
+    }
+
+    function test_UniswapBelowMinOutReverts() public {
+        (KinCashoutV2 c,,) = _uni(address(0x10000));
+        _uniCashOut(c, 9_990_001, KinCashoutV2.InsufficientOutput.selector);
+        assertEq(ausd.balanceOf(alice), 1_000 * USD);
+    }
+
+    function test_UniswapZeroMinOutReverts() public {
+        (KinCashoutV2 c,,) = _uni(address(0x10000));
+        _uniCashOut(c, 0, KinCashoutV2.ZeroMinOut.selector);
+        assertEq(ausd.balanceOf(alice), 1_000 * USD);
+    }
+
+    function test_UniswapPartialFillReverts() public {
+        (KinCashoutV2 c,, MockPoolManager pm) = _uni(address(0x10000));
+        pm.setFill(9_999);
+        _uniCashOut(c, 1, KinCashoutV2.PartialFill.selector);
+        assertEq(ausd.balanceOf(alice), 1_000 * USD);
+    }
+
+    function test_UniswapWrongDeltaReverts() public {
+        (KinCashoutV2 c, MockSettle s, MockPoolManager pm) = _uni(address(0x10000));
+        pm.setFlipDelta(true);
+        _uniCashOut(c, 1, KinCashoutV2.PartialFill.selector);
+        assertEq(ausd.balanceOf(alice), 1_000 * USD);
+        assertEq(s.balanceOf(TO), 0);
+    }
+
     function test_ConstructorRejectsWrongPair() public {
         vm.expectRevert(KinCashoutV2.PairMismatch.selector);
         new KinCashoutV2(address(ausd), address(0xBAD), address(pair), address(0), 0, 0, address(0));
@@ -139,7 +202,7 @@ contract KinCashoutV2MainnetForkTest is CashoutV2Signing {
     function setUp() public override {}
 
     function test_ForkUniswapV4SwapToRecipient() public {
-        if (block.chainid != 143) return;
+        vm.skip(block.chainid != 143);
         KinCashoutV2 cash = new KinCashoutV2(AUSD, USDC, AGORA_PAIR, POOL_MANAGER, 50, 1, address(0));
         vm.prank(AGORA_PAIR); // AUSD storage is custom (deal can't write it): borrow from a big holder
         IERC20(AUSD).transfer(alice, 10 * USD);
@@ -161,7 +224,7 @@ contract KinCashoutV2MainnetForkTest is CashoutV2Signing {
     }
 
     function test_ForkAgoraPairNeedsWhitelist() public {
-        if (block.chainid != 143) return;
+        vm.skip(block.chainid != 143);
         KinCashoutV2 cash = new KinCashoutV2(AUSD, USDC, AGORA_PAIR, POOL_MANAGER, 50, 1, address(0));
         vm.prank(AGORA_PAIR);
         IERC20(AUSD).transfer(alice, 10 * USD);
@@ -183,7 +246,7 @@ contract KinCashoutV2TestnetForkTest is CashoutV2Signing {
     function setUp() public override {}
 
     function test_ForkAgoraPairToRecipient() public {
-        if (block.chainid != 10143) return;
+        vm.skip(block.chainid != 10143);
         address t0 = MockStablePair(PAIR).token0();
         address settle = t0 == AUSD ? MockStablePair(PAIR).token1() : t0;
         KinCashoutV2 cash = new KinCashoutV2(AUSD, settle, PAIR, address(0), 0, 0, address(0));

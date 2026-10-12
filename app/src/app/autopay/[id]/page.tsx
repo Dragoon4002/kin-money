@@ -91,7 +91,7 @@ function Actions({ m, ready, isPayer, onDone }: { m: Mandate; ready: number; isP
       <Status>{busy && status}</Status>
       {!isPayer && ready > 0 && <Button onClick={collect} busy={busy}>Collect {formatMoney(m.amount * BigInt(ready))}</Button>}
       {isPayer && !isDone(m) && <Button variant="ghost" onClick={askStop} disabled={busy}>Stop AutoPay</Button>}
-      <Sheet open={confirm} onClose={() => !busy && setConfirm(false)}>
+      <Sheet open={confirm} onClose={() => !busy && setConfirm(false)} label="Stop AutoPay">
         <h2 className="text-xl font-bold">Stop this AutoPay?</h2>
         <p className="text-muted">
           {split.keep ? <>They still get {formatMoney(split.keep)} already due. </> : null}

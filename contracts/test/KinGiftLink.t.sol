@@ -103,6 +103,27 @@ contract KinGiftLinkTest is KinTest {
         gl.bind(id, bob, s);
     }
 
+    function test_BindAfterExpiryReverts() public {
+        uint256 id = _create(50 * USD);
+        bytes memory s = _bindSig(KEY_PK, id, bob);
+        vm.warp(expiresAt);
+        vm.expectRevert(KinGiftLink.Expired.selector); // can't front-run the sender's refund
+        gl.bind(id, bob, s);
+        vm.prank(alice);
+        gl.refund(id);
+        assertEq(ausd.balanceOf(alice), 1_000 * USD);
+    }
+
+    function test_BindRejectsContractOrToken() public {
+        uint256 id = _create(50 * USD);
+        bytes memory s = _bindSig(KEY_PK, id, address(gl));
+        vm.expectRevert(KinGiftLink.InvalidTerms.selector);
+        gl.bind(id, address(gl), s);
+        s = _bindSig(KEY_PK, id, address(ausd));
+        vm.expectRevert(KinGiftLink.InvalidTerms.selector);
+        gl.bind(id, address(ausd), s);
+    }
+
     function test_BoundGiftCannotBeRefunded() public {
         uint256 id = _create(50 * USD);
         gl.bind(id, bob, _bindSig(KEY_PK, id, bob));

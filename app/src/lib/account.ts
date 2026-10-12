@@ -140,7 +140,6 @@ async function ceremony(add?: { privateKey: Uint8Array; name?: string }): Promis
       const sealed = await seal(prf, keyAddress(add.privateKey), add.privateKey);
       list = [...list.filter((i) => i.address !== sealed.address), { ...sealed, name: add.name }];
       saveImported(list);
-      add.privateKey.fill(0);
     }
     for (const imp of list) {
       try {
@@ -153,6 +152,7 @@ async function ceremony(add?: { privateKey: Uint8Array; name?: string }): Promis
     return active()!; // the account in use (Kin or imported) — callers name/register it
   } finally {
     prf.fill(0);
+    add?.privateKey.fill(0);
   }
 }
 

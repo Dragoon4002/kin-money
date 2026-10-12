@@ -2,6 +2,7 @@ import { ImageResponse } from "next/og";
 import type { ReactNode } from "react";
 import { KinMark } from "@/components/KinMark";
 import { FX, formatMoney } from "@/lib/money";
+import { allow, clientIp } from "@/lib/server/relayer";
 import { parseCard, type Card } from "./params";
 
 // Share card: 1080×1350 PNG. Public, no account data — only the amount/@names/title the user chose to share.
@@ -99,6 +100,7 @@ const loadFonts = () =>
   }));
 
 export async function GET(req: Request) {
+  if (!allow(`card:${clientIp(req)}`, 30)) return new Response("Slow down", { status: 429 }); // image render is CPU-heavy
   const c = parseCard(new URL(req.url).searchParams);
   if (!c) return new Response("Bad card", { status: 400 });
   const { head, sub, check } = words(c);

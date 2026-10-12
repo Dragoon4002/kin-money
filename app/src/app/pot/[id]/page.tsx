@@ -155,14 +155,14 @@ export default function PotDetail() {
         )}
       </Pad>
 
-      <Sheet open={sheet === "chip"} onClose={() => !busy && setSheet("")}>
+      <Sheet open={sheet === "chip"} onClose={() => !busy && setSheet("")} label="Chip in">
         <h2 className="font-display text-3xl">Chip in</h2>
         <MoneyInput label="Amount" value={amount} onChange={setAmount} hint={`${formatMoney(left)} fills the pot.`} />
         <ErrorText>{actionError}</ErrorText>
         <Status>{busy && status}</Status>
         <Button onClick={chipIn} busy={busy} disabled={!Number(amount)}>Add to pot</Button>
       </Sheet>
-      <Sheet open={sheet === "invite"} onClose={() => !busy && setSheet("")}>
+      <Sheet open={sheet === "invite"} onClose={() => !busy && setSheet("")} label="Invite family">
         <h2 className="font-display text-3xl">Invite family</h2>
         <p className="text-muted">Anyone with your link can join the pot and chip in, up to 20 people. You can turn your link off any time.</p>
         <ErrorText>{actionError}</ErrorText>
@@ -180,7 +180,7 @@ export default function PotDetail() {
         )}
         {(link || myKey !== ZERO) && <Button variant="ghost" onClick={turnOff} busy={busy}>Turn off my link</Button>}
       </Sheet>
-      <Sheet open={sheet === "close"} onClose={() => !busy && setSheet("")}>
+      <Sheet open={sheet === "close"} onClose={() => !busy && setSheet("")} label="Pay out pot">
         <h2 className="font-display text-3xl">{split > 1 ? "Pay out" : "Take"} {formatMoney(pot.balance)} now?</h2>
         <p className="text-muted">
           {split > 1 ? `It's split between ${split} people and the pot closes.` : "The pot closes after this."} Family can start a new one any time.

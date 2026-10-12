@@ -5,6 +5,7 @@ import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { KinPotAbi } from "./abi";
 import { addr, API_BASE, chain, publicClient } from "./config";
 import { same, ZERO } from "./programs";
+import { trackKey } from "./account";
 import { call } from "./tx";
 
 // Pot invite links: every member can have their own link. KinPot stores the address of a key that lives only in
@@ -24,6 +25,7 @@ export const newKey = () => {
 export function keepKey(id: bigint, me: Address, key: Hex) {
   try {
     SecureStore.setItem(slot(id, me), key);
+    trackKey(slot(id, me));
   } catch {} // private mode: the member can make a new link later
 }
 

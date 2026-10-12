@@ -116,14 +116,14 @@ export default function JarDetail() {
         {!pot.closed && pot.balance > 0n && <Button variant="ghost" onClick={() => setSheet("break")}>Take it out</Button>}
       </Pad>
 
-      <Sheet open={sheet === "add"} onClose={() => !busy && setSheet("")}>
+      <Sheet open={sheet === "add"} onClose={() => !busy && setSheet("")} label="Add money">
         <h2 className="font-display text-3xl">Add money</h2>
         <MoneyInput label="Amount" value={amount} onChange={setAmount} hint={`${formatMoney(left)} fills the jar.`} />
         <ErrorText>{actionError}</ErrorText>
         <Status>{busy && status}</Status>
         <Button onClick={add} busy={busy} disabled={!Number(amount)}>Add to jar</Button>
       </Sheet>
-      <Sheet open={sheet === "break"} onClose={() => !busy && setSheet("")}>
+      <Sheet open={sheet === "break"} onClose={() => !busy && setSheet("")} label="Take money out">
         <h2 className="font-display text-3xl">Take {formatMoney(pot.balance)} out?</h2>
         <p className="text-muted">It goes back to your balance and this jar closes. You can start a new one any time.</p>
         <ErrorText>{actionError}</ErrorText>

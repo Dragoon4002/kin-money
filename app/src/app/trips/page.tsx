@@ -46,7 +46,7 @@ export default function TripsPage() {
       <div className="mt-auto px-5 pt-2">
         <Button onClick={() => setOpen(true)}>New trip</Button>
       </div>
-      <Sheet open={open} onClose={() => setOpen(false)}>
+      <Sheet open={open} onClose={() => setOpen(false)} label="New trip">
         <NewTrip />
       </Sheet>
     </Screen>

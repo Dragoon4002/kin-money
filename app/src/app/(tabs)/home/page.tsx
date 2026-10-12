@@ -37,7 +37,7 @@ export default function Home() {
   useEffect(() => {
     if (!canRead) return;
     let live = true;
-    recentPeople().then((p) => live && setPeople(p));
+    recentPeople().then((p) => live && setPeople(p), () => live && setPeople([]));
     return () => {
       live = false;
     };

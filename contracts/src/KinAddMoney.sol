@@ -33,6 +33,7 @@ contract KinAddMoney is ReentrancyGuardTransient {
     error NotPoolManager();
     error PartialFill();
     error InsufficientOutput();
+    error ZeroMinOut();
 
     /// @notice Everything the user agrees to, committed to by the signed EIP-3009 nonce.
     struct Terms {
@@ -73,6 +74,7 @@ contract KinAddMoney is ReentrancyGuardTransient {
         bytes calldata signature
     ) external nonReentrant returns (uint256 out) {
         if (value == 0 || t.to == address(0) || t.to == address(this)) revert InvalidTerms();
+        if (t.minOut == 0) revert ZeroMinOut(); // open pool: no slippage floor = sandwich
         IERC3009(usdc).receiveWithAuthorization(from, address(this), value, validAfter, validBefore, termsNonce(t), signature);
         out = abi.decode(poolManager.unlock(abi.encode(value, t.minOut, t.to)), (uint256));
         emit MoneyAdded(from, t.to, value, out);

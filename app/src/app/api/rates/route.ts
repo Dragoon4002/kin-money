@@ -23,7 +23,7 @@ export async function GET() {
     const rate = Number(value) / 1e6;
     const base = FX_STATIC[codes[i]];
     // Testnet mock forwarder accepts anyone's report: only trust rates near the built-in table.
-    if (now - at > STALE || rate < base * 0.75 || rate > base * 1.25) return;
+    if (now - at > STALE || rate < base * 0.92 || rate > base * 1.08) return;
     rates[codes[i]] = rate;
     updatedAt = Math.max(updatedAt, at);
   });

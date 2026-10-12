@@ -30,7 +30,7 @@ export function PersonPicker({ label = "To", onPick, recents: showRecents = true
 
   // Only with a read session (or unlocked): loading people must never trigger Face ID on its own.
   useEffect(() => {
-    if (canRead && showRecents) recentPeople().then(setRecents);
+    if (canRead && showRecents) recentPeople().then(setRecents, () => setRecents([]));
   }, [canRead, showRecents]);
 
   function pick(p: Person) {
@@ -56,7 +56,7 @@ export function PersonPicker({ label = "To", onPick, recents: showRecents = true
 
   // Autocomplete: prefix tree of all Kin names, loaded once when the field opens.
   useEffect(() => {
-    if (showField) loadNameTrie().then(setTrie);
+    if (showField) loadNameTrie().then(setTrie, () => setTrie(null)); // no suggestions; exact lookup still works
   }, [showField]);
   const prefix = q.trim().replace(/^@/, "").toLowerCase();
   const suggestions = prefix && !found ? (trie?.suggest(prefix, 6) ?? []).filter((n) => n !== profile?.name && n !== prefix && !exclude?.has(n)).slice(0, 5) : [];

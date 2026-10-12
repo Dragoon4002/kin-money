@@ -1,4 +1,5 @@
 import * as SecureStore from "expo-secure-store";
+import { trackKey } from "./account";
 import { Gift, GraduationCap, HeartHandshake, House, Plane, Receipt, Shapes, ShoppingBag, ShoppingBasket, Utensils } from "lucide-react-native";
 
 // Spend categories: same ids/labels/icons as app/src/lib/categories.ts (+ lib/icons.ts).
@@ -19,4 +20,8 @@ export const CATEGORIES = [
 
 export type CategoryId = (typeof CATEGORIES)[number]["id"];
 
-export const setCategory = (hash: string, id: CategoryId) => SecureStore.setItemAsync(`kin.cat.${hash.toLowerCase()}`, id);
+export function setCategory(hash: string, id: CategoryId) {
+  const k = `kin.cat.${hash.toLowerCase()}`;
+  trackKey(k);
+  return SecureStore.setItemAsync(k, id);
+}

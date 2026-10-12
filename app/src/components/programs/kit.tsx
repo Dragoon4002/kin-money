@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Address } from "viem";
 import { isUnlocked, useRequireAccount } from "@/lib/account";
 import { humanError } from "@/lib/errors";
@@ -152,14 +152,41 @@ export function timeLeft(sec: number) {
 
 export const dateLabel = (t: number) => new Date(t * 1000).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 
-/** Bottom sheet for confirmations. */
-export function Sheet({ open, onClose, children }: { open: boolean; onClose: () => void; children: ReactNode }) {
+const FOCUSABLE = "input:not([disabled]), button:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href]";
+
+/** Bottom sheet for confirmations. Traps Tab; returns focus to the opener on close. */
+export function Sheet({ open, onClose, children, label = "Confirm" }: { open: boolean; onClose: () => void; children: ReactNode; label?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.activeElement as HTMLElement | null;
+    ref.current?.querySelector<HTMLElement>(FOCUSABLE)?.focus();
+    return () => prev?.focus();
+  }, [open]);
+  useEffect(() => {
+    if (!open) return;
+    const key = (e: KeyboardEvent) => {
+      if (e.key === "Escape") return onClose();
+      if (e.key !== "Tab" || !ref.current) return;
+      const els = [...ref.current.querySelectorAll<HTMLElement>(FOCUSABLE)];
+      if (!els.length) return;
+      const first = els[0], last = els[els.length - 1], inside = ref.current.contains(document.activeElement);
+      if (e.shiftKey ? !inside || document.activeElement === first : !inside || document.activeElement === last) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+      }
+    };
+    addEventListener("keydown", key);
+    return () => removeEventListener("keydown", key);
+  }, [open, onClose]);
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-bg/70 backdrop-blur-sm" onClick={onClose}>
       <div
+        ref={ref}
         role="dialog"
         aria-modal="true"
+        aria-label={label}
         className="w-full max-w-md rounded-t-[32px] border-t border-line bg-surface p-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
