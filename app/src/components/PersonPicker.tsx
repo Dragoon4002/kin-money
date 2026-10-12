@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import type { Address } from "viem";
+import { getAddress, isAddress, type Address } from "viem";
 import { useAccount } from "@/lib/account";
 import { loadNameTrie, recentPeople } from "@/lib/contacts";
 import { resolveName } from "@/lib/names";
@@ -45,6 +45,8 @@ export function PersonPicker({ label = "To", onPick, recents: showRecents = true
     setFound(null);
     onPick(null);
     const h = v.trim().replace(/^@/, "").toLowerCase();
+    // A pasted account from another app: pay it directly (no Kin name; the send screen warns to double-check it).
+    if (isAddress(h)) return pick({ address: getAddress(h), name: "" });
     if (h.length < 3) return;
     const a = await resolveName(h).catch(() => null);
     if (a) pick({ address: a, name: h });

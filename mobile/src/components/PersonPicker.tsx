@@ -1,5 +1,6 @@
 import { Check, Plus } from "lucide-react-native";
 import { useEffect, useState } from "react";
+import { getAddress, isAddress } from "viem";
 import { Pressable, View } from "react-native";
 import { Avatar, Label, Text, TextInput, useInputStyle } from "@/components/ui";
 import { useAccount } from "@/lib/account";
@@ -48,6 +49,8 @@ export function PersonPicker({ label = "To", onPick, recents: showRecents = true
     setFound(null);
     onPick(null);
     const h = v.trim().replace(/^@/, "").toLowerCase();
+    // A pasted account from another app: pay it directly (no Kin name; the send screen warns to double-check it).
+    if (isAddress(h)) return pick({ address: getAddress(h), name: "" });
     if (h.length < 3) return;
     const a = await resolveName(h).catch(() => null);
     if (a) pick({ address: a, name: h });
