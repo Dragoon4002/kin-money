@@ -1,0 +1,9 @@
+# CRE project settings. Simulation: `cre workflow simulate kin-orchestrator --target staging-settings --broadcast`
+staging-settings:
+  rpcs:
+    - chain-name: monad-testnet
+      url: https://testnet-rpc.monad.xyz
+production-settings:
+  rpcs:
+    - chain-name: monad-testnet
+      url: https://testnet-rpc.monad.xyz

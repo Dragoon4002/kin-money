@@ -11,8 +11,13 @@ export function toDollars(units: bigint): number {
   return Number(units) / Number(UNIT);
 }
 
-// ponytail: static demo FX table, swap for a live rate API when cash-out is real.
-export const FX: Record<string, number> = { USD: 1, INR: 88.5, PHP: 57.5, MXN: 18.4, NGN: 1530, AED: 3.67, GBP: 0.75, EUR: 0.86 };
+// Built-in table = fallback. In the browser, live rates (Chainlink CRE → KinKeeper onchain, via /api/rates) replace it.
+export const FX_STATIC: Record<string, number> = { USD: 1, INR: 88.5, PHP: 57.5, MXN: 18.4, NGN: 1530, AED: 3.67, GBP: 0.75, EUR: 0.86 };
+export const FX: Record<string, number> = { ...FX_STATIC };
+// ponytail: screens rendered before this lands show the table rate until their next render.
+if (typeof window !== "undefined") {
+  fetch("/api/rates").then((r) => r.json()).then((j: { rates?: Record<string, number> }) => Object.assign(FX, j.rates)).catch(() => {});
+}
 
 export function getCurrency(): string {
   if (typeof localStorage === "undefined") return "USD";
