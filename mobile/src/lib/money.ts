@@ -46,7 +46,7 @@ export function setCurrency(c: string) {
 export function formatMoney(units: bigint, c = getCurrency()): string {
   const rate = FX[c] ?? 1;
   return new Intl.NumberFormat(undefined, { style: "currency", currency: c, minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    .format(toDollars(units) * rate);
+    .format(Math.trunc(toDollars(units) * rate * 100 + (units < 0n ? -1e-9 : 1e-9)) / 100); // round toward zero: never show more than is there ($4.9983 → $4.99)
 }
 
 /** Local-currency amount typed by user → AUSD base units. */
