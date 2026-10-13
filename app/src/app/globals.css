@@ -87,9 +87,136 @@ body { font-family: var(--font-jakarta), system-ui, sans-serif; -webkit-tap-high
 @keyframes kin-rise { from { transform: translateY(10px); opacity: 0; } }
 @keyframes kin-ring { from { transform: scale(1); opacity: 0.5; } to { transform: scale(1.9); opacity: 0; } }
 @keyframes kin-shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
+@keyframes kin-draw { from { stroke-dasharray: 1; stroke-dashoffset: 1; } to { stroke-dasharray: 1; stroke-dashoffset: 0; } }
+/* In the components layer so Tailwind's `[animation-delay:…]` utilities (utilities layer) win over the shorthand's
+   delay; unlayered, the shorthand reset every stagger to 0 ms. Inline style delays win either way. */
+@layer components {
+  @media (prefers-reduced-motion: no-preference) {
+    .kin-pop { animation: kin-pop 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
+    .kin-rise { animation: kin-rise 0.4s ease-out both; }
+    .kin-ring { animation: kin-ring 0.9s ease-out 0.2s both; }
+    .kin-shake { animation: kin-shake 0.35s ease-in-out; }
+    .kin-draw { animation: kin-draw 0.26s ease-out backwards; }
+  }
+}
+
+/* ── Receipt ticket (components/receipt/ReceiptTicket.tsx) ─────────────────────────────────────────────
+   Printer slot drawn over the paper; .kt-feed clips at the slot's lip so the paper comes out of it.
+   Paper stays off-white in both themes; the metal follows the theme. */
+.kt-printer {
+  --kt-paper: #f5f0e6; --kt-ink: #24201b; --kt-muted: #756c61; --kt-good: #1f9d6b; --kt-line: #b9ae9f;
+  --kt-noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.3 0 0 0 0 0.25 0 0 0 0 0.2 0 0 0 0.09 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  --kt-edges: linear-gradient(90deg, rgb(0 0 0 / 0.06), transparent 7%, transparent 93%, rgb(0 0 0 / 0.06));
+  position: relative;
+}
+.kt-slot {
+  position: relative; z-index: 2; height: 30px; border-radius: 999px;
+  background:
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 0.07) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, light-dark(#f2f2f4, #8d9097) 0%, light-dark(#b9bbc1, #4b4d53) 45%, light-dark(#9a9ca3, #36383d) 55%, light-dark(#d6d7db, #64676e) 100%);
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.25) inset, 0 -1px 0 rgb(0 0 0 / 0.35) inset, 0 8px 18px -6px rgb(0 0 0 / 0.55);
+}
+/* The dark mouth the paper comes out of. */
+.kt-slot::after {
+  content: ""; position: absolute; inset: 11px 14px 9px; border-radius: 999px;
+  background: linear-gradient(180deg, #000, #1a1917 70%, #2b2925);
+  box-shadow: 0 2px 3px rgb(0 0 0 / 0.8) inset, 0 1px 0 rgb(255 255 255 / 0.25);
+}
+/* Feed window: starts at the mouth; sides/bottom open for the shadow and for pulling the paper down. */
+.kt-feed { position: relative; z-index: 1; margin-top: -10px; padding: 0 14px; clip-path: inset(0 -60px -300vh -60px); }
+/* Curl: the paper bends into the slot, so its top is in shade (fixed to the slot, not the paper). */
+.kt-feed::before {
+  content: ""; position: absolute; z-index: 1; left: 14px; right: 14px; top: 0; height: 34px; pointer-events: none;
+  background: linear-gradient(180deg, rgb(0 0 0 / 0.42), rgb(0 0 0 / 0.12) 40%, transparent);
+}
+/* The moving piece. No filter here (filter + mask + transform on one moving layer raster-glitched): the shadow is
+   its own unmasked box behind the sheet, stopping short of the scallops. Pull down: touch-action leaves downward
+   pulls to the page script, upward swipes still scroll (useTearOff flips it to pan-y once scrolled). */
+.kt-paper { position: relative; transform-origin: 50% 0; touch-action: pan-y; touch-action: pan-down; backface-visibility: hidden; border-radius: 2px; }
+.kt-paper:focus-visible { outline: 2px solid var(--brand); outline-offset: 4px; }
+.kt-shadow { position: absolute; left: 3px; right: 3px; top: -120vh; bottom: 14px; box-shadow: 0 10px 14px rgb(0 0 0 / 0.35), 0 2px 2px rgb(0 0 0 / 0.2); }
+/* Paper still inside the printer: comes out of the slot when pulled, so the top stays held. */
+.kt-lead { position: absolute; left: 0; right: 0; bottom: calc(100% - 2px); /* tucks under the sheet: no seam */ height: 120vh; background: var(--kt-noise), var(--kt-edges), var(--kt-paper); }
+.kt-sheet {
+  position: relative;
+  color: var(--kt-ink);
+  background: var(--kt-noise), var(--kt-edges), linear-gradient(180deg, var(--kt-paper) 85%, #ece5d8);
+  /* Scalloped tear at the bottom: 18px bites. */
+  --kt-bite: radial-gradient(circle 7px at 50% 100%, transparent 6.5px, #000 7px);
+  mask: linear-gradient(#000 0 0) top / 100% calc(100% - 13px) no-repeat, var(--kt-bite) bottom / 18px 14px repeat-x;
+}
+/* Category chips: the row opens by height (grid 0fr → 1fr), chips fade/scale in one after another and out in
+   reverse; the picked chip fills with ink and pops. Transitions only (animationend on the paper drives the sway). */
+.kt-cats { display: grid; grid-template-rows: 0fr; width: 100%; transition: grid-template-rows 280ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.kt-cats[data-open="true"] { grid-template-rows: 1fr; }
+.kt-cat {
+  background: rgb(36 32 27 / 0.07); color: var(--kt-ink); opacity: 0; scale: 0.8; translate: 0 -6px;
+  transition: opacity 160ms ease, scale 200ms ease, translate 200ms ease, background-color 200ms ease, color 200ms ease;
+  transition-delay: calc((9 - var(--i)) * 12ms); /* exit: last in, first out */
+}
+.kt-cats[data-open="true"] .kt-cat { opacity: 1; scale: 1; translate: 0; transition-delay: calc(60ms + var(--i) * 22ms); }
+.kt-cats[data-open="true"] .kt-cat:active { scale: 0.92; transition-delay: 0ms; }
+.kt-cat[aria-checked="true"] { background: var(--kt-ink); color: var(--kt-paper); }
+.kt-cats[data-open="true"] .kt-cat[aria-checked="true"] { scale: 1.06; transition-delay: 0ms; }
+/* New category name slides into the pill. */
+@keyframes kt-swap { from { opacity: 0; translate: 0 6px; } }
+.kt-swap { animation: kt-swap 220ms ease-out; }
+/* Note: reads like printed text; dashed underline shows it's editable, solid while typing. */
+.kt-note { field-sizing: content; min-height: 2.75rem; overflow-wrap: anywhere; border-bottom: 1.5px dashed var(--kt-line); transition: border-color 160ms ease; }
+.kt-note:focus { border-bottom-style: solid; border-color: var(--kt-ink); }
+@media (prefers-reduced-motion: reduce) {
+  .kt-cats, .kt-cat { transition: none; }
+  .kt-swap { animation: none; }
+}
+
+/* Tension: perforation at the mouth darkens as you pull. Stub: the strip left in the slot after the tear. */
+.kt-perf {
+  position: absolute; z-index: 2; left: 18px; right: 18px; top: 12px; height: 4px; opacity: 0; pointer-events: none;
+  background: radial-gradient(circle, var(--kt-ink) 1.3px, transparent 1.8px) 0 50% / 7px 4px repeat-x;
+}
+.kt-stub { position: absolute; left: 14px; right: 14px; top: 0; height: 12px; opacity: 0; pointer-events: none; background: var(--kt-noise), var(--kt-paper); }
+.kt-hint {
+  position: absolute; z-index: 2; left: 50%; top: 13px; translate: -50% 0; display: flex; align-items: center; gap: 4px;
+  font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--kt-muted); white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity 400ms ease-out;
+}
+.kt-hint[data-on="true"] { opacity: 0.85; }
+.kt-sheet ::selection { background: rgb(31 157 107 / 0.25); }
+.kt-label { font-family: var(--font-mono); font-size: 11px; font-weight: 700; letter-spacing: 0.18em; color: var(--kt-muted); }
+.kt-dash { width: 100%; border: 0; border-top: 2px dashed var(--kt-line); opacity: 0.8; }
+.kt-cols > :first-child { border-right: 2px dashed var(--kt-line); }
+.kt-pill { background: rgb(36 32 27 / 0.07); color: var(--kt-ink); }
+.kt-ok { background: rgb(31 157 107 / 0.14); color: var(--kt-good); }
+/* Primary action: cream like the paper on dark, ink on light (cream on cream would vanish). */
+.kt-cream { background: light-dark(#24201b, #f5f0e6); color: light-dark(#f5f0e6, #24201b); }
+
+/* Feed: stepped like a print head (push, hitch, push), overshoot, then the hanging end sways once. 2D only, no
+   sub-pixel side wobble; ends exactly at 0. translate / rotate are separate properties, so they never fight. */
+@keyframes kt-feed {
+  0%   { translate: 0 -100%; }
+  16%  { translate: 0 -80%; }
+  21%  { translate: 0 -79%; }
+  37%  { translate: 0 -57%; }
+  42%  { translate: 0 -56%; }
+  58%  { translate: 0 -33%; }
+  63%  { translate: 0 -32%; }
+  82%  { translate: 0 -4%; }
+  90%  { translate: 0 1.5%; }
+  100% { translate: 0 0; }
+}
+@keyframes kt-sway {
+  0%   { rotate: 0deg; }
+  30%  { rotate: 0.9deg; }
+  60%  { rotate: -0.5deg; }
+  82%  { rotate: 0.2deg; }
+  100% { rotate: 0deg; }
+}
 @media (prefers-reduced-motion: no-preference) {
-  .kin-pop { animation: kin-pop 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
-  .kin-rise { animation: kin-rise 0.4s ease-out both; }
-  .kin-ring { animation: kin-ring 0.9s ease-out 0.2s both; }
-  .kin-shake { animation: kin-shake 0.35s ease-in-out; }
+  .kt-paper {
+    animation-name: kt-feed, kt-sway;
+    animation-duration: 1250ms, 800ms;
+    animation-delay: 120ms, 1370ms;
+    animation-timing-function: ease-in-out, ease-in-out;
+    animation-fill-mode: backwards, none;
+  }
 }

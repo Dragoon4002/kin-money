@@ -37,6 +37,9 @@ export function setCategory(hash: string, id: CategoryId) {
 
 export const noteOf = (hash: string) => ls()?.getItem(`kin.note.${hash.toLowerCase()}`) ?? "";
 
+/** Saves the note; empty/blank removes it. */
 export function setNote(hash: string, note: string) {
-  if (note.trim()) ls()?.setItem(`kin.note.${hash.toLowerCase()}`, note.trim());
+  const k = `kin.note.${hash.toLowerCase()}`;
+  if (note.trim()) ls()?.setItem(k, note.trim());
+  else ls()?.removeItem(k);
 }

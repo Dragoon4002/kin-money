@@ -104,7 +104,7 @@ const loadFonts = () =>
 
 
 // Receipt card: the whole printed ticket, paper only (transparent around the torn top and scalloped bottom).
-// Mirrors components/demo/ReceiptTicket.tsx at 3× (keep in sync by eye).
+// Mirrors components/receipt/ReceiptTicket.tsx at 3× (keep in sync by eye).
 const P = { paper: "#f5f0e6", ink: "#24201b", muted: "#756c61", good: "#1f9d6b", line: "#b9ae9f", pill: "#e6e0d5", okBg: "#d9e8dc" };
 const RW = 1080; // image width
 const PAD = 84;

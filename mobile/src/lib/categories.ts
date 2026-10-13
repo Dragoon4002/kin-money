@@ -25,3 +25,18 @@ export function setCategory(hash: string, id: CategoryId) {
   trackKey(k);
   return SecureStore.setItemAsync(k, id);
 }
+
+// Note on a payment (this phone only), same key as web. Empty note deletes it.
+export function noteOf(hash: string) {
+  try {
+    return SecureStore.getItem(`kin.note.${hash.toLowerCase()}`) ?? "";
+  } catch {
+    return "";
+  }
+}
+export function setNote(hash: string, note: string) {
+  const k = `kin.note.${hash.toLowerCase()}`;
+  if (!note.trim()) return SecureStore.deleteItemAsync(k);
+  trackKey(k);
+  return SecureStore.setItemAsync(k, note.trim());
+}

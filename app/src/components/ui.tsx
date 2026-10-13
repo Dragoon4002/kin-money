@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { ICON, type IconName } from "@/lib/icons";
 import { Kinko } from "@/components/kinko/Kinko";
+import { Check, CountTitle } from "@/components/receipt/motion";
 import { useAvatarLook } from "@/lib/kinko";
 import { usePrivate } from "@/lib/privacy";
 import { play, type Sound } from "@/lib/sound";
@@ -244,16 +245,17 @@ export function ErrorText({ children }: { children?: ReactNode }) {
   return <p key={text} role="alert" className="kin-shake rounded-2xl bg-bad/10 px-4 py-3 text-sm text-bad">{children}</p>;
 }
 
-/** Success state shown after a payment settles. `sound` = which moment it is (lib/sound.ts). */
+/** Success state shown after a payment settles: check pops + draws, ring, a leading amount in `title` counts up.
+ *  `sound` = which moment it is (lib/sound.ts). */
 export function Delivered({ title, subtitle, children, sound = "success" }: { title: string; subtitle?: string; children?: ReactNode; sound?: Sound }) {
   useEffect(() => play(sound), [sound]);
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
       <div className="relative grid size-20 place-items-center">
         <span aria-hidden className="kin-ring absolute inset-0 rounded-full bg-good" />
-        <span className="kin-pop relative grid size-20 place-items-center rounded-full bg-good text-3xl font-bold text-fun-ink">✓</span>
+        <span className="kin-pop relative grid size-20 place-items-center rounded-full bg-good text-fun-ink"><Check /></span>
       </div>
-      <h2 className="kin-rise font-display text-4xl [animation-delay:120ms]">{title}</h2>
+      <h2 className="kin-rise font-display text-4xl [animation-delay:120ms]"><CountTitle text={title} /></h2>
       {subtitle && <p className="kin-rise text-muted [animation-delay:200ms]">{subtitle}</p>}
       <div className="kin-rise mt-6 w-full [animation-delay:280ms]">{children}</div>
     </div>

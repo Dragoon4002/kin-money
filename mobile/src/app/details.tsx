@@ -1,6 +1,5 @@
 import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams } from "expo-router";
-import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
 import { Check, Copy as CopyIcon, MessageCircle, ShieldCheck } from "lucide-react-native";
 import { useEffect, useState } from "react";
@@ -8,11 +7,13 @@ import { ActivityIndicator, Pressable, View } from "react-native";
 import { erc20Abi, isAddressEqual, isHash, parseEventLogs, type Address, type Hex } from "viem";
 import { share } from "@/components/programs/kit";
 import { Kinko } from "@/components/Kinko";
+import { goTab } from "@/components/NavBar";
+import { ReceiptTicket, TicketFailed, TicketLoading, TicketMissing } from "@/components/receipt/Ticket";
 import { Band, Button, Chip, Footer, IconTile, Row, Screen, Serif, Text } from "@/components/ui";
 import { useAccount } from "@/lib/account";
 import { categoryOf } from "@/lib/activity";
 import { cashoutOf, inr } from "@/lib/cashout";
-import { CATEGORIES, setCategory } from "@/lib/categories";
+import { CATEGORIES, noteOf, setCategory, setNote } from "@/lib/categories";
 import { API_BASE, money as moneyNet, networks, type Network } from "@/lib/config";
 import { describe, isKinContract } from "@/lib/counterparty";
 import { useKinko } from "@/lib/kinko";
@@ -69,14 +70,6 @@ const onKin = (s: string) => (s.startsWith("0x") ? "Not on Kin" : "On Kin");
 /** Friendly short receipt number: "A1B2C3…9F0E". */
 const paymentId = (h: string) => `${h.slice(2, 8)}…${h.slice(-4)}`.toUpperCase();
 
-function noteOf(hash: string) {
-  try {
-    return SecureStore.getItem(`kin.note.${hash.toLowerCase()}`) ?? "";
-  } catch {
-    return "";
-  }
-}
-
 function Copy({ text, what }: { text: string; what: string }) {
   const t = useTheme();
   const [done, setDone] = useState(false);
@@ -117,6 +110,19 @@ export default function Details() {
   useEffect(() => {
     if (fresh) fetch(`${API_BASE}/api/push/tick`).catch(() => {});
   }, [fresh]);
+
+  // Cash-out receipts keep this older card (their own receipt comes later); everything else prints the ticket.
+  if (!cash) {
+    if (!hash || failed) return <TicketMissing />;
+    if (!r) return <TicketLoading />;
+    if (!r.ok) return <TicketFailed r={r} note={note} />;
+    return (
+      <ReceiptTicket hash={hash} r={r} explorer={r.net.explorer} look={look} ms={fresh ? ms : 0} note={note}
+        onNote={(n) => void setNote(hash, n).catch(() => {})}
+        cat={r.out ? cat : null} onCategory={(c) => (setCategory(hash, c.id).catch(() => {}), setCat(c))}
+        onTear={() => goTab(fresh ? "Home" : "Activity")} />
+    );
+  }
 
   if (!hash || failed) {
     return (
@@ -178,7 +184,7 @@ export default function Details() {
           <Serif size={56}>{money}</Serif>
         </View>
         {r.ok && <Chip good>{fresh && secs ? `Delivered in ${secs}s ✓` : "Delivered ✓"}</Chip>}
-        {!!note && <Chip>'{note}'</Chip>}
+        {!!note && <Chip>&apos;{note}&apos;</Chip>}
       </View>
 
       <View style={{ gap: 4, borderRadius: 28, borderWidth: 1, borderColor: t.line, backgroundColor: t.surface, padding: 20 }}>
