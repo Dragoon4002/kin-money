@@ -1,0 +1,85 @@
+/* Demo-only motion (kd-*). Loaded by app/demo/layout.tsx only; nothing in prod uses these classes.
+   The receipt ticket (kt-*) and kin-rise/kin-draw live in globals.css.
+   Every animation sits behind prefers-reduced-motion: no-preference, so reduced motion = final state at once.
+   Only transform / opacity / clip-path / stroke-dashoffset move. `backwards` fill: start state during the delay,
+   then hand control back (active:scale etc. keep working). */
+
+@keyframes kd-calm { from { transform: translateY(6px); opacity: 0; } }
+@keyframes kd-in-x { from { transform: translateX(28px); opacity: 0; } }
+@keyframes kd-fill { from { transform: scaleY(0); } }
+@keyframes kd-travel { 0% { transform: translateY(0); opacity: 0; } 15%, 80% { opacity: 1; } 100% { transform: translateY(100%); opacity: 0; } }
+@keyframes kd-nudge { 0%, 100% { transform: translateX(-2px); opacity: 0.6; } 50% { transform: translateX(3px); opacity: 1; } }
+@keyframes kd-bar { from { transform: scaleX(0); } }
+@keyframes kd-shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+@keyframes kd-new { from { transform: translateY(-60%); opacity: 0; } }
+@keyframes kd-flash { from { opacity: 0.2; } to { opacity: 0; } }
+@keyframes kd-fade { from { opacity: 0; } }
+
+/* Skeleton: same block, with a light sweep instead of a pulse. */
+.kd-shimmer { position: relative; overflow: hidden; }
+.kd-shimmer::after {
+  content: ""; position: absolute; inset: 0; transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, light-dark(rgb(255 255 255 / 0.8), rgb(255 255 255 / 0.1)), transparent);
+  opacity: 0;
+}
+
+/* Money track: travelling dot is decoration only, hidden with reduced motion. */
+.kd-travel { display: none; }
+
+/* Activity: freshly added row gets a soft green wash that fades. */
+.kd-new { position: relative; }
+.kd-new::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: var(--good); opacity: 0; }
+
+/* Longhands only, never `animation-delay`: Tailwind's layered `[animation-delay:…]` classes and inline styles
+   then set the delay (an unlayered `animation:` shorthand would silently reset them to 0). */
+@media (prefers-reduced-motion: no-preference) {
+  .kd-fade, .kd-fill, .kd-bar, .kd-new, .kd-new::after, .kd-stagger > *, .kd-stagger-x > * {
+    animation-fill-mode: backwards; animation-timing-function: ease-out;
+  }
+  .kd-stagger > * { animation-name: kd-calm; animation-duration: 280ms; }
+  .kd-fade { animation-name: kd-fade; animation-duration: 240ms; }
+  .kd-fill { transform-origin: top; animation-name: kd-fill; animation-duration: 420ms; animation-timing-function: cubic-bezier(0.3, 0.7, 0.3, 1); }
+  .kd-bar { animation-name: kd-bar; animation-duration: 300ms; }
+  .kd-travel { display: block; animation: kd-travel 1.1s ease-in-out infinite; }
+  .kd-nudge { animation: kd-nudge 0.9s ease-in-out infinite; }
+  .kd-shimmer::after { opacity: 0.6; animation: kd-shimmer 1.3s ease-in-out infinite; }
+  .kd-new, .kd-stagger > .kd-new { animation-name: kd-new; animation-duration: 320ms; animation-delay: 0ms; animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .kd-new::after { animation-name: kd-flash; animation-duration: 900ms; animation-delay: 120ms; }
+
+  /* Stagger children: first 8 only, 35 ms apart; later ones just appear. */
+  .kd-stagger > :nth-child(2) { animation-delay: 35ms; }
+  .kd-stagger > :nth-child(3) { animation-delay: 70ms; }
+  .kd-stagger > :nth-child(4) { animation-delay: 105ms; }
+  .kd-stagger > :nth-child(5) { animation-delay: 140ms; }
+  .kd-stagger > :nth-child(6) { animation-delay: 175ms; }
+  .kd-stagger > :nth-child(7) { animation-delay: 210ms; }
+  .kd-stagger > :nth-child(8) { animation-delay: 245ms; }
+  .kd-stagger > :nth-child(n + 9) { animation-name: none; }
+
+  .kd-stagger-x > * { animation-name: kd-in-x; animation-duration: 320ms; animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .kd-stagger-x > :nth-child(2) { animation-delay: 50ms; }
+  .kd-stagger-x > :nth-child(3) { animation-delay: 100ms; }
+  .kd-stagger-x > :nth-child(4) { animation-delay: 150ms; }
+  .kd-stagger-x > :nth-child(n + 5) { animation-delay: 200ms; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+}
+
+/* Section E (components/demo/Slip.tsx): static paper, rubber stamp, statement roll. */
+/* Shadow as its own unmasked box behind the paper, stopping short of the scallops. Not `filter: drop-shadow`:
+   filter over a masked sheet raster-glitches (white stripes) while scrolling — same fix as .kt-shadow. */
+.kd-paper-shadow { position: relative; isolation: isolate; }
+.kd-paper-shadow::before {
+  content: ""; position: absolute; z-index: -1; inset: 0 3px 14px; border-radius: 4px; pointer-events: none;
+  box-shadow: 0 6px 8px rgb(0 0 0 / 0.22), 0 1px 1px rgb(0 0 0 / 0.18);
+}
+.kd-sheet-flat { color: var(--kt-ink); background: var(--kt-noise), var(--kt-edges), var(--kt-paper); border-radius: 4px; }
+.kd-roll > * + * { border-top: 2px dashed var(--kt-line); }
+.kd-roll a:active, .kd-roll button:active { background: rgb(36 32 27 / 0.06); }
+@keyframes kd-stamp { 0% { transform: scale(1.8); opacity: 0; } 70% { transform: scale(0.94); opacity: 0.9; } 100% { transform: scale(1); opacity: 0.85; } }
+.kd-stamp { opacity: 0.85; mix-blend-mode: multiply; }
+@media (prefers-reduced-motion: no-preference) {
+  .kd-stamp { animation: kd-stamp 360ms cubic-bezier(0.3, 0.7, 0.3, 1.1) 1450ms backwards; }
+}

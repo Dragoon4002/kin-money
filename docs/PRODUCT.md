@@ -70,6 +70,8 @@ Exception (user decision, Oct 3): My QR / request QR encode one standard payment
 Exception (user decision, Oct 3): paying an account **not on Kin** (no @name, e.g. a scanned wallet code) shows its short address `0x1a2b…9f0e` + Copy and "Not on Kin — make sure this address is right" — on Pay, the receipt and Activity. Never for people with an @name; such accounts are never added to the phonebook.
 Exception (user decision, Oct 3): **Me → Security** (export recovery phrase / private key, add an account from another wallet, account switcher showing `0x1a2b…9f0e` for unnamed imported accounts) may say "recovery phrase", "private key", "wallet", "MetaMask", "Rabby" — needed to move an account in or out of Kin.
 Exception (user decision, Oct 11): **Cash out** screen + its receipt/Activity label name the route — "AUSD → USDC with Agora → INR with Onramp" (AUSD, USDC, Agora, Onramp allowed there only). Practice settles into Agora's test USDC (CTK), labelled as such.
+Exception (user decision, Oct 13): **Add money** form labels its two pickers "Chain" and "Token" (values are names from the payer's other apps: "Base", "USDC"). Nowhere else.
+Exception (user decision, Oct 13): **Receipt ticket** (`/details`) may show a "Verify ↗" pill linking to the public explorer, "Block N" in the proof note, and the shared receipt text may include "Check it: <explorer>/tx/<id>".
 Use: account, balance, dollars, send, request, pay, Identity check (never "Face ID" — many Android phones use fingerprint), receipt, delivered.
 Explorer links only behind "Details → Proof of payment" for judges.
 

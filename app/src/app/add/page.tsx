@@ -1,10 +1,11 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { PayQr } from "@/components/core/PayQr";
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import { SendThis, about, timeLeft, useAddStatus, useSecondsLeft } from "@/components/core/PayIn";
+import { share } from "@/components/core/share";
 import { useSignedIn } from "@/components/social/bits";
-import { Button, Card, Delivered, ErrorText, Field, Ico, Screen, inputClass } from "@/components/ui";
-import { MONAD_USDC, SOURCES, type AddQuote, type AddStatus } from "@/lib/addMoney";
+import { Button, Card, Delivered, ErrorText, Ico, Screen, inputClass } from "@/components/ui";
+import { MONAD_USDC, SOURCES, chainOf, coinOf, type AddQuote, type AddStatus } from "@/lib/addMoney";
 import { networks } from "@/lib/chain";
 import { erc20Abi } from "viem";
 import { convertToDollars } from "@/lib/offramp";
@@ -13,22 +14,21 @@ import type { IconName } from "@/lib/icons";
 import { useMode } from "@/lib/mode";
 import { formatMoney } from "@/lib/money";
 
-// Add money from another account: pick where the money is → one-time code to send to (Aurora Intents) → it lands in
-// the user's own Kin account → one tap turns it into dollars. Real money only (Aurora runs on mainnet).
-// Source labels ("USDC on Base") are names people see in their other apps, so they stay as-is.
+// Add money from another account: pick chain + token, ask for N dollars → one-time code (Aurora Intents, EXACT_OUTPUT)
+// → the user sends, or shares a pay link (/add/pay?d=) so someone else does → it lands in the user's own Kin account →
+// one tap turns it into dollars. Real money only (Aurora runs on mainnet).
+// "Chain" / "Token" labels: user exception (PRODUCT.md, Oct 13). Source names ("USDC", "Base") are what people see in
+// their other apps, so they stay as-is.
 
 type Pending = { q: AddQuote; source: string };
-type Live = { status: AddStatus; amountOut: string | null };
 const KEY = "kin.add"; // sessionStorage: depositAddress + quote only, so a reload resumes. No keys.
 
-const ticker = (label: string) => label.split(" on ")[0];
-const about = (s: number) => (s < 90 ? `about ${Math.max(10, Math.round(s / 10) * 10)} seconds` : `about ${Math.round(s / 60)} minutes`);
+const CHAINS = [...new Set(SOURCES.map(chainOf))];
 
 const QUOTE_ERRORS: Record<string, string> = {
   "not connected": "Adding money this way is resting right now. Try again soon.",
   "no quote": "Couldn't get a price for that right now. Try another amount.",
   invalid: "Check the amount and try again.",
-  "refund address": "That Solana account doesn't look right. Check it and try again.",
   busy: "Couldn't reach our partner. Your money is safe — try again.",
   "slow down": "Too many tries. Wait a minute, then try again.",
 };
@@ -117,16 +117,82 @@ function Waiting() {
   );
 }
 
+// Custom dropdown (select-only combobox, WAI-ARIA APG): button opens a list; arrows/Enter/Escape work; tap outside closes.
+// Not a <Field>: a <label> around the list would re-click the button on every option tap.
+function Pick({ label, value, options, onPick }: { label: string; value: string; options: { value: string; text: string }[]; onPick: (v: string) => void }) {
+  const id = useId();
+  const box = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const [hi, setHi] = useState(0);
+  const current = options.find((o) => o.value === value);
+
+  useEffect(() => {
+    if (!open) return;
+    const off = (e: PointerEvent) => !box.current?.contains(e.target as Node) && setOpen(false);
+    document.addEventListener("pointerdown", off);
+    return () => document.removeEventListener("pointerdown", off);
+  }, [open]);
+
+  function show() {
+    setHi(Math.max(0, options.findIndex((o) => o.value === value)));
+    setOpen(true);
+  }
+  function choose(i: number) {
+    onPick(options[i].value);
+    setOpen(false);
+  }
+  function key(e: KeyboardEvent) {
+    if (e.key === "Tab") return setOpen(false);
+    const act = !open
+      ? ["ArrowDown", "ArrowUp", "Enter", " "].includes(e.key) && show
+      : ({
+          Escape: () => setOpen(false),
+          ArrowDown: () => setHi((h) => Math.min(options.length - 1, h + 1)),
+          ArrowUp: () => setHi((h) => Math.max(0, h - 1)),
+          Enter: () => choose(hi),
+          " ": () => choose(hi),
+        } as Record<string, () => void>)[e.key];
+    if (!act) return;
+    e.preventDefault();
+    act();
+  }
+
+  return (
+    <div ref={box} className="relative flex flex-col gap-1.5">
+      <span id={`${id}l`} className="text-sm font-medium text-muted">{label}</span>
+      <button type="button" role="combobox" aria-haspopup="listbox" aria-expanded={open} aria-controls={`${id}x`}
+        aria-labelledby={`${id}l`} aria-activedescendant={open ? `${id}o${hi}` : undefined}
+        onClick={() => (open ? setOpen(false) : show())} onKeyDown={key}
+        className={`${inputClass} flex items-center justify-between text-left font-semibold ${open ? "border-brand" : ""}`}>
+        {current?.text}
+        <Ico name="chevron" size={18} className={`text-muted transition-transform ${open ? "-rotate-90" : "rotate-90"}`} />
+      </button>
+      {open && (
+        <ul id={`${id}x`} role="listbox" aria-labelledby={`${id}l`}
+          className="absolute inset-x-0 top-full z-20 mt-2 max-h-72 overflow-auto rounded-2xl border border-line bg-surface p-1.5 shadow-lg">
+          {options.map((o, i) => (
+            <li key={o.value} id={`${id}o${i}`} role="option" aria-selected={o.value === value}
+              onPointerMove={() => setHi(i)} onClick={() => choose(i)}
+              className={`flex min-h-12 cursor-pointer items-center justify-between rounded-xl px-3 font-semibold text-ink ${i === hi ? "bg-brand-soft" : ""}`}>
+              {o.text}
+              {o.value === value && <Ico name="check" size={18} className="text-brand" />}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function Form({ onQuote }: { onQuote: (p: Pending) => void }) {
   const me = useSignedIn()?.address;
+  const [chain, setChain] = useState(chainOf(SOURCES[0]));
   const [source, setSource] = useState(SOURCES[0].id);
   const [amount, setAmount] = useState("");
-  const [refundTo, setRefundTo] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  const src = SOURCES.find((s) => s.id === source)!;
-  const coin = ticker(src.label);
-  const ok = Number(amount) > 0 && (src.evm || refundTo.trim().length >= 32);
+  const tokens = SOURCES.filter((s) => chainOf(s) === chain);
+  const ok = Number(amount) > 0;
 
   async function submit() {
     if (!me || !ok) return;
@@ -136,11 +202,11 @@ function Form({ onQuote }: { onQuote: (p: Pending) => void }) {
       const res = await fetch("/api/addmoney", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ source, amount, address: me, refundTo: src.evm ? undefined : refundTo.trim() }),
+        body: JSON.stringify({ source, amount, address: me }),
       });
       const j = await res.json();
       if (j.depositAddress) return onQuote({ q: j as AddQuote, source });
-      setErr(j.error === "too little" && j.min ? `Add at least ${j.min} ${coin}.` : QUOTE_ERRORS[j.error] ?? "Something went wrong. Your money is safe.");
+      setErr(j.error === "too little" && j.min ? `Ask for at least $${j.min}.` : QUOTE_ERRORS[j.error] ?? "Something went wrong. Your money is safe.");
     } catch (e) {
       setErr(humanError(e));
     } finally {
@@ -150,43 +216,36 @@ function Form({ onQuote }: { onQuote: (p: Pending) => void }) {
 
   return (
     <>
-      <Field label="Where is the money now?">
-        <div role="radiogroup" className="grid grid-cols-2 gap-2">
-          {SOURCES.map((s) => (
-            <button key={s.id} type="button" role="radio" aria-checked={s.id === source}
-              onClick={() => (setSource(s.id), setErr(""))}
-              className={`min-h-12 rounded-2xl border px-3 text-left text-sm font-semibold transition active:scale-[0.98] ${
-                s.id === source ? "border-brand bg-brand-soft text-ink" : "border-line bg-surface text-ink"
-              }`}>
-              {s.label}
-            </button>
-          ))}
-        </div>
-      </Field>
+      <div className="grid grid-cols-2 gap-3">
+        <Pick label="Chain" value={chain} options={CHAINS.map((c) => ({ value: c, text: c }))}
+          onPick={(c) => (setChain(c), setSource(SOURCES.find((s) => chainOf(s) === c)!.id), setErr(""))} />
+        <Pick label="Token" value={source} options={tokens.map((s) => ({ value: s.id, text: coinOf(s) }))}
+          onPick={(id) => (setSource(id), setErr(""))} />
+      </div>
 
-      <Field label={`How much ${coin}?`}>
-        <div className="relative">
-          <input className={`${inputClass} pr-20 tabular`} inputMode="decimal" placeholder="0" value={amount}
+      <label className="mt-4 flex flex-col gap-2">
+        <span className="text-sm font-medium text-muted">Amount</span>
+        <span className="flex items-baseline justify-center gap-1 font-display text-6xl">
+          <span className="text-muted">$</span>
+          <input className="tabular min-w-0 bg-transparent text-center text-ink outline-none placeholder:text-muted/50" inputMode="decimal"
+            placeholder="0" value={amount} aria-label="Amount in dollars"
+            style={{ width: `${Math.max(1, amount.length || 1) + 0.5}ch` }}
             onChange={(e) => {
               const v = e.target.value.replace(",", ".");
-              if (!new RegExp(`^\\d{0,7}(\\.\\d{0,${src.decimals}})?$`).test(v)) return;
+              if (!/^\d{0,6}(\.\d{0,2})?$/.test(v)) return;
               setAmount(v);
               setErr("");
             }} />
-          <span className="pointer-events-none absolute inset-y-0 right-4 grid place-items-center font-semibold text-muted">{coin}</span>
-        </div>
-      </Field>
+        </span>
+      </label>
 
-      {!src.evm && (
-        <Field label="Your Solana account, for refunds" hint="If anything goes wrong, the money goes back here.">
-          <input className={`${inputClass} font-mono text-sm`} autoComplete="off" spellCheck={false} placeholder="Paste from your Solana app"
-            value={refundTo} onChange={(e) => (setRefundTo(e.target.value), setErr(""))} />
-        </Field>
-      )}
+      <p className="mt-4 rounded-2xl border border-dashed border-line p-4 text-sm text-muted">
+        You&apos;ll get a link to share. Whoever opens it sees exactly what to send and where. If something goes wrong, the money is held safely in your name and we help you get it back.
+      </p>
 
       <ErrorText>{err}</ErrorText>
       <div className="mt-auto pt-2">
-        <Button onClick={submit} busy={busy} disabled={!ok || busy}>Continue</Button>
+        <Button onClick={submit} busy={busy} disabled={!ok || busy}>Request payment</Button>
         {busy && <p className="mt-3 text-center text-sm text-muted">Getting today&apos;s price…</p>}
       </div>
     </>
@@ -197,46 +256,22 @@ type StepState = "todo" | "doing" | "done";
 const ORDER: AddStatus[] = ["PENDING_DEPOSIT", "KNOWN_DEPOSIT_TX", "PROCESSING", "SUCCESS"];
 
 function Tracking({ p, onReset }: { p: Pending; onReset: () => void }) {
-  const { q } = p;
-  const coin = ticker(SOURCES.find((s) => s.id === p.source)?.label ?? "");
-  const [live, setLive] = useState<Live>({ status: "PENDING_DEPOSIT", amountOut: null });
-  const [now, setNow] = useState(() => Date.now());
-  const [copied, setCopied] = useState<"" | "code" | "amount">("");
+  const q: AddQuote = { ...p.q, source: p.q.source || p.source };
+  const live = useAddStatus(q.depositAddress);
+  const status: AddStatus = live?.status ?? "PENDING_DEPOSIT";
+  const waiting = status === "PENDING_DEPOSIT";
+  const left = useSecondsLeft(q.deadline, waiting);
+  const expired = waiting && left === 0;
   const [converting, setConverting] = useState(false);
   const [done, setDone] = useState<{ hash: string; ausdOut: bigint } | null>(null);
+  const [shared, setShared] = useState("");
   const [err, setErr] = useState("");
-  const final = live.status === "SUCCESS" || live.status === "REFUNDED" || live.status === "FAILED";
+  const out = BigInt(live?.amountOut ?? q.amountOut);
 
-  // Poll every 4s until it arrives or comes back.
-  useEffect(() => {
-    if (final) return;
-    let on = true;
-    const tick = () =>
-      fetch(`/api/addmoney?depositAddress=${encodeURIComponent(q.depositAddress)}`, { cache: "no-store" })
-        .then((r) => r.json())
-        .then((j: Partial<Live>) => on && j.status && setLive({ status: j.status, amountOut: j.amountOut ?? null }))
-        .catch(() => {});
-    tick();
-    const t = setInterval(tick, 4000);
-    return () => {
-      on = false;
-      clearInterval(t);
-    };
-  }, [q.depositAddress, final]);
-
-  const waiting = live.status === "PENDING_DEPOSIT";
-  useEffect(() => {
-    if (!waiting) return;
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, [waiting]);
-
-  const out = BigInt(live.amountOut ?? q.amountOut);
-  const left = Math.max(0, Math.floor((Date.parse(q.deadline) - now) / 1000));
-  const expired = waiting && left === 0;
-
-  async function copy(text: string, what: "code" | "amount") {
-    await navigator.clipboard?.writeText(text).then(() => setCopied(what), () => {});
+  async function shareLink() {
+    const src = SOURCES.find((s) => s.id === q.source);
+    const r = await share(`Pay me ${formatMoney(BigInt(q.amountOut))}${src ? ` with ${src.label}` : ""}`, `${location.origin}/add/pay?d=${encodeURIComponent(q.depositAddress)}`);
+    setShared(r === "copied" ? "Link copied" : "");
   }
 
   async function convert() {
@@ -267,13 +302,13 @@ function Tracking({ p, onReset }: { p: Pending; onReset: () => void }) {
       </>
     );
 
-  if (live.status === "REFUNDED" || live.status === "FAILED")
+  if (status === "REFUNDED" || status === "FAILED")
     return (
       <>
         <Card className="flex flex-col gap-2 text-center">
-          <p className="font-display text-2xl">{live.status === "REFUNDED" ? "Sent back to you" : "This one didn't go through"}</p>
+          <p className="font-display text-2xl">{status === "REFUNDED" ? "Held for you" : "This one didn't go through"}</p>
           <p className="text-sm text-muted">
-            {live.status === "REFUNDED" ? `Your ${coin} is back where it came from.` : "If you sent money, it comes back to you automatically. Your money is safe."}
+            {status === "REFUNDED" ? "The money is held safely in your name with our partner. Message us and we'll help you get it back." : "If money was sent, it's held safely in your name."}
           </p>
         </Card>
         <div className="mt-auto pt-2">
@@ -282,49 +317,33 @@ function Tracking({ p, onReset }: { p: Pending; onReset: () => void }) {
       </>
     );
 
-  const at = ORDER.indexOf(live.status === "INCOMPLETE_DEPOSIT" ? "KNOWN_DEPOSIT_TX" : live.status);
-  const state = (i: number): StepState => (live.status === "SUCCESS" || at > i ? "done" : at === i ? "doing" : "todo");
+  const at = ORDER.indexOf(status === "INCOMPLETE_DEPOSIT" ? "KNOWN_DEPOSIT_TX" : status);
+  const state = (i: number): StepState => (status === "SUCCESS" || at > i ? "done" : at === i ? "doing" : "todo");
   const steps: { icon: IconName; title: string; sub?: string }[] = [
-    { icon: "pending", title: "Waiting for your money", sub: waiting ? `Send within ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")} or this code expires` : undefined },
+    { icon: "pending", title: "Waiting for the money", sub: waiting ? `Request expires in ${timeLeft(left)}` : undefined },
     {
       icon: "check",
-      title: live.status === "INCOMPLETE_DEPOSIT" ? "Amount didn't match" : "Received",
-      sub: live.status === "INCOMPLETE_DEPOSIT" ? "We're sending it back to you" : undefined,
+      title: status === "INCOMPLETE_DEPOSIT" ? "Amount didn't match" : "Received",
+      sub: status === "INCOMPLETE_DEPOSIT" ? "Send the rest, or it's held safely in your name" : undefined,
     },
-    { icon: "send", title: "On its way", sub: live.status === "PROCESSING" ? `Usually ${about(q.timeEstimate)}` : undefined },
-    { icon: "dollar", title: "Arrived", sub: live.status === "SUCCESS" ? `${formatMoney(out)} in your account` : undefined },
+    { icon: "send", title: "On its way", sub: status === "PROCESSING" ? `Usually ${about(q.timeEstimate)}` : undefined },
+    { icon: "dollar", title: "Arrived", sub: status === "SUCCESS" ? `${formatMoney(out)} in your account` : undefined },
   ];
 
   return (
     <>
       {waiting && !expired && (
-        <section className="flex flex-col items-center rounded-[32px] border border-line bg-surface p-6 text-center">
-          <p className="text-sm text-muted">Send exactly</p>
-          <button type="button" onClick={() => copy(q.amountInFormatted, "amount")} className="min-h-11 rounded-full px-3 active:bg-brand-soft">
-            <span className="tabular font-display text-4xl">{q.amountInFormatted} {coin}</span>
-          </button>
-          <p className="text-sm text-muted">You&apos;ll get about {formatMoney(BigInt(q.amountOut))} · {about(q.timeEstimate)}</p>
-          <div className="mt-5 w-full max-w-64 overflow-hidden rounded-3xl">
-            <PayQr text={q.depositAddress} label="QR code to send your money here" />
-          </div>
-          <p className="mt-4 text-xs text-muted">Send to this code</p>
-          <p className="break-all font-mono text-sm">{q.depositAddress}</p>
-          <div className="mt-3 grid w-full grid-cols-2 gap-2">
-            <button type="button" onClick={() => copy(q.depositAddress, "code")} className="flex h-12 items-center justify-center gap-2 rounded-full bg-surface-2 text-sm font-semibold active:scale-[0.98]">
-              <Ico name={copied === "code" ? "check" : "copy"} size={16} />{copied === "code" ? "Copied" : "Copy code"}
-            </button>
-            <button type="button" onClick={() => copy(q.amountInFormatted, "amount")} className="flex h-12 items-center justify-center gap-2 rounded-full bg-surface-2 text-sm font-semibold active:scale-[0.98]">
-              <Ico name={copied === "amount" ? "check" : "copy"} size={16} />{copied === "amount" ? "Copied" : "Copy amount"}
-            </button>
-          </div>
-          <p className="mt-4 text-sm text-muted">Send exactly this amount from any app or exchange. If anything goes wrong it comes back to you automatically.</p>
-        </section>
+        <>
+          <Button onClick={shareLink}>Share payment link</Button>
+          {shared && <p className="text-center text-sm text-muted" aria-live="polite">{shared}</p>}
+          <SendThis q={q} left={left} />
+        </>
       )}
 
       {expired ? (
         <Card className="flex flex-col gap-2 text-center">
-          <p className="font-display text-2xl">This code expired</p>
-          <p className="text-sm text-muted">Don&apos;t send to it. Start again for a fresh one. If you already sent, it comes back to you automatically.</p>
+          <p className="font-display text-2xl">This request expired</p>
+          <p className="text-sm text-muted">Don&apos;t send to it. Start again for a fresh one. If money was already sent, it&apos;s held safely in your name.</p>
         </Card>
       ) : (
         <Card className="flex flex-col gap-4" aria-live="polite">
@@ -346,7 +365,7 @@ function Tracking({ p, onReset }: { p: Pending; onReset: () => void }) {
 
       <ErrorText>{err}</ErrorText>
       <div className="mt-auto pt-2">
-        {live.status === "SUCCESS" ? (
+        {status === "SUCCESS" ? (
           <>
             <Button onClick={convert} busy={converting} disabled={converting}>Add {formatMoney(out)} to your balance</Button>
             {converting && <p className="mt-3 text-center text-sm text-muted">Adding it to your balance — a few seconds…</p>}
