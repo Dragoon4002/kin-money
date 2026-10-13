@@ -22,7 +22,8 @@ export default function GiftPage() {
   const [creating, setCreating] = useState(false);
   // Ready gift for me → the box arrival (tap → it opens → note unfolds). msg: Kin-name gifts' note from /api/gift-notes.
   const [opening, setOpening] = useState<{ amount: bigint; from: Address; msg: string; open: () => Promise<unknown> } | null>(null);
-  const sender = useLoad(() => nameOf(opening!.from).catch(() => ""), opening?.from);
+  const opener = opening?.from; // not opening!.from: React Compiler would read it at render, while opening is null
+  const sender = useLoad(() => (opener ? nameOf(opener).catch(() => "") : Promise.resolve("")), opener);
   const { data, error, reload } = useLoad(() => listEscrows(me!, "gift").then((r) => r.escrows), me);
   const links = useLoad(() => listGiftLinks(me!), me);
   const reloadAll = () => (reload(), links.reload());
