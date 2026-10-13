@@ -7,7 +7,8 @@ import { useAccount, useRequireAccount } from "@/lib/account";
 import { ago } from "@/lib/activity";
 import { listInvites, type Invites } from "@/lib/contacts";
 import { noteInvite, useKinko } from "@/lib/kinko";
-import { inviteLink, PERKS } from "@/lib/referralPerks";
+import { Collectables } from "@/components/referral/Collectables";
+import { COLLECTABLES, inviteLink } from "@/lib/referralPerks";
 
 /** /invite?u=<handle> is the shareable link; /invite alone is my own page. */
 export default function InvitePage() {
@@ -36,11 +37,11 @@ function Invite() {
   const link = typeof window === "undefined" || !handle ? "" : inviteLink(location.origin, handle);
   const text = `Join me on Kin, money for family and friends. We both get a party hat for our Kinko 🎉 ${link}`;
 
-  async function share() {
+  async function share(t = text) {
     noteInvite();
     try {
-      if (navigator.share) return await navigator.share({ text, url: link });
-      await navigator.clipboard.writeText(text);
+      if (navigator.share) return await navigator.share({ text: t, url: link });
+      await navigator.clipboard.writeText(`${t} ${link}`);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -80,6 +81,7 @@ function Invite() {
       )}
 
       {invites && <Progress invites={invites} />}
+      {invites && <Collectables invites={invites} onShare={share} />}
 
       {invites && (
         <section>
@@ -107,7 +109,7 @@ function Invite() {
         >
           Invite on WhatsApp
         </a>
-        <Button variant="ghost" disabled={!link} onClick={share}>
+        <Button variant="ghost" disabled={!link} onClick={() => share()}>
           <span className="inline-flex items-center gap-2"><Ico name={copied ? "check" : "share"} /> {copied ? "Copied" : "More ways to share"}</span>
         </Button>
       </div>
@@ -118,8 +120,8 @@ function Invite() {
 function Progress({ invites }: { invites: Invites }) {
   const joined = invites.invited.length;
   const active = invites.invited.filter((p) => p.active).length;
-  const next = PERKS.find((k) => k.at > active);
-  const prev = [...PERKS].reverse().find((k) => k.at <= active)?.at ?? 0;
+  const next = COLLECTABLES.find((k) => k.at > active);
+  const prev = [...COLLECTABLES].reverse().find((k) => k.at <= active)?.at ?? 0;
   const pct = next ? Math.round(((active - prev) / (next.at - prev)) * 100) : 100;
   return (
     <Card className="flex flex-col gap-3">
@@ -131,15 +133,8 @@ function Progress({ invites }: { invites: Invites }) {
         <div className="h-full rounded-full bg-brand transition-all" style={{ width: `${pct}%` }} />
       </div>
       <p className="text-center text-sm text-muted">
-        {next ? `${next.at - active} more friend${next.at - active > 1 ? "s" : ""} making a payment unlocks: ${next.label}` : "All perks unlocked 🎉"}
+        {next ? `${next.at - active} more friend${next.at - active > 1 ? "s" : ""} making a payment unlocks “${next.title}”` : "All collectables unlocked 🎉"}
       </p>
-      <ul className="flex flex-col gap-1.5">
-        {PERKS.map((k) => (
-          <li key={k.at} className={`flex items-center gap-2 text-sm ${active >= k.at ? "font-semibold" : "text-muted"}`}>
-            <Ico name={active >= k.at ? "check" : "lock"} size={16} /> {k.at} friend{k.at > 1 ? "s" : ""}: {k.label}
-          </li>
-        ))}
-      </ul>
     </Card>
   );
 }

@@ -35,7 +35,7 @@ Deadline: **2026-10-14 09:29 IST**.
 | 7 | Explore → **Live allowance** → pick `@name` → amount + period → confirm | Allowance screen where the amount grows every second | Recipient can withdraw; Activity → Proof of payment |
 | 8 | Explore → **Family pot** or **Circles** → create → share invite link | Invite link others can open to join (pot links admit one person; a second join sees "already used") | Pot pays out by itself at the goal |
 | 9 | Explore → **Pay a bill** or **Chores** | Money only payable to the named payee / released after parent OKs | Activity → Proof of payment |
-| 10 | Me → **Invite & earn** | Your link (`/invite?u=yourname`) + **Invite on WhatsApp**; counts of friends who joined and who made a payment, a progress bar to the next perk; a friend who joins sees "You joined with @you — save as friend?" | People who joined show up in the list with their payment status; perks other than the party hat are display-only for now |
+| 10 | Me → **Invite & earn** | Your link (`/invite?u=yourname`) + **Invite on WhatsApp**; counts of friends who joined and who made a payment, a progress bar to the next collectable; a friend who joins sees "You joined with @you — save as friend?" | People who joined show up in the list with their payment status; collectable scenes unlock as friends make a payment ("What's up, friend" handshake, "Gang's here" crew); money rewards are announced as coming soon |
 
 Every payment's proof: **Activity tab → tap the payment → Details → Proof of payment → Verify on the public explorer ↗.**
 
