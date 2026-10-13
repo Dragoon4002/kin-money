@@ -28,19 +28,25 @@ async function pendingLinks(me: Address): Promise<Pending[]> {
   return out;
 }
 
-/** Bright card for a recent payment. */
+/** Recent payment as a mini ticket stub: paper, colored band = the person (same paper as the receipt). */
 function Moment({ item }: { item: Item }) {
   const out = item.dir === "out";
   const icon = out ? categoryOf(item.hash).icon : "request";
   return (
     <Link href={`/details?tx=${item.hash}`}
-      className={`flex h-40 w-36 shrink-0 snap-start flex-col justify-between rounded-[28px] p-4 text-fun-ink active:scale-[0.97] transition ${funBg(item.who)}`}>
-      <Ico name={icon} size={28} />
-      <span className="flex flex-col gap-1">
-        <span className="font-display text-2xl leading-none tabular">{formatMoney(item.amount)}</span>
-        <span className="line-clamp-2 text-sm font-semibold leading-tight">{out ? `paid to ${item.who}` : `from ${item.who}`}</span>
-        <span className="text-xs opacity-80">{item.when}</span>
-      </span>
+      aria-label={`${out ? "Paid" : "Got"} ${formatMoney(item.amount)} ${out ? "to" : "from"} ${item.who}, ${item.when}. Open receipt`}
+      className="kt-printer kd-paper-shadow block w-36 shrink-0 snap-start transition active:scale-[0.97]">
+      <div className="kt-sheet flex h-44 flex-col px-3 pb-6 text-left">
+        <span aria-hidden className={`-mx-3 mb-3 h-2 ${funBg(item.who)}`} />
+        <span className="flex items-center justify-between">
+          <Ico name={icon} size={22} />
+          <span className="kt-label">{out ? "PAID" : "GOT"}</span>
+        </span>
+        <span className="mt-auto text-2xl font-bold leading-none tracking-tight tabular-nums">{formatMoney(item.amount)}</span>
+        <hr aria-hidden className="kt-dash my-2" />
+        <span className="truncate font-mono text-xs font-bold">{out ? "TO" : "FROM"} {item.who}</span>
+        <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--kt-muted)]">{item.when}</span>
+      </div>
     </Link>
   );
 }
@@ -144,9 +150,9 @@ export default function Activity() {
           </section>
         )}
         {moments.length > 0 && (
-          <section className="flex flex-col gap-3">
-            <h2 className="px-5 font-display text-2xl">Moments</h2>
-            <div className="flex snap-x gap-3 overflow-x-auto px-5 pb-1 [scrollbar-width:none]">
+          <section className="flex flex-col gap-2">
+            <h2 className="flex min-h-11 items-center px-5 font-mono text-xs font-bold uppercase tracking-[0.2em] text-muted">Moments</h2>
+            <div className="flex snap-x scroll-px-5 gap-3 overflow-x-auto px-5 pb-3 pt-1 [scrollbar-width:none]">
               {moments.map((i) => <Moment key={`${i.hash}:${i.logIndex}`} item={i} />)}
             </div>
           </section>

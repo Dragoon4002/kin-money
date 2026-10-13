@@ -72,7 +72,8 @@ export function Who({ label, who, a }: { label: string; who: string; a?: Address
         onClick={() => navigator.clipboard.writeText(text).then(() => (setDone(true), setTimeout(() => setDone(false), 1500)))}
         className="flex min-h-11 min-w-0 max-w-full flex-col items-center rounded-xl px-2 active:scale-95"
       >
-        <span className="max-w-full truncate text-lg font-bold">{who}</span>
+        {/* Short account (13 chars) doesn't fit at text-lg in a half column: smaller mono, never cut. */}
+        <span className={who.startsWith("0x") ? "whitespace-nowrap font-mono text-sm font-bold leading-7" : "max-w-full truncate text-lg font-bold"}>{who}</span>
         <span className="font-mono text-[11px] text-[var(--kt-muted)]">{done ? "Copied ✓" : who.startsWith("0x") ? "Not on Kin · tap to copy" : "Tap to copy"}</span>
       </button>
     </div>

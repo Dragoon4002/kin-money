@@ -149,7 +149,8 @@ function Who({ label, who, a, first }: { label: string; who: string; a?: Address
       <Pressable accessibilityRole="button" accessibilityLabel={acct ? "Copy account for someone not on Kin" : `Copy name ${who}`}
         onPress={() => void Clipboard.setStringAsync(acct ? (a ?? who) : who).then(() => (buzz("pick"), setDone(true), setTimeout(() => setDone(false), 1500)))}
         style={({ pressed }) => ({ minHeight: 44, maxWidth: "100%", alignItems: "center", justifyContent: "center", paddingHorizontal: 8, transform: [{ scale: pressed ? 0.95 : 1 }] })}>
-        <Text numberOfLines={1} style={{ color: P.ink, fontSize: 18, fontWeight: "700", lineHeight: 28 }}>{who}</Text>
+        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}
+          style={who.startsWith("0x") ? { color: P.ink, fontFamily: MONO, fontSize: 14, fontWeight: "700", lineHeight: 28 } : { color: P.ink, fontSize: 18, fontWeight: "700", lineHeight: 28 }}>{who}</Text>
         <Text style={{ color: P.muted, fontFamily: MONO, fontSize: 11, lineHeight: 16 }}>{done ? "Copied ✓" : acct ? "Not on Kin · tap to copy" : "Tap to copy"}</Text>
       </Pressable>
       {first && <Svg width={2} height="100%" style={{ position: "absolute", right: -1, top: 0, bottom: 0 }}><Path d="M1 0 V400" stroke={P.line} strokeWidth={2} strokeDasharray="6 4" /></Svg>}

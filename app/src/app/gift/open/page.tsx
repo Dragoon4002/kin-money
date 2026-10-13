@@ -1,21 +1,21 @@
 "use client";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { Onboard } from "@/components/core/Onboard";
-import { Celebrate } from "@/components/kinko/Celebrate";
-import { Kinko } from "@/components/kinko/Kinko";
-import { dateLabel, timeLeft, useNow } from "@/components/programs/kit";
-import { Amount, Button, Card, Chip, Countdown, ErrorText, IconTile, Screen } from "@/components/ui";
+import { GiftLinkSlip } from "@/components/gift/GiftLinkSlip";
+import { GiftReveal } from "@/components/gift/GiftReveal";
+import { useNow } from "@/components/programs/kit";
+import { Screen } from "@/components/ui";
 import { getAccount, useAccount } from "@/lib/account";
 import { addContact, registerMe } from "@/lib/contacts";
 import { bindGift, isBound, openGift, parseGiftLink, readGiftLink, type GiftLink } from "@/lib/giftLinks";
 import { humanError } from "@/lib/errors";
-import { savedLook } from "@/lib/kinko";
-import { formatMoney } from "@/lib/money";
 import { nameOf } from "@/lib/names";
-import { same } from "@/lib/programs";
+import { same, ZERO } from "@/lib/programs";
 
+// A gift link (approved /demo E1, Oct 13). Ready to open → GiftReveal: the box drops in, tap it → accept + open
+// behind the pop → the note unfolds → drag it away. Anything else (not open yet, taken, gone, the sender's own
+// link) → GiftLinkSlip, printed with a stamp. No auto-accept: the person taps.
 // The link key lives in the URL fragment (#id.key&m=…), which browsers never send to a server.
 const onHash = (cb: () => void) => (addEventListener("hashchange", cb), () => removeEventListener("hashchange", cb));
 
@@ -23,34 +23,43 @@ export default function OpenGiftLink() {
   const hash = useSyncExternalStore(onHash, () => location.hash, () => null);
   const link = hash ? parseGiftLink(hash) : null;
   const id = link?.id.toString();
-  const { profile, unlocked } = useAccount();
+  const { profile } = useAccount();
   const me = profile?.address;
   const now = useNow();
-  const [info, setInfo] = useState<(GiftLink & { sender: string }) | null>(null);
-  const [phase, setPhase] = useState<"view" | "signup" | "binding" | "opening" | "opened">("view");
-  const [justBound, setJustBound] = useState(false);
-  const [err, setErr] = useState("");
-  const tried = useRef(false);
   const router = useRouter();
+  const [info, setInfo] = useState<(GiftLink & { sender: string }) | null>(null);
+  const [phase, setPhase] = useState<"view" | "signup" | "binding" | "opening">("view");
+  const [justBound, setJustBound] = useState(false);
+  const [resume, setResume] = useState(false); // back from sign-up on the box: run accept + open straight away
+  const [err, setErr] = useState("");
 
   useEffect(() => {
     if (!id) return;
     readGiftLink(BigInt(id))
-      .then(async (g) => setInfo({ ...g, sender: await nameOf(g.from).catch(() => "") }))
+      .then(async (g) => {
+        // No such gift: the contract returns an empty record (from = 0, amount 0).
+        if (same(g.from, ZERO)) return setErr("This gift link isn't valid. Ask the sender to share it again.");
+        setInfo({ ...g, sender: await nameOf(g.from).catch(() => "") });
+      })
       .catch((e) => setErr(humanError(e)));
   }, [id]);
 
+  /** Bind the gift to me. Returns my address. */
+  async function bind(i: GiftLink & { sender: string }) {
+    if (!link) throw new Error("link incomplete"); // not link!.id: React Compiler would read it at render
+    const mine = (await getAccount()).address;
+    await bindGift(link.id, link.key, mine);
+    void registerMe();
+    if (i.sender) void addContact({ address: i.from, name: i.sender }).catch(() => {});
+    return mine;
+  }
+
   async function accept() {
     if (!link || !info) return;
-    tried.current = true;
     setErr("");
     setPhase("binding");
     try {
-      const mine = (await getAccount()).address;
-      await bindGift(link.id, link.key, mine);
-      void registerMe();
-      if (info.sender) void addContact({ address: info.from, name: info.sender }).catch(() => {});
-      setInfo({ ...info, recipient: mine });
+      setInfo({ ...info, recipient: await bind(info) });
       setJustBound(true);
     } catch (e) {
       setErr(humanError(e));
@@ -67,116 +76,32 @@ export default function OpenGiftLink() {
     try {
       await openGift(info.id);
       setInfo({ ...info, settled: true });
-      setPhase("opened");
     } catch (e) {
       setErr(humanError(e));
-      setPhase("view");
     }
+    setPhase("view");
   }
 
-  // Signed in and unlocked → accept straight away, no extra tap.
-  const canAccept = !!info && !info.settled && !isBound(info) && !!me && !same(info.from, me);
-  useEffect(() => {
-    if (canAccept && unlocked && phase === "view" && !tried.current) {
-      tried.current = true;
-      void Promise.resolve().then(accept);
-    }
-  });
+  // Ready = open date passed, not settled, and either unclaimed (and not mine to send) or already mine.
+  // info isn't updated by the reveal's own accept/open, so the reveal stays put until they leave.
+  const mine = !!info && isBound(info) && same(info.recipient, me);
+  const ready = !!info && !info.settled && now >= info.unlockAt && (mine || (!isBound(info) && !same(info.from, me)));
 
   if (hash === null) return <Screen title="Kin">{null}</Screen>;
+  if (phase === "signup") return <Screen title="Your gift is waiting"><Onboard onDone={() => { setPhase("view"); if (ready) setResume(true); else void accept(); }} /></Screen>;
 
-  if (!link) {
+  if (ready && link && info) {
     return (
-      <Screen title="Kin">
-        <Card>This gift link looks incomplete. Ask the sender to share it again.</Card>
-        <Link href="/" className="mt-auto grid h-14 place-items-center rounded-full border border-line font-semibold active:bg-surface-2">Open Kin</Link>
-      </Screen>
+      <GiftReveal amount={info.amount} sender={info.sender} msg={link.message} signedIn={!!profile} resume={resume}
+        onSignup={() => setPhase("signup")} onLeave={() => router.replace(profile ? "/home" : "/")}
+        onOpen={async (say) => {
+          if (!mine) { say("Accepting your gift…"); await bind(info); }
+          say("Opening your gift…");
+          await openGift(info.id);
+        }} />
     );
   }
 
-  const from = info?.sender ? `@${info.sender}` : "Someone";
-  const money = info ? formatMoney(info.amount) : "";
-
-  if (phase === "signup") {
-    return (
-      <Screen title="Your gift is waiting">
-        <Onboard onDone={accept} />
-      </Screen>
-    );
-  }
-
-  if (phase === "opened" && info) {
-    return (
-      <Celebrate open intro="gift" title="Your gift is open!" amount={money} subtitle={`From ${from}. It's in your balance now.`}
-        shareText="I just opened a gift on Kin 🎁" onClose={() => router.push("/home")}
-        card={{ kind: "gift", amount: info.amount, from: info.sender || undefined, look: me && savedLook(me) }} />
-    );
-  }
-
-  const mine = !!info && isBound(info) && same(info.recipient, me);
-  const locked = !!info && now < info.unlockAt;
-
-  let body: ReactNode;
-  if (!info) {
-    body = err ? <ErrorText>{err}</ErrorText> : <div className="h-40 w-full animate-pulse rounded-[28px] bg-surface-2" />;
-  } else if (mine) {
-    body = (
-      <>
-        <div className={locked ? "" : "animate-bounce"}><Kinko size={120} mood="celebrate" /></div>
-        <h2 className="font-display text-4xl leading-tight">
-          {info.settled ? "Opened ✓" : justBound ? `This gift is now yours${profile?.name ? `, @${profile.name}` : ""}` : `Your gift from ${from}`}
-        </h2>
-        {link.message && <p className="text-lg">&ldquo;{link.message}&rdquo;</p>}
-        <Amount value={money} />
-        {info.settled ? (
-          <p className="text-muted">It&apos;s in your balance.</p>
-        ) : locked ? (
-          <>
-            <Chip tone="brand">Opens in {timeLeft(info.unlockAt - now)}</Chip>
-            <Countdown seconds={info.unlockAt - now} />
-            <p className="text-sm text-muted">Held safely until {dateLabel(info.unlockAt)}. It opens by itself that day.</p>
-          </>
-        ) : (
-          <p className="text-muted">It&apos;s ready to open!</p>
-        )}
-      </>
-    );
-  } else {
-    body = (
-      <>
-        <span className="grid size-28 place-items-center rounded-full bg-brand-soft"><IconTile name="gift" size={72} tone="brand" /></span>
-        <p className="text-lg">A gift from {from}</p>
-        {link.message && <p className="font-display text-2xl leading-snug">&ldquo;{link.message}&rdquo;</p>}
-        <Amount value={money} />
-        <p className="text-muted">
-          {info.settled ? "This gift is no longer available."
-            : isBound(info) ? "This gift was already accepted."
-            : same(info.from, me) ? "Share this link with the person it's for."
-            : `Opens on ${dateLabel(info.unlockAt)}. Accept it now so it's yours.`}
-        </p>
-      </>
-    );
-  }
-
-  return (
-    <Screen title="Kin">
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">{body}</div>
-      <div className="flex flex-col gap-3">
-        {info && <ErrorText>{err}</ErrorText>}
-        {phase === "binding" && <p className="text-center text-sm text-muted" aria-live="polite">Accepting your gift…</p>}
-        {phase === "opening" && <p className="text-center text-sm text-muted" aria-live="polite">Opening your gift…</p>}
-        {canAccept && <Button busy={phase === "binding"} onClick={accept}>Accept gift</Button>}
-        {info && !info.settled && !isBound(info) && !profile && (
-          <>
-            <Button onClick={() => setPhase("signup")}>Create free account to accept</Button>
-            <p className="text-center text-xs text-muted">Takes 20 seconds. Just your name and an Identity check.</p>
-          </>
-        )}
-        {mine && !info.settled && !locked && <Button busy={phase === "opening"} onClick={open}>Open gift</Button>}
-        {info && (info.settled || isBound(info) || same(info.from, me)) && (
-          <Link href={profile ? "/home" : "/"} className="grid h-14 place-items-center rounded-full border border-line font-semibold active:bg-surface-2">Open Kin</Link>
-        )}
-      </div>
-    </Screen>
-  );
+  return <GiftLinkSlip link={link} info={info} err={err} phase={phase} justBound={justBound} me={me} profile={profile}
+    onAccept={accept} onSignup={() => setPhase("signup")} onOpen={open} />;
 }

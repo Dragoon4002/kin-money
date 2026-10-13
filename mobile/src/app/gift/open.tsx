@@ -1,38 +1,34 @@
-import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { View } from "react-native";
-import { Kinko } from "@/components/Kinko";
-import { Opened } from "@/components/gift/Opened";
-import { dateLabel, Status, timeLeft, useNow } from "@/components/programs/kit";
-import { Amount, Card } from "@/components/trips/bits";
-import { Button, Chip, ErrorText, Footer, IconTile, Screen, Serif, Text } from "@/components/ui";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { GiftLinkSlip } from "@/components/gift/GiftLinkSlip";
+import { GiftReveal } from "@/components/gift/GiftReveal";
+import { useNow } from "@/components/programs/kit";
 import { getAccount, useAccount } from "@/lib/account";
+import { API_BASE } from "@/lib/config";
 import { addContact, registerMe } from "@/lib/contacts";
 import { humanError } from "@/lib/errors";
 import { bindGift, isBound, openGift, parseGiftLink, readGiftLink, type GiftLink } from "@/lib/giftLinks";
-import { ICON } from "@/lib/icons";
-import { formatMoney } from "@/lib/money";
 import { nameOf } from "@/lib/names";
 import { same } from "@/lib/programs";
-import { useTheme } from "@/theme";
 
-// Port of app/src/app/gift/open/page.tsx. The link key rides in the #fragment; openKin passes it as `hash`.
-
-const home = () => router.replace("/tabs");
+// Port of app/src/app/gift/open/page.tsx. Ready to open → GiftReveal: the box drops in, tap it → accept + open behind
+// the pop → the note unfolds → drag it away. Anything else (not open yet, taken, gone, the sender's own link) →
+// GiftLinkSlip, printed with a stamp. No auto-accept: the person taps. The link key rides in the #fragment; openKin
+// passes it as `hash`.
 
 export default function OpenGiftLink() {
-  const t = useTheme();
   const { hash = "" } = useLocalSearchParams<{ hash?: string }>();
   const [link] = useState(() => parseGiftLink(hash));
   const id = link?.id.toString();
-  const { profile, unlocked } = useAccount();
+  const { profile } = useAccount();
   const me = profile?.address;
   const now = useNow();
   const [info, setInfo] = useState<(GiftLink & { sender: string }) | null>(null);
-  const [phase, setPhase] = useState<"view" | "binding" | "opening" | "opened">("view");
+  const [phase, setPhase] = useState<"view" | "binding" | "opening">("view");
   const [justBound, setJustBound] = useState(false);
+  const [resume, setResume] = useState(false); // back from sign-up on the box: run accept + open straight away
   const [err, setErr] = useState("");
-  const tried = useRef(false);
+  const signingUp = useRef(false);
 
   useEffect(() => {
     if (!id) return;
@@ -41,17 +37,21 @@ export default function OpenGiftLink() {
       .catch((e) => setErr(humanError(e)));
   }, [id]);
 
+  /** Bind the gift to me. Returns my address. */
+  async function bind(i: GiftLink & { sender: string }) {
+    const mine = (await getAccount()).address;
+    await bindGift(link!.id, link!.key, mine);
+    void registerMe();
+    if (i.sender) void addContact({ address: i.from, name: i.sender }).catch(() => {});
+    return mine;
+  }
+
   async function accept() {
     if (!link || !info) return;
-    tried.current = true;
     setErr("");
     setPhase("binding");
     try {
-      const mine = (await getAccount()).address;
-      await bindGift(link.id, link.key, mine);
-      void registerMe();
-      if (info.sender) void addContact({ address: info.from, name: info.sender }).catch(() => {});
-      setInfo({ ...info, recipient: mine });
+      setInfo({ ...info, recipient: await bind(info) });
       setJustBound(true);
     } catch (e) {
       setErr(humanError(e));
@@ -68,100 +68,39 @@ export default function OpenGiftLink() {
     try {
       await openGift(info.id);
       setInfo({ ...info, settled: true });
-      setPhase("opened");
     } catch (e) {
       setErr(humanError(e));
-      setPhase("view");
     }
+    setPhase("view");
   }
 
-  // Signed in and unlocked → accept straight away, no extra tap.
-  const canAccept = !!info && !info.settled && !isBound(info) && !!me && !same(info.from, me);
-  useEffect(() => {
-    if (canAccept && unlocked && phase === "view" && !tried.current) {
-      tried.current = true;
-      void Promise.resolve().then(accept);
-    }
-  });
-
-  if (!link) {
-    return (
-      <Screen title="Kin" back>
-        <Card><Text style={{ color: t.ink }}>This gift link looks incomplete. Ask the sender to share it again.</Text></Card>
-        <Footer><Button title="Open Kin" variant="soft" onPress={home} /></Footer>
-      </Screen>
-    );
-  }
-
-  const from = info?.sender ? `@${info.sender}` : "Someone";
-  const money = info ? formatMoney(info.amount) : "";
-
-  if (phase === "opened" && info) {
-    return <Opened amount={info.amount} money={money} from={info.sender || undefined} subtitle={`From ${from}. It's in your balance now.`} onClose={home} />;
-  }
-
+  // Ready = open date passed, not settled, and either unclaimed (and not mine to send) or already mine.
+  // info isn't updated by the reveal's own accept/open, so the reveal stays put until they leave.
   const mine = !!info && isBound(info) && same(info.recipient, me);
-  const locked = !!info && now < info.unlockAt;
-  const center = { textAlign: "center" } as const;
+  const ready = !!info && !info.settled && now >= info.unlockAt && (mine || (!isBound(info) && !same(info.from, me)));
 
-  let body: ReactNode;
-  if (!info) {
-    body = err ? <ErrorText>{err}</ErrorText> : <View style={{ height: 160, alignSelf: "stretch", borderRadius: 28, backgroundColor: t.surface2 }} />;
-  } else if (mine) {
-    body = (
-      <>
-        <Kinko size={120} mood="celebrate" />
-        <Serif size={36}>{info.settled ? "Opened ✓" : justBound ? `This gift is now yours${profile?.name ? `, @${profile.name}` : ""}` : `Your gift from ${from}`}</Serif>
-        {!!link.message && <Text style={[center, { color: t.ink, fontSize: 18 }]}>'{link.message}'</Text>}
-        <Amount value={money} />
-        {info.settled ? (
-          <Text style={{ color: t.muted }}>It&apos;s in your balance.</Text>
-        ) : locked ? (
-          <>
-            <Chip>Opens in {timeLeft(info.unlockAt - now)}</Chip>
-            <Text style={[center, { color: t.muted, fontSize: 14 }]}>Held safely until {dateLabel(info.unlockAt)}. It opens by itself that day.</Text>
-          </>
-        ) : (
-          <Text style={{ color: t.muted }}>It&apos;s ready to open!</Text>
-        )}
-      </>
-    );
-  } else {
-    body = (
-      <>
-        <View style={{ width: 112, height: 112, borderRadius: 56, alignItems: "center", justifyContent: "center", backgroundColor: t.brandSoft }}>
-          <IconTile icon={ICON.gift} size={72} brand />
-        </View>
-        <Text style={{ color: t.ink, fontSize: 18 }}>A gift from {from}</Text>
-        {!!link.message && <Serif size={26}>'{link.message}'</Serif>}
-        <Amount value={money} />
-        <Text style={[center, { color: t.muted }]}>
-          {info.settled ? "This gift is no longer available."
-            : isBound(info) ? "This gift was already accepted."
-            : same(info.from, me) ? "Share this link with the person it's for."
-            : `Opens on ${dateLabel(info.unlockAt)}. Accept it now so it's yours.`}
-        </Text>
-      </>
+  // Sign-up is its own screen (/onboard ends on Home). Back here with an account → carry on, like web's onDone.
+  useFocusEffect(useCallback(() => {
+    if (!signingUp.current || !profile) return;
+    signingUp.current = false;
+    if (ready) setResume(true);
+    else void accept();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs on focus with the latest state
+  }, [profile, ready]));
+  const signup = () => ((signingUp.current = true), router.push("/onboard"));
+  const leave = () => router.replace(profile ? "/tabs" : "/");
+
+  if (ready && link && info) {
+    return (
+      <GiftReveal amount={info.amount} sender={info.sender} msg={link.message} signedIn={!!profile} resume={resume} onSignup={signup} onLeave={leave}
+        onOpen={async (say) => {
+          if (!mine) { say("Accepting your gift…"); await bind(info); }
+          say("Opening your gift…");
+          await openGift(info.id);
+        }} />
     );
   }
 
-  return (
-    <Screen title="Kin" back scroll>
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12 }}>{body}</View>
-      <Footer>
-        {!!info && <ErrorText>{err}</ErrorText>}
-        {phase === "binding" && <Status>Accepting your gift…</Status>}
-        {phase === "opening" && <Status>Opening your gift…</Status>}
-        {canAccept && <Button title="Accept gift" busy={phase === "binding"} onPress={accept} />}
-        {!!info && !info.settled && !isBound(info) && !profile && (
-          <>
-            <Button title="Create free account to accept" onPress={() => router.push("/onboard")} />
-            <Text style={[center, { color: t.muted, fontSize: 12 }]}>Takes 20 seconds. Just your name and an Identity check.</Text>
-          </>
-        )}
-        {mine && !info.settled && !locked && <Button title="Open gift" busy={phase === "opening"} onPress={open} />}
-        {!!info && (info.settled || isBound(info) || same(info.from, me)) && <Button title="Open Kin" variant="soft" onPress={home} />}
-      </Footer>
-    </Screen>
-  );
+  return <GiftLinkSlip link={link} info={info} err={err} phase={phase} justBound={justBound} me={me} profile={profile} url={`${API_BASE}/gift/open#${hash}`}
+    onAccept={accept} onSignup={signup} onOpen={open} />;
 }

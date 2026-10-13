@@ -186,6 +186,14 @@ body { font-family: var(--font-jakarta), system-ui, sans-serif; -webkit-tap-high
 .kt-dash { width: 100%; border: 0; border-top: 2px dashed var(--kt-line); opacity: 0.8; }
 .kt-cols > :first-child { border-right: 2px dashed var(--kt-line); }
 .kt-pill { background: rgb(36 32 27 / 0.07); color: var(--kt-ink); }
+/* Static paper (Activity Moments, Cash out quote/details; demo Slip Paper). Shadow = its own unmasked box behind the
+   paper, stopping short of the scallops. Never `filter: drop-shadow`: filter over a masked sheet raster-glitches
+   (white stripes) while scrolling — same fix as .kt-shadow. kd- name kept so the demo shares it. */
+.kd-paper-shadow { position: relative; isolation: isolate; }
+.kd-paper-shadow::before {
+  content: ""; position: absolute; z-index: -1; inset: 0 3px 14px; border-radius: 4px; pointer-events: none;
+  box-shadow: 0 6px 8px rgb(0 0 0 / 0.22), 0 1px 1px rgb(0 0 0 / 0.18);
+}
 .kt-ok { background: rgb(31 157 107 / 0.14); color: var(--kt-good); }
 /* Primary action: cream like the paper on dark, ink on light (cream on cream would vanish). */
 .kt-cream { background: light-dark(#24201b, #f5f0e6); color: light-dark(#f5f0e6, #24201b); }
@@ -219,4 +227,129 @@ body { font-family: var(--font-jakarta), system-ui, sans-serif; -webkit-tap-high
     animation-timing-function: ease-in-out, ease-in-out;
     animation-fill-mode: backwards, none;
   }
+}
+
+/* ── Slips + gifts (components/receipt/Slip.tsx, components/gift/*), moved from the /demo Section E (approved Oct 13). */
+@keyframes kd-calm { from { transform: translateY(6px); opacity: 0; } }
+@keyframes kd-fade { from { opacity: 0; } }
+.kd-sheet-flat { color: var(--kt-ink); background: var(--kt-noise), var(--kt-edges), var(--kt-paper); border-radius: 4px; }
+@keyframes kd-stamp { 0% { transform: scale(1.8); opacity: 0; } 70% { transform: scale(0.94); opacity: 0.9; } 100% { transform: scale(1); opacity: 0.85; } }
+.kd-stamp { opacity: 0.85; mix-blend-mode: multiply; }
+@media (prefers-reduced-motion: no-preference) {
+  .kd-stamp { animation: kd-stamp 360ms cubic-bezier(0.3, 0.7, 0.3, 1.1) 1450ms backwards; }
+}
+/* E1 gift send (EGift.tsx GiftSend): data-phase note → fold → box → closed → lift → fly. Transitions only, so a
+   static state mounts in its pose without playing; JS skips straight to the text with reduced motion. */
+.kd-gift { position: relative; height: 470px; margin-inline: auto; width: 280px; flex-shrink: 0; }
+.kd-gift-fly { position: absolute; inset: 0; perspective: 1100px; transform-origin: 50% 85%; }
+.kd-note { position: absolute; inset: 0 0 auto; height: 330px; transform-style: preserve-3d; transform-origin: 50% 165px; z-index: 2; }
+.kd-note-shadow { position: absolute; inset: 0 3px; border-radius: 4px; transform: translateZ(-1px); box-shadow: 0 8px 14px rgb(0 0 0 / 0.22), 0 1px 2px rgb(0 0 0 / 0.18); }
+.kd-panel { position: absolute; inset-inline: 0; height: 110px; transform-style: preserve-3d; }
+.kd-p0 { top: 0; transform-origin: 50% 100%; }
+.kd-p1 { top: 110px; }
+.kd-p2 { top: 220px; transform-origin: 50% 0; }
+.kd-face { position: absolute; inset: 0; overflow: hidden; backface-visibility: hidden; border-radius: 0; }
+.kd-p0 .kd-face { border-radius: 6px 6px 0 0; }
+.kd-p2 .kd-face { border-radius: 0 0 6px 6px; }
+.kd-face-back { display: grid; place-items: center; transform: rotateX(180deg); background-color: color-mix(in oklab, var(--kt-paper) 93%, #6b5a44); box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.06); }
+.kd-p0 .kd-face-back { border-radius: 0 0 6px 6px; background-image: linear-gradient(to top, rgb(0 0 0 / 0.1), transparent 30%), var(--kt-noise); }
+.kd-p2 .kd-face-back { border-radius: 6px 6px 0 0; background-image: linear-gradient(rgb(0 0 0 / 0.1), transparent 30%), var(--kt-noise); }
+.kd-shade { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
+.kd-p0 .kd-shade { background: linear-gradient(to top, rgb(0 0 0 / 0.28), transparent 70%); }
+.kd-p2 .kd-shade { background: linear-gradient(rgb(0 0 0 / 0.28), transparent 70%); }
+
+/* Box: back wall (inside) < note < front < lid. */
+.kd-box-back, .kd-box-front, .kd-lid { position: absolute; left: 50%; opacity: 0; pointer-events: none; } /* the parked lid sat over the amount */
+.kd-box-back { z-index: 1; top: 300px; width: 200px; height: 30px; margin-left: -100px; border-radius: 6px 6px 0 0; background: color-mix(in oklab, var(--brand) 62%, black); }
+.kd-box-front { z-index: 3; top: 322px; width: 200px; height: 140px; margin-left: -100px; border-radius: 4px 4px 14px 14px; overflow: hidden;
+  background: linear-gradient(transparent 0 8px, rgb(0 0 0 / 0.08) 8px 12px, transparent 12px), var(--brand); box-shadow: 0 10px 18px rgb(0 0 0 / 0.22); }
+.kd-lid { z-index: 4; top: 282px; width: 222px; height: 44px; margin-left: -111px; border-radius: 8px; background: color-mix(in oklab, var(--brand) 88%, white); box-shadow: 0 3px 0 rgb(0 0 0 / 0.12); }
+.kd-ribbon { position: absolute; inset-block: 0; left: 50%; width: 26px; margin-left: -13px; background: #f6d36b; box-shadow: inset 3px 0 rgb(0 0 0 / 0.08); }
+.kd-bow { position: absolute; left: 50%; bottom: 36px; width: 84px; margin-left: -42px; fill: #f6d36b; stroke: #f6d36b; transform: scale(0); transform-origin: 50% 90%; filter: none; }
+
+.kd-gift:not([data-phase="note"]) .kd-p2 { transform: rotateX(180deg) translateZ(-1px); }
+.kd-gift:not([data-phase="note"]) .kd-p0 { transform: rotateX(-180deg) translateZ(-2px); }
+.kd-gift:not([data-phase="note"]) .kd-p0 .kd-shade, .kd-gift:not([data-phase="note"]) .kd-p2 .kd-shade { opacity: 1; }
+.kd-gift:not([data-phase="note"]) .kd-note-shadow { inset: 110px 3px; }
+.kd-gift:not([data-phase="note"]) :is(.kd-box-back, .kd-box-front) { opacity: 1; transform: none; }
+.kd-gift:is([data-phase="box"], [data-phase="closed"], [data-phase="lift"], [data-phase="fly"]) .kd-note { transform: translateY(205px) scale(0.6) rotate(-3deg); }
+.kd-gift:is([data-phase="closed"], [data-phase="lift"], [data-phase="fly"]) .kd-lid { opacity: 1; transform: none; }
+.kd-gift:is([data-phase="closed"], [data-phase="lift"], [data-phase="fly"]) .kd-bow { transform: scale(1); }
+.kd-gift[data-phase="lift"] .kd-gift-fly { transform: translateY(-26px) rotate(-4deg) scale(1.04); }
+.kd-gift[data-phase="fly"] .kd-gift-fly { transform: translate(40px, -760px) rotate(-16deg) scale(0.5); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .kd-gift { --fold: cubic-bezier(0.45, 0, 0.35, 1); }
+  .kd-p2 { transition: transform 380ms var(--fold); }
+  .kd-p0 { transition: transform 380ms var(--fold) 360ms; }
+  .kd-p2 .kd-shade { transition: opacity 380ms var(--fold); }
+  .kd-p0 .kd-shade { transition: opacity 380ms var(--fold) 360ms; }
+  .kd-note-shadow { transition: inset 380ms var(--fold) 200ms; }
+  .kd-box-back, .kd-box-front { transform: translateY(70px); transition: opacity 260ms ease-out 520ms, transform 360ms cubic-bezier(0.2, 0.9, 0.3, 1.15) 520ms; }
+  .kd-note { transition: transform 480ms cubic-bezier(0.55, 0, 0.8, 0.3); }
+  .kd-lid { transform: translateY(-150px) rotate(-10deg); transition: opacity 120ms ease-out, transform 340ms cubic-bezier(0.3, 1.25, 0.55, 1); }
+  .kd-bow { transition: transform 300ms cubic-bezier(0.3, 1.6, 0.5, 1) 300ms; }
+  .kd-gift-fly { transition: transform 240ms ease-out; }
+  .kd-gift[data-phase="fly"] .kd-gift-fly { transition: transform 560ms cubic-bezier(0.55, 0, 0.9, 0.35); }
+}
+
+/* E1 gift opening (EGift.tsx GiftReveal). Base = the card pose (also reduced motion). data-step (set by JS):
+   drop (falls + bounces, 720) → wait (idle wiggle until tapped) → burst (pop, lid, flaps, confetti; folded note
+   rises 180–800) → unfold (the note's fold transitions, kd-gift[data-phase]) → card (button). */
+.kd-open { position: relative; display: block; width: 300px; height: 430px; margin-inline: auto; flex-shrink: 0; }
+.kd-open[data-step="wait"] { cursor: pointer; }
+.kd-open-drop { display: block; }
+.kd-ob-note { display: block; width: 280px; height: 330px; }
+.kd-open-drop { position: absolute; inset: 0; transform-origin: 50% 100%; }
+.kd-ob-back, .kd-ob-front, .kd-ob-lid, .kd-ob-flap, .kd-ob-floor { position: absolute; left: 50%; }
+.kd-ob-back { z-index: 1; top: 278px; width: 210px; height: 30px; margin-left: -105px; border-radius: 6px 6px 0 0; background: color-mix(in oklab, var(--brand) 62%, black); }
+.kd-ob-flap { z-index: 1; top: 292px; width: 100px; height: 16px; border-radius: 3px; background: color-mix(in oklab, var(--brand) 80%, black); }
+.kd-ob-flap-l { margin-left: -105px; transform-origin: 0 50%; transform: rotate(-118deg); }
+.kd-ob-flap-r { margin-left: 5px; transform-origin: 100% 50%; transform: rotate(118deg); }
+.kd-ob-front { z-index: 3; top: 300px; width: 210px; height: 130px; margin-left: -105px; border-radius: 4px 4px 14px 14px; overflow: hidden;
+  background: linear-gradient(transparent 0 8px, rgb(0 0 0 / 0.08) 8px 12px, transparent 12px), var(--brand); box-shadow: 0 10px 18px rgb(0 0 0 / 0.22); }
+.kd-ob-lid { z-index: 5; top: 286px; width: 232px; height: 44px; margin-left: -116px; border-radius: 8px; background: color-mix(in oklab, var(--brand) 88%, white); box-shadow: 0 3px 0 rgb(0 0 0 / 0.12);
+  transform: translate(70px, -210px) rotate(28deg); opacity: 0; }
+.kd-ob-lid .kd-bow { transform: none; }
+.kd-ob-card { position: absolute; z-index: 2; left: 10px; width: 280px; bottom: 140px; transform-origin: 50% 100%; }
+.kd-ob-bits { position: absolute; z-index: 4; left: 50%; top: 300px; }
+.kd-ob-bits > i { position: absolute; left: -3px; top: 0; opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--r)); }
+.kd-ob-floor { bottom: -8px; width: 230px; height: 16px; margin-left: -115px; border-radius: 50%; background: radial-gradient(closest-side, rgb(0 0 0 / 0.22), transparent); }
+
+.kd-open:is([data-step="drop"], [data-step="wait"]) .kd-ob-lid { transform: none; opacity: 1; }
+.kd-open:is([data-step="drop"], [data-step="wait"]) .kd-ob-flap { transform: none; }
+.kd-open:is([data-step="drop"], [data-step="wait"]) .kd-ob-card { transform: translateY(190px) scale(0.6); opacity: 0; }
+
+@keyframes kd-ob-drop {
+  0% { transform: translateY(-600px) rotate(-14deg); animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.4); }
+  55% { transform: translateY(0) rotate(2deg) scale(1.07, 0.9); animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1); }
+  71% { transform: translateY(-36px) rotate(-1.5deg) scale(0.98, 1.03); animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.4); }
+  85% { transform: translateY(0) scale(1.03, 0.96); animation-timing-function: ease-out; }
+  93% { transform: translateY(-6px); }
+  100% { transform: none; }
+}
+@keyframes kd-ob-floor { 0% { transform: scale(0.25); opacity: 0; } 55% { transform: scale(1.06); opacity: 1; } 71% { transform: scale(0.85); } 85%, 100% { transform: none; } }
+@keyframes kd-ob-wiggle { 20% { transform: rotate(-3deg); } 45% { transform: rotate(3.5deg); } 70% { transform: rotate(-2deg) scale(1.02); } 100% { transform: scale(1.03, 0.97); } }
+@keyframes kd-ob-lid { from { transform: none; opacity: 1; } 45% { transform: translate(34px, -150px) rotate(18deg); opacity: 1; } }
+@keyframes kd-ob-flap-l { from { transform: none; } }
+@keyframes kd-ob-flap-r { from { transform: none; } }
+@keyframes kd-ob-bit { 0% { transform: scale(0.3); opacity: 0; } 8%, 65% { opacity: 1; } 70% { transform: translate(var(--dx), var(--dy)) rotate(var(--r)); }
+  100% { transform: translate(var(--dx), calc(var(--dy) + 70px)) rotate(calc(var(--r) + 200deg)); opacity: 0; } }
+@keyframes kd-ob-idle { 0%, 55%, 100% { transform: none; } 64% { transform: rotate(-4deg); } 73% { transform: rotate(4deg) scale(1.03); } 82% { transform: rotate(-2deg); } }
+@keyframes kd-ob-pop { 35% { transform: scale(1.12, 0.88); } 70% { transform: scale(0.97, 1.04); } }
+@keyframes kd-ob-rise { from { transform: translateY(200px) scale(0.5); opacity: 0; } 25% { opacity: 1; } }
+
+@media (prefers-reduced-motion: no-preference) {
+  .kd-open[data-step="drop"] .kd-open-drop { animation: kd-ob-drop 720ms backwards; }
+  .kd-open[data-step="drop"] .kd-ob-floor { animation: kd-ob-floor 720ms linear backwards; }
+  .kd-open[data-step="wait"] .kd-open-drop { animation: kd-ob-idle 1.8s ease-in-out 200ms infinite; }
+  .kd-open[data-step="burst"] .kd-open-drop { animation: kd-ob-pop 320ms ease-out; }
+  .kd-open[data-step="burst"] .kd-ob-lid { animation: kd-ob-lid 620ms cubic-bezier(0.2, 0.7, 0.4, 1) backwards; }
+  .kd-open[data-step="burst"] .kd-ob-flap-l { animation: kd-ob-flap-l 420ms cubic-bezier(0.3, 1.5, 0.5, 1) 30ms backwards; }
+  .kd-open[data-step="burst"] .kd-ob-flap-r { animation: kd-ob-flap-r 420ms cubic-bezier(0.3, 1.5, 0.5, 1) 30ms backwards; }
+  .kd-open[data-step="burst"] .kd-ob-bits > i { animation: kd-ob-bit 1100ms cubic-bezier(0.15, 0.7, 0.3, 1) 10ms backwards; }
+  .kd-open[data-step="burst"] .kd-ob-card { animation: kd-ob-rise 620ms cubic-bezier(0.2, 0.9, 0.3, 1.15) 180ms backwards; }
+  .kd-open-hint { animation: kd-fade 400ms ease-out backwards; }
+  .kd-open-cta { animation: kd-calm 320ms ease-out backwards; }
+  .kd-open .kd-stamp { animation-delay: 0ms; }
 }

@@ -4,7 +4,6 @@
    Only transform / opacity / clip-path / stroke-dashoffset move. `backwards` fill: start state during the delay,
    then hand control back (active:scale etc. keep working). */
 
-@keyframes kd-calm { from { transform: translateY(6px); opacity: 0; } }
 @keyframes kd-in-x { from { transform: translateX(28px); opacity: 0; } }
 @keyframes kd-fill { from { transform: scaleY(0); } }
 @keyframes kd-travel { 0% { transform: translateY(0); opacity: 0; } 15%, 80% { opacity: 1; } 100% { transform: translateY(100%); opacity: 0; } }
@@ -13,7 +12,6 @@
 @keyframes kd-shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
 @keyframes kd-new { from { transform: translateY(-60%); opacity: 0; } }
 @keyframes kd-flash { from { opacity: 0.2; } to { opacity: 0; } }
-@keyframes kd-fade { from { opacity: 0; } }
 
 /* Skeleton: same block, with a light sweep instead of a pulse. */
 .kd-shimmer { position: relative; overflow: hidden; }
@@ -67,19 +65,7 @@
   ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
 }
 
-/* Section E (components/demo/Slip.tsx): static paper, rubber stamp, statement roll. */
-/* Shadow as its own unmasked box behind the paper, stopping short of the scallops. Not `filter: drop-shadow`:
-   filter over a masked sheet raster-glitches (white stripes) while scrolling — same fix as .kt-shadow. */
-.kd-paper-shadow { position: relative; isolation: isolate; }
-.kd-paper-shadow::before {
-  content: ""; position: absolute; z-index: -1; inset: 0 3px 14px; border-radius: 4px; pointer-events: none;
-  box-shadow: 0 6px 8px rgb(0 0 0 / 0.22), 0 1px 1px rgb(0 0 0 / 0.18);
-}
-.kd-sheet-flat { color: var(--kt-ink); background: var(--kt-noise), var(--kt-edges), var(--kt-paper); border-radius: 4px; }
+/* Section E: statement roll (demo only). Paper, stamp, gift note/box: globals.css (components/receipt/Slip, components/gift). */
+/* .kd-paper-shadow (static paper shadow) lives in globals.css: Activity + Cash out use it. */
 .kd-roll > * + * { border-top: 2px dashed var(--kt-line); }
 .kd-roll a:active, .kd-roll button:active { background: rgb(36 32 27 / 0.06); }
-@keyframes kd-stamp { 0% { transform: scale(1.8); opacity: 0; } 70% { transform: scale(0.94); opacity: 0.9; } 100% { transform: scale(1); opacity: 0.85; } }
-.kd-stamp { opacity: 0.85; mix-blend-mode: multiply; }
-@media (prefers-reduced-motion: no-preference) {
-  .kd-stamp { animation: kd-stamp 360ms cubic-bezier(0.3, 0.7, 0.3, 1.1) 1450ms backwards; }
-}
