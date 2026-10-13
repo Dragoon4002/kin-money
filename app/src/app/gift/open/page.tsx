@@ -21,7 +21,13 @@ const onHash = (cb: () => void) => (addEventListener("hashchange", cb), () => re
 
 export default function OpenGiftLink() {
   const hash = useSyncExternalStore(onHash, () => location.hash, () => null);
-  const link = hash ? parseGiftLink(hash) : null;
+  if (hash === null) return <Screen title="Kin">{null}</Screen>;
+  // key: a new link in the same tab starts fresh (else the last gift's state stays on screen).
+  return <GiftLinkScreen key={hash} hash={hash} />;
+}
+
+function GiftLinkScreen({ hash }: { hash: string }) {
+  const link = parseGiftLink(hash);
   const id = link?.id.toString();
   const { profile } = useAccount();
   const me = profile?.address;
@@ -87,7 +93,6 @@ export default function OpenGiftLink() {
   const mine = !!info && isBound(info) && same(info.recipient, me);
   const ready = !!info && !info.settled && now >= info.unlockAt && (mine || (!isBound(info) && !same(info.from, me)));
 
-  if (hash === null) return <Screen title="Kin">{null}</Screen>;
   if (phase === "signup") return <Screen title="Your gift is waiting"><Onboard onDone={() => { setPhase("view"); if (ready) setResume(true); else void accept(); }} /></Screen>;
 
   if (ready && link && info) {
