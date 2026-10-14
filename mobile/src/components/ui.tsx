@@ -1,12 +1,14 @@
 import { router } from "expo-router";
 import { ChevronLeft, Delete, type LucideIcon } from "lucide-react-native";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text as RNText, TextInput as RNTextInput, View, type StyleProp, type TextInputProps, type TextProps, type TextStyle } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { Kinko } from "@/components/Kinko";
+import { useNavPad } from "@/components/NavBar";
 import { useAvatarLook } from "@/lib/names";
+import { usePrivate } from "@/lib/privacy";
 import { play } from "@/lib/sound";
 import { fonts, useTheme } from "@/theme";
 
@@ -26,7 +28,8 @@ export const TextInput = (p: TextInputProps) => <RNTextInput {...p} style={sans(
 export function Screen({ title, back, scroll, tab, children }: { title?: string; back?: boolean; scroll?: boolean; tab?: boolean; children: ReactNode }) {
   const t = useTheme();
   const Wrap = tab ? View : SafeAreaView;
-  const body = { flexGrow: 1, gap: 16, paddingHorizontal: 20, paddingBottom: 20 } as const;
+  const navPad = useNavPad(); // tab pages scroll under the see-through nav
+  const body = { flexGrow: 1, gap: 16, paddingHorizontal: 20, paddingBottom: tab ? navPad : 20 } as const;
   return (
     <Wrap style={{ flex: 1, backgroundColor: t.bg }}>
       {(title || back) && (
@@ -227,6 +230,23 @@ export function KinMark({ size = 28, color }: { size?: number; color: string }) 
 export function Serif({ children, size = 40, color }: { children: ReactNode; size?: number; color?: string }) {
   const t = useTheme();
   return <Text style={{ fontFamily: fonts.serif, fontSize: size, lineHeight: size * 1.1, color: color ?? t.ink, fontVariant: ["tabular-nums"] }}>{children}</Text>;
+}
+
+/** Private mode (Settings → Hide amounts): masks `children` as "••••"; tap to peek for 3s. Web <Amount secret>. */
+export function Secret({ size = 40, children }: { size?: number; children: ReactNode }) {
+  const t = useTheme();
+  const [peek, setPeek] = useState(false);
+  useEffect(() => {
+    if (!peek) return;
+    const id = setTimeout(() => setPeek(false), 3000);
+    return () => clearTimeout(id);
+  }, [peek]);
+  if (!usePrivate() || peek) return <>{children}</>;
+  return (
+    <Pressable onPress={() => setPeek(true)} accessibilityRole="button" accessibilityLabel="Amount hidden. Tap to peek" hitSlop={8} style={{ minHeight: 44, justifyContent: "center" }}>
+      <Serif size={size} color={t.muted}>••••</Serif>
+    </Pressable>
+  );
 }
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "⌫"] as const;

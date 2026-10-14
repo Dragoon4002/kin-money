@@ -2,7 +2,8 @@ import { router } from "expo-router";
 import { Bell, ChevronDown, ChevronUp, MessageCircle, ScanLine } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
-import { Avatar, Button, IconButton, Keypad, MeButton, Screen, Serif, TabHeader, Text } from "@/components/ui";
+import { RefPrompt } from "@/components/referral/RefPrompt";
+import { Avatar, Button, IconButton, Keypad, MeButton, Screen, Serif, TabHeader, Text, Secret } from "@/components/ui";
 import { useAccount } from "@/lib/account";
 import { cachedFeed, feedLabel, feedPayments, getBalance } from "@/lib/activity";
 import { openKin } from "@/lib/nav";
@@ -53,7 +54,8 @@ export default function Home() {
   const send = (to?: string) => router.push({ pathname: "/send", params: { ...(hasAmount && { amount }), ...(to && { to }) } });
 
   return (
-    <Screen tab>
+    <Screen tab scroll>
+      <RefPrompt enabled={canRead} />
       <TabHeader title={`Hi${profile?.name ? `, ${profile.name}` : ""}`}>
         <IconButton icon={MessageCircle} label="Messages" badge={unread.messages} onPress={() => router.push("/messages")} />
         <IconButton icon={Bell} label="Notifications" badge={unread.inbox} onPress={() => router.push("/inbox")} />
@@ -85,7 +87,7 @@ export default function Home() {
           ) : balance === null ? (
             <View style={{ width: 96, height: 20, borderRadius: 10, backgroundColor: t.surface2 }} />
           ) : (
-            <><Serif size={24}>{formatMoney(balance)}</Serif><ChevronUp color={t.muted} size={16} /></>
+            <><Secret size={24}><Serif size={24}>{formatMoney(balance)}</Serif></Secret><ChevronUp color={t.muted} size={16} /></>
           )}
         </Pressable>
       </View>

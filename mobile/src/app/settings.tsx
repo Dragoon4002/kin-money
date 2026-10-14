@@ -8,6 +8,7 @@ import { useAccount } from "@/lib/account";
 import { setMode, useMode } from "@/lib/config";
 import { FX, getCurrency, setCurrency } from "@/lib/money";
 import { usePush } from "@/lib/push";
+import { setPrivate, usePrivate } from "@/lib/privacy";
 import { setSoundOn, useSoundOn } from "@/lib/sound";
 import { getThemePref, setThemePref, useTheme, type ThemePref } from "@/theme";
 
@@ -25,6 +26,7 @@ type Perm = "on" | "off" | "denied" | null;
 export default function Settings() {
   const t = useTheme();
   const sound = useSoundOn();
+  const hidden = usePrivate();
   const moneyMode = useMode();
   const { unlocked } = useAccount();
   const push = usePush(unlocked);
@@ -62,6 +64,16 @@ export default function Settings() {
           </Text>
         </View>
         <Switch accessibilityLabel="Real money" value={moneyMode === "main"} onValueChange={(v) => setMode(v ? "main" : "test")}
+          trackColor={{ true: t.brand, false: t.line }} thumbColor="#ffffff" />
+      </View>
+
+      <Band>Privacy</Band>
+      <View style={{ minHeight: 64, flexDirection: "row", alignItems: "center", gap: 16 }}>
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: t.ink, fontWeight: "600" }}>Hide amounts</Text>
+          <Text style={{ color: t.muted, fontSize: 14 }}>Your balance shows as •••• — tap it to peek</Text>
+        </View>
+        <Switch accessibilityLabel="Hide amounts" value={hidden} onValueChange={setPrivate}
           trackColor={{ true: t.brand, false: t.line }} thumbColor="#ffffff" />
       </View>
 

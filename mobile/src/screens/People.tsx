@@ -1,30 +1,30 @@
 import { router } from "expo-router";
-import { HandCoins, MessageCircle, Users } from "lucide-react-native";
+import { MessageCircle, Users } from "lucide-react-native";
 import { useEffect, useState, type ReactNode } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { Avatar, Button, ErrorText, IconButton, Label, Text, TextInput, useInputStyle } from "@/components/ui";
 import { unlock, useAccount } from "@/lib/account";
-import { openKin } from "@/lib/nav";
 import { addContact, cachedContacts, listContacts, type Person, type Phonebook } from "@/lib/contacts";
 import { humanError } from "@/lib/errors";
 import { useUnread } from "@/lib/live";
 import { formatMoney } from "@/lib/money";
-import { HANDLE_RE, resolveName } from "@/lib/names";
+import { PersonPicker } from "@/components/PersonPicker";
+import { useNavPad } from "@/components/NavBar";
 import { useTheme } from "@/theme";
 
 const pay = (p: Person) => router.push({ pathname: "/send", params: { to: p.name } });
 const message = (p: Person) => router.push({ pathname: "/chat", params: { with: p.address } });
-const request = (p: Person) => openKin(p.name ? `/request?to=${encodeURIComponent(p.name)}` : "/request");
 
 export default function People() {
   const t = useTheme();
+  const navPad = useNavPad(); // content scrolls under the see-through nav
   const { canRead } = useAccount();
   const unread = useUnread();
   const input = useInputStyle();
   const [book, setBook] = useState<Phonebook | null>(cachedContacts); // last phonebook on this phone, until fresh
   const [err, setErr] = useState("");
   const [adding, setAdding] = useState(false);
-  const [handle, setHandle] = useState("");
+  const [person, setPerson] = useState<Person | null>(null);
   const [label, setLabel] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -54,31 +54,25 @@ export default function People() {
 
   function close() {
     setAdding(false);
-    setHandle("");
+    setPerson(null);
     setLabel("");
   }
 
   async function submit() {
     setBusy(true);
     setErr("");
-    try {
-      const name = handle.trim().replace(/^@/, "").toLowerCase();
-      const address = HANDLE_RE.test(name) ? await resolveName(name) : null;
-      if (!address) setErr("No one on Kin with that name yet.");
-      else if (await save({ address, name }, label.trim())) close();
-    } catch (e) {
-      setErr(humanError(e));
-    }
+    if (person && (await save(person, label.trim()))) close();
     setBusy(false);
   }
 
   const known = new Set(book?.contacts.map((c) => c.address));
+  const savedNames = new Set(book?.contacts.map((c) => c.name));
   const recents = book?.recents.filter((r) => r.name && !known.has(r.address)) ?? [];
   const empty = book && !book.contacts.length && !recents.length && !book.suggested.length;
   const pill = { height: 44, borderRadius: 22, paddingHorizontal: 16, alignItems: "center", justifyContent: "center", backgroundColor: t.brandSoft } as const;
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: t.bg }} contentContainerStyle={{ paddingTop: 16, paddingBottom: 120, gap: 16 }} keyboardShouldPersistTaps="handled">
+    <ScrollView style={{ flex: 1, backgroundColor: t.bg }} contentContainerStyle={{ paddingTop: 16, paddingBottom: navPad, gap: 16 }} keyboardShouldPersistTaps="handled">
       <View style={{ minHeight: 44, flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 20 }}>
         <Text style={{ flex: 1, color: t.ink, fontSize: 20, fontWeight: "700" }}>People</Text>
         <IconButton icon={MessageCircle} label="Messages" badge={unread.messages} onPress={() => router.push("/messages")} />
@@ -101,10 +95,7 @@ export default function People() {
 
       {adding && (
         <Card>
-          <View style={{ gap: 8 }}>
-            <Label>Who?</Label>
-            <TextInput style={input} placeholder="@name" placeholderTextColor={t.muted} autoCapitalize="none" autoCorrect={false} autoFocus value={handle} onChangeText={setHandle} />
-          </View>
+          <PersonPicker label="Who?" onPick={setPerson} recents={false} exclude={savedNames} />
           <View style={{ gap: 8 }}>
             <Label>What do you call them?</Label>
             <TextInput style={input} placeholder="Mum, Ravi, Landlord…" placeholderTextColor={t.muted} maxLength={40} value={label} onChangeText={setLabel} />
@@ -112,7 +103,7 @@ export default function People() {
           </View>
           <View style={{ flexDirection: "row", gap: 12 }}>
             <View style={{ flex: 1 }}><Button title="Cancel" variant="ghost" onPress={close} /></View>
-            <View style={{ flex: 1 }}><Button title="Save" onPress={submit} disabled={!handle.trim()} busy={busy} /></View>
+            <View style={{ flex: 1 }}><Button title="Save" onPress={submit} disabled={!person} busy={busy} /></View>
           </View>
         </Card>
       )}
@@ -187,7 +178,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-/** Tap = pay; trailing Request + Message (or a custom action, e.g. Add). */
+/** Tap = pay; trailing Message (or a custom action, e.g. Add). */
 function PersonRow({ p, title, sub, action }: { p: Person; title: string; sub?: string; action?: ReactNode }) {
   const t = useTheme();
   const icon = { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" } as const;
@@ -202,14 +193,9 @@ function PersonRow({ p, title, sub, action }: { p: Person; title: string; sub?: 
         </View>
       </Pressable>
       {action ?? (
-        <>
-          <Pressable onPress={() => request(p)} accessibilityRole="button" accessibilityLabel={`Request from ${title}`} style={({ pressed }) => [icon, { backgroundColor: pressed ? t.surface2 : "transparent" }]}>
-            <HandCoins color={t.muted} size={22} />
-          </Pressable>
-          <Pressable onPress={() => message(p)} accessibilityRole="button" accessibilityLabel={`Message ${title}`} style={({ pressed }) => [icon, { backgroundColor: pressed ? t.surface2 : "transparent" }]}>
-            <MessageCircle color={t.muted} size={22} />
-          </Pressable>
-        </>
+        <Pressable onPress={() => message(p)} accessibilityRole="button" accessibilityLabel={`Message ${title}`} style={({ pressed }) => [icon, { backgroundColor: pressed ? t.surface2 : "transparent" }]}>
+          <MessageCircle color={t.muted} size={22} />
+        </Pressable>
       )}
     </View>
   );

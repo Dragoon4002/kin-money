@@ -2,8 +2,8 @@ import { useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Animated, View } from "react-native";
 import PagerView from "react-native-pager-view";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { NAV_H, NavBar, registerPager, tabIndex } from "@/components/NavBar";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { NavBar, registerPager, tabIndex } from "@/components/NavBar";
 import { useNotificationTaps } from "@/lib/push";
 import Activity from "@/screens/Activity";
 import Explore from "@/screens/Explore";
@@ -28,7 +28,6 @@ export default function Tabs() {
     const offset = new Animated.Value(0);
     return { progress: Animated.add(position, offset), onPageScroll: Animated.event([{ nativeEvent: { position, offset } }], { useNativeDriver: true }) };
   });
-  const pad = NAV_H - 16 + Math.max(16, useSafeAreaInsets().bottom);
   useNotificationTaps();
 
   useEffect(() => {
@@ -46,7 +45,7 @@ export default function Tabs() {
         onPageSelected={(e) => setActive(e.nativeEvent.position)}
       >
         {PAGES.map((Page, i) => (
-          <View key={i} style={{ flex: 1, paddingBottom: pad }}>
+          <View key={i} style={{ flex: 1 }}>
             <Page />
           </View>
         ))}

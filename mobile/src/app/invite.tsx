@@ -1,16 +1,20 @@
 import * as Clipboard from "expo-clipboard";
 import * as SecureStore from "expo-secure-store";
+import { Redirect, useLocalSearchParams } from "expo-router";
 import { Check, Copy } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { Linking, Pressable, View } from "react-native";
 import { share } from "@/components/programs/kit";
 import { Kinko } from "@/components/Kinko";
+import { Collectables } from "@/components/referral/Collectables";
 import { Avatar, Button, Footer, Screen, Text } from "@/components/ui";
 import { useAccount } from "@/lib/account";
 import { ago } from "@/lib/activity";
 import { API_BASE } from "@/lib/config";
-import { listInvites, type Invites } from "@/lib/contacts";
+import { listInvites } from "@/lib/contacts";
 import { useKinko } from "@/lib/kinko";
+import { HANDLE_RE } from "@/lib/names";
+import { COLLECTABLES, type RefInvites } from "@/lib/referralPerks";
 import { fonts, useTheme } from "@/theme";
 
 // Port of app/src/app/invite/page.tsx.
@@ -22,19 +26,32 @@ function noteInvite() {
   } catch {}
 }
 
-export default function Invite() {
+/** /invite?u=<handle> is the shareable link: a new visitor keeps the referrer (onboarding sends it) and signs up; /invite alone is my own page. */
+export default function InvitePage() {
+  const { profile } = useAccount();
+  const u = useLocalSearchParams<{ u?: string }>().u?.toLowerCase();
+  if (u && !profile) {
+    try {
+      if (HANDLE_RE.test(u) && !SecureStore.getItem("kin.ref")) SecureStore.setItem("kin.ref", u);
+    } catch {}
+    return <Redirect href="/onboard" />;
+  }
+  return <Invite />;
+}
+
+function Invite() {
   const t = useTheme();
   const { profile, canRead } = useAccount();
   const { look } = useKinko(profile?.address);
   const [copied, setCopied] = useState(false);
-  const [invites, setInvites] = useState<Invites | null>(null);
+  const [invites, setInvites] = useState<RefInvites | null>(null);
 
   useEffect(() => {
     if (canRead) listInvites().then(setInvites, () => {});
   }, [canRead]);
 
   const handle = profile?.name;
-  const link = handle ? `${API_BASE}/?ref=${encodeURIComponent(handle)}` : "";
+  const link = handle ? `${API_BASE}/invite?u=${encodeURIComponent(handle)}` : "";
   const text = `Join me on Kin, money for family and friends. We both get a party hat for our Kinko 🎉 ${link}`;
 
   function copy() {
@@ -74,6 +91,9 @@ export default function Invite() {
         </View>
       )}
 
+      {invites && <Progress invites={invites} />}
+      {invites && <Collectables invites={invites} onShare={(s) => (noteInvite(), void share(s, link))} />}
+
       {invites && (
         <View style={{ gap: 8 }}>
           <Text style={{ paddingHorizontal: 4, color: t.muted, fontSize: 14, fontWeight: "600" }}>People who joined with your link</Text>
@@ -82,7 +102,10 @@ export default function Invite() {
               invites.invited.map((p) => (
                 <View key={p.name} style={{ minHeight: 64, flexDirection: "row", alignItems: "center", gap: 16, paddingHorizontal: 20, paddingVertical: 12 }}>
                   <Avatar name={p.name} />
-                  <Text numberOfLines={1} style={{ flex: 1, color: t.ink, fontWeight: "600" }}>@{p.name}</Text>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text numberOfLines={1} style={{ color: t.ink, fontWeight: "600" }}>@{p.name}</Text>
+                    <Text numberOfLines={1} style={{ color: t.muted, fontSize: 14 }}>{p.active ? "Made a payment ✓" : "Hasn't paid yet"}</Text>
+                  </View>
                   <Text style={{ color: t.muted, fontSize: 14 }}>{ago(p.at)}</Text>
                 </View>
               ))
@@ -102,5 +125,34 @@ export default function Invite() {
         <Button title="More ways to share" variant="ghost" disabled={!link} onPress={() => (noteInvite(), void share(text))} />
       </Footer>
     </Screen>
+  );
+}
+
+function Progress({ invites }: { invites: RefInvites }) {
+  const t = useTheme();
+  const joined = invites.invited.length;
+  const active = invites.invited.filter((p) => p.active).length;
+  const next = COLLECTABLES.find((k) => k.at > active);
+  const prev = [...COLLECTABLES].reverse().find((k) => k.at <= active)?.at ?? 0;
+  const pct = next ? Math.round(((active - prev) / (next.at - prev)) * 100) : 100;
+  const stat = (n: number, label: string) => (
+    <View style={{ flex: 1, alignItems: "center" }}>
+      <Text style={{ color: t.ink, fontFamily: fonts.serif, fontSize: 36, lineHeight: 40 }}>{n}</Text>
+      <Text style={{ color: t.muted, fontSize: 14 }}>{label}</Text>
+    </View>
+  );
+  return (
+    <View style={{ gap: 12, borderRadius: 28, borderWidth: 1, borderColor: t.line, backgroundColor: t.surface, padding: 20 }}>
+      <View style={{ flexDirection: "row", gap: 12 }}>
+        {stat(joined, "joined")}
+        {stat(active, "made a payment")}
+      </View>
+      <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: pct }} style={{ height: 12, overflow: "hidden", borderRadius: 6, backgroundColor: t.surface2 }}>
+        <View style={{ height: "100%", width: `${pct}%`, borderRadius: 6, backgroundColor: t.brand }} />
+      </View>
+      <Text style={{ color: t.muted, fontSize: 14, textAlign: "center" }}>
+        {next ? `${next.at - active} more friend${next.at - active > 1 ? "s" : ""} making a payment unlocks “${next.title}”` : "All collectables unlocked 🎉"}
+      </Text>
+    </View>
   );
 }

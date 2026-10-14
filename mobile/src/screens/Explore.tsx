@@ -93,12 +93,12 @@ export default function Explore() {
       <TabHeader title="Explore">
         <MeButton name={profile?.name} />
       </TabHeader>
-      <Serif size={36}>Money that behaves.</Serif>
       {mode === "main" && (
         <Text style={{ borderRadius: 20, backgroundColor: t.surface2, paddingHorizontal: 16, paddingVertical: 12, color: t.muted, fontSize: 14 }}>
-          These use practice money for now. Turn off Real money in Settings to try them.
+          These use practice money for now. Turn off Real money in Me to try them.
         </Text>
       )}
+      <Serif size={36}>Money that behaves.</Serif>
       <View style={{ gap: 24 }}>
         {SECTIONS.map(({ title, rows }) => (
           <View key={title ?? "top"} style={{ gap: GAP }}>

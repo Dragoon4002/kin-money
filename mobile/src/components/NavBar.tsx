@@ -20,6 +20,8 @@ export function tabIndex(name?: string) {
 
 const SLOT = 76; // px between icon centers
 export const NAV_H = 112;
+/** Bottom space a tab page's scroll content needs so its end clears the floating nav (which stays see-through). */
+export const useNavPad = () => NAV_H - 16 + Math.max(16, useSafeAreaInsets().bottom);
 
 // Set by the mounted tabs screen; lets deep links / notification taps switch tabs without a second tabs screen.
 let setPage: ((i: number) => void) | null = null;

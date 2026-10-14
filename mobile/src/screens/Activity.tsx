@@ -1,16 +1,36 @@
-import { ArrowDownLeft, Shapes } from "lucide-react-native";
+import { ArrowDownLeft, Link, Shapes } from "lucide-react-native";
 import { useCallback, useEffect, useState } from "react";
 import { useMode } from "@/lib/config";
-import { Pressable, RefreshControl, ScrollView, View } from "react-native";
-import { Avatar, Chip, Serif, Text } from "@/components/ui";
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, View } from "react-native";
+import { Avatar, Band, Chip, ErrorText, IconTile, Row as ListRow, Serif, Text } from "@/components/ui";
 import { useAccount } from "@/lib/account";
-import { cachedFeed, categoryOf, feedLabel, feedPayments, type Item } from "@/lib/activity";
+import { ago, cachedFeed, categoryOf, feedLabel, feedPayments, type Item } from "@/lib/activity";
+import { forgetLink, myLinkIds, readLink, refundLink } from "@/lib/claimLink";
+import { humanError } from "@/lib/errors";
+import type { Address } from "viem";
 import { openKin } from "@/lib/nav";
 import { isActive } from "@/lib/live";
 import { formatMoney } from "@/lib/money";
+import { usePrivate } from "@/lib/privacy";
+import { useNavPad } from "@/components/NavBar";
+import { Grain, Label, MONO, P } from "@/components/gift/GiftNote";
 import { useTheme } from "@/theme";
 
-// ponytail: no native receipt/spends/requests screens yet — open the web pages in the in-app browser.
+type Pending = { id: bigint; amount: bigint; expired: boolean; when: string };
+
+async function pendingLinks(me: Address): Promise<Pending[]> {
+  const out: Pending[] = [];
+  for (const id of myLinkIds(me)) {
+    const l = await readLink(id);
+    const ms = l.expiresAt * 1000;
+    const expired = Date.now() >= ms;
+    if (l.settled) forgetLink(me, id);
+    // ponytail: lib ago() is past-only; future = whole days left.
+    else out.push({ id, amount: l.amount, expired, when: expired ? ago(ms) : `in ${Math.max(1, Math.ceil((ms - Date.now()) / 86_400_000))} d` });
+  }
+  return out;
+}
+
 const receipt = (i: Item) => openKin(`/details?tx=${i.hash}`);
 
 type Filter = "all" | "out" | "in";
@@ -20,19 +40,25 @@ const FILTERS = [["all", "All"], ["out", "Sent"], ["in", "Received"]] as const;
 const FUN = ["#22b573", "#f2b830", "#6c4ee0", "#ec5a7c", "#3b8cf0"];
 const funBg = (name = "") => FUN[[...name].reduce((h, c) => h + c.charCodeAt(0), 0) % FUN.length];
 
-/** Bright card for a recent payment. */
+/** Recent payment as a mini ticket stub: paper, colored band = the person (same paper as the receipt). */
 function Moment({ item }: { item: Item }) {
   const out = item.dir === "out";
   const Icon = out ? (categoryOf(item.hash)?.icon ?? Shapes) : ArrowDownLeft;
   return (
     <Pressable onPress={() => receipt(item)} accessibilityRole="button"
-      style={({ pressed }) => ({ width: 144, height: 160, borderRadius: 28, padding: 16, justifyContent: "space-between", backgroundColor: funBg(item.who), transform: [{ scale: pressed ? 0.97 : 1 }] })}>
-      <Icon color="#fff" size={28} />
-      <View style={{ gap: 4 }}>
-        <Serif size={24} color="#fff">{formatMoney(item.amount)}</Serif>
-        <Text style={{ color: "#fff", fontSize: 14, fontWeight: "600", lineHeight: 17 }} numberOfLines={2}>{out ? `paid to ${item.who}` : `from ${item.who}`}</Text>
-        <Text style={{ color: "#fff", fontSize: 12, opacity: 0.8 }}>{item.when}</Text>
+      accessibilityLabel={`${out ? "Paid" : "Got"} ${formatMoney(item.amount)} ${out ? "to" : "from"} ${item.who}, ${item.when}. Open receipt`}
+      style={({ pressed }) => ({ width: 144, height: 176, overflow: "hidden", borderRadius: 4, paddingHorizontal: 12, paddingBottom: 16, backgroundColor: P.paper,
+        boxShadow: "0 6px 8px rgba(0,0,0,0.22), 0 1px 1px rgba(0,0,0,0.18)", transform: [{ scale: pressed ? 0.97 : 1 }] })}>
+      <Grain />
+      <View style={{ height: 8, marginHorizontal: -12, marginBottom: 12, backgroundColor: funBg(item.who) }} />
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+        <Icon color={P.ink} size={22} />
+        <Label>{out ? "PAID" : "GOT"}</Label>
       </View>
+      <Text style={{ marginTop: "auto", color: P.ink, fontSize: 24, fontWeight: "700", letterSpacing: -0.5 }} numberOfLines={1} adjustsFontSizeToFit>{formatMoney(item.amount)}</Text>
+      <View style={{ marginVertical: 8, borderTopWidth: 2, borderStyle: "dashed", borderColor: P.line, opacity: 0.8 }} />
+      <Text style={{ color: P.ink, fontFamily: MONO, fontSize: 12, fontWeight: "700" }} numberOfLines={1}>{out ? "TO" : "FROM"} {item.who}</Text>
+      <Text style={{ color: P.muted, fontFamily: MONO, fontSize: 10, letterSpacing: 1, textTransform: "uppercase" }} numberOfLines={1}>{item.when}</Text>
     </Pressable>
   );
 }
@@ -71,7 +97,7 @@ function Skeleton() {
     <View style={{ gap: 12 }} accessibilityLabel="Loading">
       <View style={{ paddingHorizontal: 20 }}>{bar(128, 28, 14)}</View>
       <View style={{ flexDirection: "row", gap: 12, paddingHorizontal: 20, overflow: "hidden" }}>
-        {[0, 1, 2, 3].map((i) => <View key={i}>{bar(144, 160, 28)}</View>)}
+        {[0, 1, 2, 3].map((i) => <View key={i}>{bar(144, 176, 4)}</View>)}
       </View>
     </View>
   );
@@ -94,6 +120,8 @@ function SkeletonRows({ n }: { n: number }) {
 export default function Activity() {
   const mode = useMode();
   const t = useTheme();
+  const navPad = useNavPad(); // content scrolls under the see-through nav
+  const hide = usePrivate();
   const me = useAccount().profile?.address;
   const [raw, setRaw] = useState<{ mode: string; list: Awaited<ReturnType<typeof feedPayments>> } | null>(null);
   const all = raw?.mode === mode ? raw.list : me ? cachedFeed(me) : null; // this session's last list right away
@@ -103,11 +131,28 @@ export default function Activity() {
   const saved = all ? wireSavings(all.filter((i) => i.dir === "out").map((i) => i.amount)) : 0n;
   const [filter, setFilter] = useState<Filter>("all");
   const [busy, setBusy] = useState(false);
+  const [links, setLinks] = useState<Pending[]>([]);
+  const [taking, setTaking] = useState<bigint | null>(null);
+  const [linkErr, setLinkErr] = useState("");
 
   const refresh = useCallback(() => {
     if (!me) return Promise.resolve();
+    pendingLinks(me).then(setLinks, () => {});
     return feedPayments(me).then((list) => setRaw({ mode, list }), () => {});
   }, [me, mode]);
+
+  async function takeBack(id: bigint) {
+    setTaking(id);
+    setLinkErr("");
+    try {
+      await refundLink(id); // gasless forward request; resolves once it's in
+      void refresh();
+    } catch (e) {
+      setLinkErr(humanError(e));
+    } finally {
+      setTaking(null);
+    }
+  }
 
   // Label the newest n payments; once the first FIRST show, queue NEXT more.
   useEffect(() => {
@@ -130,7 +175,7 @@ export default function Activity() {
 
   useEffect(() => {
     void refresh();
-    // ponytail: 10s poll while foregrounded (web polls 4s); push a refresh from live events if it feels slow.
+    // ponytail: 10s poll while foregrounded (web polls 15s); push a refresh from live events if it feels slow.
     const id = setInterval(() => isActive() && void refresh(), 10_000);
     return () => clearInterval(id);
   }, [refresh, mode]); // mode: practice ↔ real money switches the list
@@ -140,20 +185,20 @@ export default function Activity() {
   const chip = (on: boolean) => ({ height: 40, borderRadius: 20, paddingHorizontal: 16, alignItems: "center", justifyContent: "center", backgroundColor: on ? t.ink : t.surface2 }) as const;
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: t.bg }} contentContainerStyle={{ paddingTop: 16, paddingBottom: 120, gap: 16 }}
+    <ScrollView style={{ flex: 1, backgroundColor: t.bg }} contentContainerStyle={{ paddingTop: 16, paddingBottom: navPad, gap: 16 }}
       scrollEventThrottle={200}
       onScroll={({ nativeEvent: e }) => hasMore && e.layoutMeasurement.height + e.contentOffset.y > e.contentSize.height - 300 && setN(items!.length + NEXT)}
       refreshControl={<RefreshControl refreshing={busy} onRefresh={() => (setBusy(true), void refresh().finally(() => setBusy(false)))} tintColor={t.muted} colors={[t.brand]} />}>
       <View style={{ minHeight: 44, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 20 }}>
         <Text style={{ flex: 1, color: t.ink, fontSize: 20, fontWeight: "700" }}>Activity</Text>
-        {([["/requests", "Requests"], ["/spends", "Spends"]] as const).map(([path, label]) => (
+        {([["/spends", "Spends"]] as const).map(([path, label]) => (
           <Pressable key={path} onPress={() => openKin(path)} accessibilityRole="button" style={({ pressed }) => [chip(false), { height: 44, borderRadius: 22, transform: [{ scale: pressed ? 0.95 : 1 }] }]}>
             <Text style={{ color: t.ink, fontSize: 14, fontWeight: "600" }}>{label}</Text>
           </Pressable>
         ))}
       </View>
 
-      {saved > 0n && (
+      {saved > 0n && !hide && (
         <View style={{ gap: 4, paddingHorizontal: 20, alignItems: "flex-start" }}>
           <Chip good>You saved about {formatMoney(saved)} vs a bank wire</Chip>
           <Text style={{ color: t.muted, fontSize: 12, paddingHorizontal: 4 }}>Estimate: banks often charge 3% + $5 per transfer.</Text>
@@ -161,11 +206,31 @@ export default function Activity() {
       )}
       {items === null && <Skeleton />}
       {moments.length > 0 && (
-        <View style={{ gap: 12 }}>
-          <View style={{ paddingHorizontal: 20 }}><Serif size={26}>Moments</Serif></View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={156} decelerationRate="fast" contentContainerStyle={{ gap: 12, paddingHorizontal: 20 }}>
+        <View style={{ gap: 8 }}>
+          <View style={{ minHeight: 44, justifyContent: "center", paddingHorizontal: 20 }}>
+            <Text style={{ color: t.muted, fontFamily: MONO, fontSize: 12, fontWeight: "700", letterSpacing: 2.4 }}>MOMENTS</Text>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={156} decelerationRate="fast" contentContainerStyle={{ gap: 12, paddingHorizontal: 20, paddingTop: 4, paddingBottom: 12 }}>
             {moments.map((i) => <Moment key={`${i.hash}:${i.logIndex}`} item={i} />)}
           </ScrollView>
+        </View>
+      )}
+
+      {links.length > 0 && (
+        <View style={{ paddingHorizontal: 20 }}>
+          <Band>Links waiting to be collected</Band>
+          {links.map((l) => (
+            <ListRow key={l.id.toString()} icon={<IconTile icon={Link} size={44} />} title={formatMoney(l.amount)}
+              sub={l.expired ? `Not collected · expired ${l.when}` : `You can take it back ${l.when}`}
+              trail={l.expired && (
+                <Pressable onPress={() => takeBack(l.id)} disabled={taking !== null} accessibilityRole="button" accessibilityState={{ busy: taking === l.id }}
+                  style={({ pressed }) => ({ height: 44, borderRadius: 22, paddingHorizontal: 16, flexDirection: "row", gap: 8, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: t.line, backgroundColor: t.surface, opacity: taking !== null && taking !== l.id ? 0.45 : 1, transform: [{ scale: pressed ? 0.95 : 1 }] })}>
+                  {taking === l.id && <ActivityIndicator color={t.ink} size="small" />}
+                  <Text style={{ color: t.ink, fontSize: 14, fontWeight: "600" }}>Take it back</Text>
+                </Pressable>
+              )} />
+          ))}
+          {!!linkErr && <ErrorText>{linkErr}</ErrorText>}
         </View>
       )}
 

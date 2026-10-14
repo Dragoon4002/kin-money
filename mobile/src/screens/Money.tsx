@@ -1,8 +1,8 @@
 import { ChevronRight, type LucideIcon, PiggyBank } from "lucide-react-native";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Pressable, View } from "react-native";
 import type { Address } from "viem";
-import { Button, Chip, ErrorText, IconTile, MeButton, Screen, Serif, TabHeader, Text } from "@/components/ui";
+import { Button, Chip, ErrorText, IconTile, MeButton, Screen, Serif, TabHeader, Text, Secret } from "@/components/ui";
 import { useAccount } from "@/lib/account";
 import { getBalance } from "@/lib/activity";
 import { API_BASE, publicClient, useMode } from "@/lib/config";
@@ -10,11 +10,12 @@ import { humanError } from "@/lib/errors";
 import { formatMoney, getCurrency } from "@/lib/money";
 import { openKin } from "@/lib/nav";
 import { isJar, listPots } from "@/lib/programs";
+import { usePrivate } from "@/lib/privacy";
 import { useTheme } from "@/theme";
 
 // Native port of app/src/app/(tabs)/money/page.tsx.
 
-function Row({ title, sub, onPress, icon }: { title: string; sub: string; onPress: () => void; icon?: LucideIcon }) {
+function Row({ title, sub, onPress, icon }: { title: string; sub: ReactNode; onPress: () => void; icon?: LucideIcon }) {
   const t = useTheme();
   return (
     <Pressable onPress={onPress} accessibilityRole="button"
@@ -22,7 +23,7 @@ function Row({ title, sub, onPress, icon }: { title: string; sub: string; onPres
       {icon && <IconTile icon={icon} />}
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={{ color: t.ink, fontSize: 16, fontWeight: "600" }}>{title}</Text>
-        <Text numberOfLines={1} style={{ color: t.muted, fontSize: 14 }}>{sub}</Text>
+        {typeof sub === "string" ? <Text numberOfLines={1} style={{ color: t.muted, fontSize: 14 }}>{sub}</Text> : sub}
       </View>
       <ChevronRight color={t.muted} size={20} />
     </Pressable>
@@ -31,6 +32,7 @@ function Row({ title, sub, onPress, icon }: { title: string; sub: string; onPres
 
 export default function Money() {
   const t = useTheme();
+  const hide = usePrivate();
   const { profile } = useAccount();
   const me = profile?.address;
   const mode = useMode();
@@ -39,23 +41,25 @@ export default function Money() {
   const balance = bal?.mode === mode ? bal.v : null;
   const [adding, setAdding] = useState<"idle" | "busy" | "done" | "had">("idle");
   const [err, setErr] = useState("");
-  const [jars, setJars] = useState<string | null>(null);
+  const [jars, setJars] = useState<string | null | undefined>(undefined); // undefined = loading
+  const [failed, setFailed] = useState(false); // only until the first good balance; later poll misses keep the last value
+  const [retry, setRetry] = useState(0);
 
   useEffect(() => {
     if (!me) return;
     let on = true;
-    const tick = () => getBalance(me).then((v) => on && setBal({ mode, v })).catch(() => {});
+    const tick = () => getBalance(me).then((v) => on && (setBal({ mode, v }), setFailed(false)), () => on && setFailed(true));
     tick();
     listPots(me).then((ps) => {
       const js = ps.filter((p) => !p.closed && isJar(p));
-      if (on && js.length) setJars(`${formatMoney(js.reduce((a, p) => a + p.balance, 0n))} saved · ${js.length} ${js.length === 1 ? "jar" : "jars"}`);
-    }, () => {});
+      if (on) setJars(js.length ? `${formatMoney(js.reduce((a, p) => a + p.balance, 0n))} saved · ${js.length} ${js.length === 1 ? "jar" : "jars"}` : null);
+    }, () => on && setJars(null));
     const iv = setInterval(tick, 6000);
     return () => {
       on = false;
       clearInterval(iv);
     };
-  }, [me, mode]);
+  }, [me, mode, retry]);
 
   async function addMoney(me: Address) {
     setAdding("busy");
@@ -88,13 +92,17 @@ export default function Money() {
           <Chip>{mode === "main" ? "Real money" : "Practice money"}</Chip>
         </View>
         <View style={{ marginTop: 12, minHeight: 64, justifyContent: "center" }}>
-          {balance === null ? (
+          {balance === null && failed ? (
+            <Pressable onPress={() => (setFailed(false), setRetry((n) => n + 1))} accessibilityRole="button" style={({ pressed }) => ({ minHeight: 44, justifyContent: "center", opacity: pressed ? 0.7 : 1 })}>
+              <Text style={{ color: t.muted, fontSize: 14, fontWeight: "600" }}>Couldn&apos;t load. Try again.</Text>
+            </Pressable>
+          ) : balance === null ? (
             <View style={{ width: 208, height: 56, borderRadius: 16, backgroundColor: t.surface2 }} />
           ) : (
-            <Serif size={60}>{formatMoney(balance)}</Serif>
+            <Secret size={60}><Serif size={60}>{formatMoney(balance)}</Serif></Secret>
           )}
         </View>
-        {balance !== null && getCurrency() !== "USD" && <Text style={{ color: t.muted, fontSize: 14, marginTop: 4, fontVariant: ["tabular-nums"] }}>{formatMoney(balance, "USD")}</Text>}
+        {balance !== null && !hide && getCurrency() !== "USD" && <Text style={{ color: t.muted, fontSize: 14, marginTop: 4, fontVariant: ["tabular-nums"] }}>{formatMoney(balance, "USD")}</Text>}
         {mode === "test" && <View style={{ marginTop: 24 }}>
           <Button
             title={adding === "done" ? "Added ✓" : adding === "had" ? "You already have practice money" : "Add practice money"}
@@ -104,9 +112,13 @@ export default function Money() {
       </View>
       <ErrorText>{err}</ErrorText>
 
+      <Row title="Add money" sub="From another account or exchange" onPress={() => openKin("/add")} />
+
       <Row title="Cash out to UPI" sub="Rupees in minutes · fixed price" onPress={() => openKin("/cashout")} />
 
-      <Row title="Savings jars" sub={jars ?? "Save toward something big"} icon={PiggyBank} onPress={() => openKin("/jars")} />
+      <Row title="Savings jars" sub={jars === undefined
+        ? <View style={{ marginTop: 4, height: 16, width: 128, borderRadius: 8, backgroundColor: t.surface2 }} />
+        : <Text numberOfLines={1} style={{ color: jars ? t.ink : t.muted, fontSize: 14 }}>{jars ?? "Save toward something big"}</Text>} icon={PiggyBank} onPress={() => openKin("/jars")} />
     </Screen>
   );
 }
