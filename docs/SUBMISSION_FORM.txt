@@ -1,0 +1,191 @@
+Kin — submission form answers (paste-ready)
+
+One section per form field, in the form's order. Each answer is under the 8,000-character limit.
+Facts come from docs/BOUNTIES.md, docs/GTM.md, docs/SUBMISSION.md and the code; fix anything marked TODO before pasting.
+
+PLEASE DESCRIBE THE GO-TO-MARKET AND USER ACQUISITION STRATEGY FOR YOUR PRODUCT
+
+Who first: Indian students in the UK and their parents in India.
+India is the world's largest remittance market, and students abroad are the family where money most needs rules: a parent sends a lump sum, then worries about rent, fees and emergencies. Kin's programmable money (allowance streamed per second, an emergency fund the child can ask for, bills payable only to the named payee) fits them directly, and students are reachable in groups through campus Indian student associations.
+
+How we get in: peer use first, parents second.
+1. Students use Kin with each other first (split a bill, trips, family pots, savings circles). This works abroad today, before any rupee cash-out exists.
+2. Parents join through the allowance and "pay a bill" flows, where Kin does something a bank transfer can't.
+3. Gulf → India workers are the next corridor, once a licensed payout partner is live.
+
+Channels, cheapest first:
+1. WhatsApp family and friend groups: Pot and circle invite links; payment links that let someone not on Kin collect money (the sender can take it back after 7 days); gift links
+2. Referral loop: Invite link (getkin.space/invite?u=name) with a WhatsApp button; both people unlock Kinko collectables; progress shows friends who joined and who made a payment; the friend is asked to save the inviter as a contact
+3. UK university Indian student associations: One circle or trip per group seeds many accounts at once
+4. Diaspora community groups running savings circles: Kin's circle contract enforces turns and payouts, replacing the notebook
+5. Student-life and diaspora-finance creators: Shareable receipt cards and Kinko as visual hooks (costs money, so last)
+
+Why it spreads: every send recruits the receiver. Signup is one fingerprint or face scan: no app store, no email, no seed phrase, no fee. Sending between Kin users is free and lands in about a second.
+
+Evidence so far (early and friendly, stated plainly): 6 people besides the founder created accounts on their own (Sep 30 – Oct 4), and 5 of them used a feature beyond signup (savings circles, held payments, family pots, AutoPay), all checkable onchain. Two real add-money conversions on Monad mainnet (4.997 USDC → 4.998 AUSD and 0.999 USDC → 0.999 AUSD).
+
+Next 90 days: 100 users from two UK student associations and their families; measure first send unaided, week-2 return rate, and how many sends recruit a new account.
+
+Business model (hypotheses, not yet tested): sending between Kin users stays free with no spread. Revenue would come from a small spread on cash-out to a local bank (set with the licensed partner), a family plan (AutoPay, invoices, more pots), and premium Kinko outfits.
+
+What's needed to scale: a licensed INR payout partner and Agora's mainnet approval for our cash-out contract (KinCashoutV2 is already deployed on Monad mainnet), plus device attestation on signup so the gas we pay can't be farmed.
+
+JUDGE ACCESS INSTRUCTIONS
+
+Open: https://getkin.space. Use only this address: passkeys are tied to it, so any other URL gives a different account.
+
+Devices: Android Chrome with a screen lock · iPhone (iOS 18+) Safari · desktop Chrome with a synced passkey (Google Password Manager or iCloud Keychain). Android app (same account as the web): TODO paste stable APK link (current build: https://expo.dev/artifacts/eas/vR6eFqBOM6kW3PT9lZWbQcqpKTTR_txymzqzAVWHTCA.apk).
+
+Login details: none to share, by design. Passkeys can't be shared, so each judge makes their own account in about 20 seconds: no email, no password, no recovery phrase, no extension.
+
+Test money: new accounts get $10,000 in test dollars automatically (Agora testnet AUSD, no real value).
+
+Someone to pay: send to @sounak (the founder's account, test dollars), or to another judge.
+
+5-minute tour:
+1. Create my account → first name → Identity check (fingerprint / face / PIN). Home opens and test dollars arrive within seconds.
+2. Home → Send → To a person → @sounak → amount → Send now → Identity check. A printed receipt shows Delivered in X.Xs. Tap Verify ↗ to see it on the public explorer.
+3. Money → Cash out to UPI → amount → read the quote (AUSD → USDC with Agora → INR with Onramp) → Cash out → Identity check. The dollars really settle through Agora Instant Settlement on Monad testnet; the rupee payout is labelled as a practice step.
+4. Explore → Live allowance → pick someone → amount + period. The amount grows every second.
+5. Explore → Savings circle, Family pot or Savings jars → create one and share the invite link.
+6. Home → Send → As a link → open the link in another browser to collect.
+7. Optional, real money: Me → Real money on. Balance, send, receive and Money → Add money (from Base, Arbitrum, Ethereum, Optimism, Polygon or Solana via Aurora Intents) use Monad mainnet AUSD. No real dollars are given; switch it off to continue.
+
+Proof of any payment: Activity → tap the payment → Verify ↗.
+
+Known limits: programs (allowances, pots, circles, jars, links, cash-out) run on Monad testnet; real-money mode covers balance, send, receive, add money and activity. No rupees move on cash-out. Our relay limits signups and payments per network, so on a shared venue Wi-Fi you may briefly see "slow down": wait a minute or use mobile data.
+
+Contact: Sounak Dey · sounak.dey4200@gmail.com · Telegram @Dragoon_Sounak · X @DragoonSd4
+
+ENVIO — BEST USE OF ENVIO
+
+Describe how your project meaningfully uses Envio's HyperIndex, HyperSync or HyperRPC to power real on-chain data in your app — not just installed, but actually driving a feature.
+
+HyperIndex serves Kin's Activity feed. Our indexer (indexer/) indexes every event of Kin's contracts that the app shows (names, escrow, streams, pots, circles, AutoPay, gift links, cash-outs) plus Kin-related AUSD transfers on Monad. It stores them as typed Account and Activity entities behind GraphQL.
+
+- When a user opens Activity, /api/activity asks HyperIndex for that person's newest payments with the other side's @name already joined (indexedTransfers in app/src/lib/server/history.ts).
+- The app never downloads raw history or looks up each name one by one. The feed shows instantly, then pages in 5 → 15 → +10 more as you scroll.
+- A live tail covers blocks the indexer hasn't reached yet, so a payment you just made appears at once.
+- The same data drives the receipt pages, the "Moments" cards and the "You saved vs a bank wire" figure.
+
+HyperSync is the fallback and the real-money history. If HyperIndex is unavailable, the server pulls the whole history for every Kin contract plus AUSD transfers in one paged HyperSync query (about 2.5 s for the full chain history). In real-money mode it reads a person's mainnet history from 143.hypersync.xyz. Notifications ("You got $20 from @name") also read from this pipeline.
+
+Code: indexer/ (schema, config, handlers), app/src/lib/server/history.ts, app/src/app/api/activity/route.ts.
+
+Optional demo video
+TODO: Activity tab loading → the GraphQL query in the HyperIndex console → the same rows in the app.
+
+AURORA INTENTS — BRING ANY-CHAIN LIQUIDITY TO MONAD
+
+Describe how your project integrates at least one Aurora Intents product
+
+Kin uses the Aurora Intents Swap API (/api/quote and /api/status) for Add money, live on Monad mainnet.
+
+1. A user (or family abroad) opens Money → Add money and picks where the money comes from: USDC, USDT or ETH on Base, Arbitrum, Ethereum, Optimism or Polygon, or USDC on Solana.
+2. Kin asks the Swap API for a one-time deposit address that delivers USDC on Monad to the user's own Kin account, with refunds going back to the same account.
+3. The payer sends from any wallet or exchange; a shareable pay page (/add/pay) lets someone else pay it. Kin polls /api/status and shows plain steps: waiting → on its way → arrived.
+4. On arrival, one gasless Identity check converts USDC → AUSD (dollars) through our KinAddMoney contract (0xdF70AaC88E464c78cDe367B5d2879776C2994102, Monad mainnet). It pulls the USDC with an EIP-3009 authorization whose nonce commits to the recipient and minimum out, swaps on the Uniswap v4 AUSD/USDC pool, and holds nothing.
+
+Onchain evidence (Monad mainnet), both submitted by Kin's relayer:
+- 4.997 USDC → 4.998 AUSD: 0xeb5c63207d152985775706c6b9957997b8c238bd40d4883c351b43c1b891a8d0
+- 0.999 USDC → 0.999 AUSD: 0xbd826a1e424aafca5ef8f22561ca014c8b4d72f91dda7898f42a2cc1a4d2004a
+
+Code: app/src/app/api/addmoney/route.ts, app/src/app/add/page.tsx, app/src/app/add/pay/page.tsx, app/src/lib/offramp.ts (convertToDollars), contracts/src/KinAddMoney.sol (+ mainnet fork test).
+
+Limit: persistent deposit addresses aren't enabled for our key yet (the API returns 403), so each top-up uses a one-time address valid for 1 hour.
+
+Optional demo video
+TODO: Add money → Base USDC → deposit address → send from a wallet → "arrived" → Add to balance → mainnet receipt.
+
+AGORA — BEST CROSS-BORDER PAYMENTS APP ON MONAD (AGORA PAYMENTS BOUNTY)
+
+Describe the core features of your app with a focus on how it enables a user to send AUSD to another person or across borders
+
+Kin is a mobile money app for families split across borders: a parent in India funding a student abroad, or a worker sending home. AUSD is the only money in the app. Users see it as dollars and in their own currency, and never see a wallet, gas or a chain.
+
+- Onboarding in one step: a Mera passkey (fingerprint or face) creates the account. No seed phrase, no extension, no email; the same account works on web and Android.
+- AUSD balance: shown in local currency (₹, $, AED…). New accounts get practice AUSD from Agora's testnet faucet.
+- Send across borders: by @name, by QR, or by WhatsApp link to someone not on Kin yet (the sender can take it back if it isn't collected in 7 days). The user signs an EIP-3009 transferWithAuthorization on AUSD with their passkey. Our relayer submits it and pays the gas, so the user holds no MON and sending is free. It settles in about a second on Monad, with a printed receipt showing "Delivered in 0.8s" and a link to the explorer.
+- Receive: a personal QR (EIP-681), so other wallets can pay AUSD too. Incoming money pushes "You got $X from @name" instantly.
+- Cash out through Agora Instant Settlement (testnet):
+  1. The user enters an amount and sees the route AUSD → USDC → INR: Agora's fixed price, then rupees after fees and 1% TDS (Onramp sandbox quote).
+  2. One Identity check signs a gasless EIP-3009 receiveWithAuthorization whose nonce commits to every term (recipient, venue, minimum out, payout reference, salt), so the relayer can't change any of them.
+  3. KinCashoutV2 (0xca36cE5954E4C4058216b19622106525A894ad37) pulls the AUSD and swaps it at Agora's fixed price on the Instant Settlement pair on Monad testnet. It is approved through Agora's testnet Whitelister (hasRole("APPROVED_SWAPPER") = true), emits CashedOut(...), and holds nothing.
+  4. The rupee payout is labelled "Practice cash-out", as the bounty asks ("mock movements of funds using the Instant Settlement contract on Monad testnet").
+- Real money mode: a switch in Me moves balance, send, receive, add money and activity to Monad mainnet AUSD. Same passkey, same address, same gasless EIP-3009 send (domain "Agora Dollar" v1, chainId 143). KinCashoutV2 is also deployed on mainnet (0x1cA367edbCf73A357Fe60651cFE6af27cfCA8476), waiting on Agora's mainnet approval; the app doesn't use it yet.
+- Money that behaves, all settled in AUSD on our own contracts: allowances streamed per second (cancel any time to take back what hasn't streamed), an emergency fund the child can ask for and the parent sends with one Identity check, savings circles, family pots, bills payable only to a named payee, and invoices with milestones.
+
+Why it can break out: India is the world's largest remittance market. Kin is free and instant, needs no app store or KYC to start, and every send recruits the receiver.
+
+Demo video (required)
+TODO: passkey signup → AUSD balance → send to @name, delivered in about 1 s → receiver's "You got $X" → practice cash-out through Agora Instant Settlement → proof on the explorer.
+
+ALCHEMY — BEST PROJECTS USING ALCHEMY
+
+Describe how your project meaningfully integrates one or more of Alchemy's services or tools.
+
+1. Node API on Monad testnet and mainnet, on web and Android. Alchemy's Monad endpoint is first in Kin's RPC chain for every balance read, receipt wait, simulation and gas estimate, including the relayer's pre-flight checks. Public RPCs stay as fallback. Before this, public-RPC rate limits (429s) broke pages under load. One key serves both networks, so practice mode (testnet) and real-money mode (mainnet) share one provider. Code: app/src/lib/chain.ts, mobile/src/lib/config.ts.
+2. Custom Webhooks (GraphQL) → instant "money received" notifications. One webhook on Monad testnet streams every AUSD Transfer log (filtered by contract and topic in GraphQL) the moment its block lands. /api/alchemy/webhook verifies X-Alchemy-Signature (HMAC-SHA256), turns the logs into history records, and pushes "You got $X from @name" to the receiver's phone and browser. It shares a "first to index a log notifies" store with our scanner, so each payment notifies exactly once. This replaced polling for the most emotional moment in a remittance app. Code: app/src/app/api/alchemy/webhook/route.ts, app/src/lib/server/history.ts.
+
+Optional demo video
+TODO: phone A sends $20 → phone B gets the push within about 1 s → the webhook in the Alchemy dashboard.
+
+MONAD FOUNDATION — BEST MERA-POWERED UX ON MONAD
+
+Describe how your project meaningfully integrates Mera as the entire account layer
+
+Mera is Kin's entire account layer. There is no Privy, Dynamic, WalletConnect or injected wallet, and no server ever holds a key.
+
+- Signup: createPasskeyWithPrfOutput → PRF output → BIP-39 → EVM account. One fingerprint or face prompt creates the account, and the user picks an @name.
+- Every payment: an EIP-712 signature from a Mera signing session (EIP-3009 for AUSD, ERC-2771 forward requests for our contracts), confirmed with the passkey and shown to users as an "Identity check". Our relayer pays gas, so the user never sees it.
+- Same passkey on web and Android: the RP ID is getkin.space, with Digital Asset Links, so the native Android app (Credential Manager) opens the same account.
+- Sessions stay in memory only. Key bytes are zeroed after use; local storage holds only {credentialId, address}.
+- Fewer prompts: a read-only session token lets you browse without a prompt. The passkey is asked only when money moves, and users choose when: every payment, only above an amount, or always.
+- Recovery: export the recovery phrase or private key behind a fresh Identity check.
+- Invisible blockchain: no crypto words in the interface, errors mapped to plain copy, money in local currency.
+
+Code: app/src/lib/account.ts, mobile/src/lib/account.ts, app/public/.well-known/assetlinks.json.
+
+Optional demo video
+TODO: signup on a fresh phone → send with one Identity check → open the same account in the Android app.
+
+MONAD FOUNDATION — MERA: ONE PASSKEY, MANY KEYS
+
+Note: Weak fit: this bounty rewards using Mera's PRF for something that is NOT signing blockchain transactions from a wallet account. Kin's only non-account PRF use is encrypting keys imported from other wallets. Consider removing this bounty; if you keep it, paste the answer below as-is.
+
+Describe how your project meaningfully utilizes Mera in non-account work.
+
+Kin uses the passkey's PRF output as an encryption key for a local vault, separate from the account it derives.
+
+- Users can bring an account from another wallet into Kin (Security → add an account). Kin never stores that private key in readable form: it derives an AES-GCM key (HKDF-SHA256) from the same Mera PRF output, salted per imported account address, and seals the key with it (seal / unseal in app/src/lib/keys.ts).
+- Only the sealed ciphertext and IV sit in local storage. Opening it needs a fresh passkey check, so a stolen phone or a copied browser profile reveals nothing.
+- One passkey therefore holds the Kin account and unlocks any number of sealed keys: one passkey, many keys, with no password and no server.
+
+Code: app/src/lib/keys.ts, app/src/lib/account.ts (unlock, importAccount).
+
+CHAINLINK — BEST WORKFLOW WITH CRE
+
+Describe how your project meaningfully utilizes Chainlink CRE as an orchestration layer
+
+Kin Orchestrator (cre/kin-orchestrator/main.ts) runs every 10 minutes and orchestrates two jobs Kin can't do from a phone:
+
+1. Live FX rates. It fetches USD → local rates (₹, AED, PHP, MXN, NGN, GBP, EUR) from 3 public APIs, takes the median per currency, then reaches consensus across nodes.
+2. Money jobs that are due. It finds Kin jobs whose time has come (AutoPay collections, dated gift links, savings-circle rounds, escrow releases) by dry-running each candidate through Multicall3.
+3. It writes one signed report to KinKeeper (0x6096983BDD0101B82384CC6368F27C08e91e4212, Monad testnet), which stores the rates and runs the jobs (try/catch per job, an event per job).
+
+How the app uses it: every local-currency amount reads the rates from KinKeeper (/api/rates), falling back to a fixed table when they are more than a day old. AutoPay, circles, dated gifts and escrow releases happen on time without anyone opening the app.
+
+Safety: KinKeeper only trusts its forwarder, and every job it runs is one the contracts already let anyone trigger once due, so a bad report can't move money anywhere new. Onchain, rates can move at most 15% per report, and the app ignores any rate more than 8% off its own table.
+
+Status: run with cre workflow simulate --broadcast, which sends real Monad testnet transactions through the mock forwarder (0xB9F7…d192); not yet deployed to a live DON.
+
+Demo video (required)
+TODO: terminal running cre workflow simulate --broadcast → KinKeeper transaction on the explorer → rates and a job event onchain → the app showing the new rate. Re-run the simulation before recording so fresh rates show.
+
+MONAD FOUNDATION — WHICH COMMUNITY DOES YOUR TEAM REPRESENT?
+TODO: pick your community in the dropdown.
+
+CONTRACTS (FOR ANY FIELD THAT ASKS)
+
+- Monad testnet (10143), source verified on MonadVision/Sourcify: KinForwarder · KinNames · KinEscrow · KinStream · KinPot · KinCircle · KinMandate · KinGiftLink · KinKeeper (CRE) 0x6096…4212 · KinCashoutV2 0xca36cE5954E4C4058216b19622106525A894ad37 · KinCashout V1 0xDdBc…b75a. Full list: contracts/deployments/10143.json.
+- Monad mainnet (143): KinAddMoney 0xdF70AaC88E464c78cDe367B5d2879776C2994102 (in use; 2 real conversions) · KinCashoutV2 0x1cA367edbCf73A357Fe60651cFE6af27cfCA8476 (deployed, waiting on Agora's mainnet approval, not used by the app).

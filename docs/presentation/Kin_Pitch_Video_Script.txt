@@ -1,0 +1,50 @@
+KIN — PITCH VIDEO SCRIPT (2 MINUTES)
+Deck: Kin_Hackathon_Pitch_Deck_updated.pptx
+About 280 spoken words, which is 1:55 at a calm pace. Face on camera for slide 1 and slide 8, screen share for the rest.
+The form asks for three things: your team, the problem, and why you're building it. All three are covered below.
+
+SLIDE 1 — MONEY THAT BEHAVES (0:00–0:15)
+Hi, I'm Sounak, and I'm building Kin on my own for this hackathon.
+[Your why, one sentence. Example: "My family sends money across borders, and once it lands, nobody can say what it's for."]
+Kin is money that behaves.
+
+SLIDE 2 — THE PROBLEM (0:15–0:35)
+India received about 129 billion dollars in remittances in 2024, more than any other country. Sending 200 dollars still costs about six percent on average worldwide.
+But fees aren't the whole problem. Once the money lands, the sender's intent is gone. A parent can't say "this is for rent", or "release it weekly".
+
+SLIDE 3 — THE IDEA (0:35–0:50)
+Kin turns a payment into a promise. You send money with a rule attached: an allowance that streams over time, a family pot for a shared goal, or a savings circle where the contract decides whose turn it is.
+
+SLIDE 4 — THE EXPERIENCE (0:50–1:05)
+And it feels like a normal app. You sign up with your fingerprint: no seed phrase, no extension. Pick a person, send, and a receipt prints out: delivered in under a second, with no fee to send.
+
+SLIDE 5 — WHAT MONEY CAN DO (1:05–1:20)
+These are working contracts: live allowances, an emergency fund your child can ask for, savings circles, family pots, payments only the named payee can receive, and milestone escrow. Today they run on practice money on Monad testnet.
+
+SLIDE 6 — UNDER THE HOOD (1:20–1:35)
+Under the hood, Mera passkeys are the whole account, Agora's AUSD is the dollar, and Monad settles it. Our relayer pays the gas. Sending, receiving and adding money from other chains already run on Monad mainnet.
+
+SLIDE 7 — EARLY EVIDENCE (1:35–1:45)
+It's early: six testers besides me, five of them used a real feature, and two real conversions on mainnet. Small, but real.
+
+SLIDE 8 — ROADMAP + CLOSE (1:45–2:00)
+Next: harden the core flows, prove families come back, and open a licensed rupee cash-out.
+Try it yourself at getkin.space. Money should keep its promise after you press send.
+
+ALTERNATIVE CLOSE (if slide 8 still shows "The ask")
+Next: harden the core flows, prove families come back, and open a licensed rupee cash-out. If you work with a licensed INR payout partner, I'd love to talk. Money should keep its promise after you press send.
+
+RECORDING TIPS
+- Change slides on the first word of each section, not at the end of the last one.
+- If you run over, cut slide 7 to one line: "Six testers, two real mainnet conversions."
+- Say numbers the way they're written here, which matches the slides: "about 129 billion", "about six percent".
+
+CLAIM CHECK (everything said above is backed)
+- 129 billion dollars: World Bank estimate for India, 2024. It describes the market, not Kin's addressable market.
+  https://blogs.worldbank.org/en/peoplemove/in-2024--remittance-flows-to-low--and-middle-income-countries-ar
+- About six percent: World Bank global average cost to send 200 dollars (6.36%, Q3 2025). It is not the UK to India corridor price.
+  https://remittanceprices.worldbank.org/homepage
+- "No fee to send": sending between Kin users costs the user nothing, because our relayer pays the network fee and the receipt shows Fee $0.00. Don't say cash-out is free, and don't say rupees are paid out today.
+- "Under a second": receipts show the measured delivery time (for example 0.8 s).
+- Programs (allowances, pots, circles, escrow) are on testnet. Mainnet covers send, receive, add money and activity.
+- Slide 4 now shows real screens, so you can call them screens. The old script called them mockups.

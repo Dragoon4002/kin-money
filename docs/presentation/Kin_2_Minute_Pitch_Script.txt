@@ -1,0 +1,41 @@
+KIN — 2-MINUTE HACKATHON PITCH
+Target duration: ~1:50–2:00. Keep pace brisk; skip details if the demo runs long.
+
+SLIDE 1 — MONEY THAT BEHAVES
+Kin is a mobile-first money app for people who care not just where money goes, but what it should do next.
+
+SLIDE 2 — THE PROBLEM
+The World Bank estimated India’s remittance inflows at $129 billion in 2024. Across the world, sending $200 still costs an average 6.36% in the latest surfaced Q3 2025 benchmark. But the problem is bigger than a transfer fee: once money lands, the sender’s intent often disappears.
+
+SLIDE 3 — THE IDEA
+Kin turns a payment into a promise. Instead of only sending money, families can attach rules: release an allowance over time, pool a family pot, or save together toward a goal.
+
+SLIDE 4 — THE EXPERIENCE
+The product aims to feel familiar: sign in with a passkey, send to a person, and get a clear receipt. Blockchain details stay backstage. These are illustrative UI mockups, not screenshots.
+
+SLIDE 5 — WHAT MONEY CAN DO
+The current prototype explores allowances, emergency releases, savings circles, family pots, earmarked payments and milestone escrow. These programmable flows are testnet or practice-money features, not claims of production-ready mainnet functionality.
+
+SLIDE 6 — THE RAILS
+Kin uses a Next.js app, Mera’s passkey account layer, smart contracts on Monad and Agora AUSD, with gasless relaying and supporting indexing and notifications. Mainnet currently supports add money, send/receive and activity. Two add-money conversions were observed: 4.997 USDC to 4.998 AUSD, and 0.999 USDC to 0.999 AUSD. INR cash-out is only a labelled practice step; live INR payout is not available today.
+
+SLIDE 7 — EARLY EVIDENCE
+Six independent testers beyond the founder are documented; five used a feature beyond signup. There are two observed mainnet add-money conversions. This is early evidence only — not proof of retention, scale or product-market fit.
+
+SLIDE 8 — ROADMAP AND CTA
+The next steps are to harden core flows, measure repeat use, and build a compliant INR exit. We’re looking for a connection to a licensed INR payout partner and the relevant approvals. Kin’s bet is simple: money should keep its promise after you press send.
+
+MARKET SOURCES FOR SLIDE 2
+• World Bank blog, “In 2024, remittance flows to low- and middle-income countries are expected to reach $685 billion” — India estimate of $129B for 2024:
+  https://blogs.worldbank.org/en/peoplemove/in-2024--remittance-flows-to-low--and-middle-income-countries-ar
+• World Bank Remittance Prices Worldwide homepage / Q3 2025 benchmark: global average cost 6.36%:
+  https://remittanceprices.worldbank.org/homepage
+• World Bank SDG indicator glossary: target of less than 3% transaction cost by 2030:
+  https://databank.worldbank.org/metadataglossary/sustainable-development-goals-%28sdgs%29/series/SI.RMT.COST.OB.ZS
+
+CLAIM HYGIENE
+• $129B is a World Bank estimate for 2024, not Kin’s addressable market.
+• 6.36% is a global benchmark for sending $200, not the specific UK→India corridor price.
+• Do not say Kin is free, has zero fees, or provides live INR payout.
+• The UI mockups are illustrative; do not present them as screenshots.
+• Testnet programmable features are not presented as mainnet-live.

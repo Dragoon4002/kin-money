@@ -78,4 +78,58 @@ See `app/.env.example`, `contracts/.env.example`. Testnet AUSD `0xa9012a055bd4e0
 - **Sybil accounts spend relayer gas.** Limits are per IP (relay 600/h, faucet 20/day) and per account (relay 200/day, faucet 2/week), but new accounts are free and unlimited, so a script can rotate accounts and drain relayer MON. Fix: captcha or device attestation (Play Integrity / App Attest) at signup, plus a global daily gas budget.
 - **`PUSHER_SECRET` must be rotated** before mainnet (it was exposed in a chat session on Oct 3). Rotate in Pusher → update `app/.env.local` + Vercel env.
 - **Read APIs trust signed headers only.** Anyone holding a valid EIP-191 header for an address can read that address's payment graph (who paid whom). Money moves still need a fresh user signature + onchain checks. Fix: short-lived session tokens everywhere, per-route authz review, body signing, encrypt notes/messages at rest.
-- **Cash-out is a preview.** No offramp partner wired yet; nothing moves on the cash-out screen.
+- **Cash-out rupee leg is practice.** Dollars really settle on testnet (KinCashoutV2 → Agora Instant Settlement pair); no INR moves. Mainnet KinCashoutV2 is deployed but not Agora-approved and not used by the app ("Coming soon").
+- **Mainnet relayer health isn't monitored.** `/api/health` reads the testnet balance only; check mainnet MON by hand (runbook below).
+
+## Mainnet runbook (chain 143)
+Real-money mode = balance, send (EIP-3009), receive, add money (Aurora → KinAddMoney), activity. Programs, names and links stay on testnet. Mainnet addresses: `contracts/deployments/143.json`.
+
+**App env (Vercel production, all set as of Oct 13)** — `app/.env.example` doesn't list these yet:
+
+| Var | Value / note |
+|---|---|
+| `NEXT_PUBLIC_KIN_ADDMONEY` | KinAddMoney `0xdF70AaC88E464c78cDe367B5d2879776C2994102` (empty → relay answers "not available") |
+| `NEXT_PUBLIC_KIN_CASHOUT_V2_MAIN` | KinCashoutV2 `0x1cA367edbCf73A357Fe60651cFE6af27cfCA8476` (UI shows "Coming soon" in real mode regardless) |
+| `NEXT_PUBLIC_KIN_CASHOUT_V2` | testnet KinCashoutV2 `0xca36cE5954E4C4058216b19622106525A894ad37` (practice cash-out) |
+| `AURORA_API_KEY` | server only; Add money quotes/status |
+| `MAINNET_RPC_URL` | optional, relayer writes; default `https://rpc.monad.xyz` |
+| `NEXT_PUBLIC_ALCHEMY_KEY` | reads go Alchemy → `rpc.monad.xyz` → `rpc1.monad.xyz` |
+| `RELAYER_PRIVATE_KEY` | same key on both nets; server only |
+| `ENVIO_API_TOKEN` | mainnet activity via `143.hypersync.xyz` |
+
+Mainnet AUSD (`0x0000…a9012a`), USDC, Agora pair and Uniswap v4 pool addresses are constants in `app/src/lib/chain.ts` / `cashoutRoutes.ts`, not env.
+
+**Deploy** (deployer needs MON; `contracts/.env` has the testnet AUSD — override it):
+```sh
+cd contracts && set -a && source .env && set +a
+export AUSD=0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a USDC=0x754704Bc059F8C67012fEd69BC8A327a5aafb603 \
+  POOL_MANAGER=0x188d586Ddcf52439676Ca21A244753fA19F9Ea8e POOL_FEE=50 POOL_TICK_SPACING=1
+~/.foundry/bin/forge script script/DeployAddMoney.s.sol --rpc-url monad --private-key $DEPLOYER_PRIVATE_KEY --broadcast --slow
+SETTLE_TOKEN=$USDC AGORA_PAIR=0xf33286E3222D1c829dACeac48c0Ec651F6452470 \
+  ~/.foundry/bin/forge script script/DeployCashoutV2.s.sol --rpc-url monad --private-key $DEPLOYER_PRIVATE_KEY --broadcast --slow
+```
+Both write `deployments/143.json`. No `AGORA_WHITELISTER` on mainnet: Agora approves the contract itself.
+
+**Verify** (MonadVision/Sourcify, no key). KinAddMoney is verified; KinCashoutV2 isn't yet:
+```sh
+~/.foundry/bin/forge verify-contract 0x1cA367edbCf73A357Fe60651cFE6af27cfCA8476 src/KinCashoutV2.sol:KinCashoutV2 --chain 143 \
+  --verifier sourcify --verifier-url https://sourcify-api-monad.blockvision.org/ \
+  --constructor-args $(~/.foundry/bin/cast abi-encode "constructor(address,address,address,address,uint24,int24,address)" \
+    $AUSD $USDC 0xf33286E3222D1c829dACeac48c0Ec651F6452470 $POOL_MANAGER 50 1 0x0000000000000000000000000000000000000000)
+curl -s "https://sourcify-api-monad.blockvision.org/check-all-by-addresses?addresses=<addr>&chainIds=143"   # want "partial" or "perfect"
+```
+
+**Relayer funding**: relayer `0x355ae4f093346c4C27E09737E383deBb02eEAA5f` pays gas on both nets. Keep ≥ 10 MON on mainnet (Monad reserve-balance rule; `/api/health` uses the same threshold but reads testnet only). Oct 13: mainnet 9.91 MON, testnet 21.98 MON.
+```sh
+~/.foundry/bin/cast balance 0x355ae4f093346c4C27E09737E383deBb02eEAA5f --rpc-url https://rpc.monad.xyz --ether
+```
+
+**Smoke check (read-only)**:
+```sh
+R=https://rpc.monad.xyz; C=~/.foundry/bin/cast
+$C call 0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a "eip712Domain()(bytes1,string,string,uint256,address,bytes32,uint256[])" --rpc-url $R  # "Agora Dollar","1",143
+$C call 0xdF70AaC88E464c78cDe367B5d2879776C2994102 "ausd()(address)" --rpc-url $R                                               # mainnet AUSD
+$C call 0xf33286E3222D1c829dACeac48c0Ec651F6452470 "hasRole(string,address)(bool)" APPROVED_SWAPPER 0x1cA367edbCf73A357Fe60651cFE6af27cfCA8476 --rpc-url $R  # false until Agora approves
+cd contracts && ~/.foundry/bin/forge test --fork-url $R --match-contract MainnetFork                                         # local fork, sends nothing
+```
+Then in the app: Me → Money → Real money on → send ≥ $0.01 (relay minimum on mainnet) to a second account → receipt + explorer link on monadvision.com.

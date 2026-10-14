@@ -21,3 +21,6 @@ indexer/generated/
 indexer/build/
 indexer/logs/
 /.vercel/
+
+# local screen recordings (too big for git)
+/videos/
