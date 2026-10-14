@@ -5,6 +5,9 @@ import { Amount, Button, Chip, ErrorText, Ico, IconTile } from "@/components/ui"
 import type { IconName } from "@/lib/icons";
 import { Facts, Journey } from "./Journey";
 
+// Latest Android build (EAS). ponytail: update on each new APK. iPhone = the web app on the Home Screen (no iOS build yet).
+const ANDROID_APK = "https://expo.dev/artifacts/eas/vR6eFqBOM6kW3PT9lZWbQcqpKTTR_txymzqzAVWHTCA.apk";
+
 const STEPS: [IconName, string, string][] = [
   ["safe", "Make your account with an Identity check", "No passwords, no forms. Ready in seconds."],
   ["qr", "Send by @name or QR", "Pick someone you love. They get it in a second."],
@@ -95,6 +98,17 @@ export function Landing({ onStart, onUnlock, busy, err }: { onStart: () => void;
             )}
             <Button onClick={onStart}>Get started</Button>
             <p className="text-center text-sm text-muted">No passwords. No fees.</p>
+            <div className="flex gap-2">
+              <a href={ANDROID_APK} className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full border border-line bg-surface-2 text-sm font-semibold active:scale-95">
+                <Ico name="install" size={18} /> Android app
+              </a>
+              <details className="group flex-1">
+                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-center gap-2 rounded-full border border-line bg-surface-2 text-sm font-semibold active:scale-95 [&::-webkit-details-marker]:hidden">
+                  <Ico name="install" size={18} /> iPhone
+                </summary>
+                <p className="mt-2 text-center text-sm text-muted">Open getkin.space in Safari, tap Share, then Add to Home Screen.</p>
+              </details>
+            </div>
             <a href="https://kin-money.vercel.app/move" className="text-center text-sm font-semibold text-muted underline-offset-4 hover:underline">
               Used Kin before Oct 6? Bring your account
             </a>
