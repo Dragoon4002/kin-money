@@ -3,11 +3,14 @@
 // a hostname). Removing any piece below strands their money and @name. See CLAUDE.md hard rule 12.
 import { existsSync, readFileSync } from "node:fs";
 
+// Paths are relative to app/, wherever this runs from (repo root, app/, CI).
+const app = (p) => new URL(`../${p}`, import.meta.url);
+
 const fail = (m) => {
   console.error(`\n✖ check-move: ${m}\n  The old-hostname account move must stay (CLAUDE.md hard rule 12). Restore it before building.\n`);
   process.exit(1);
 };
-const read = (p) => (existsSync(p) ? readFileSync(p, "utf8") : fail(`missing ${p}`));
+const read = (p) => (existsSync(app(p)) ? readFileSync(app(p), "utf8") : fail(`missing app/${p}`));
 
 const config = read("next.config.ts");
 if (!config.includes('value: "kin-money.vercel.app"')) fail("next.config.ts no longer routes kin-money.vercel.app");
@@ -22,7 +25,7 @@ for (const s of ['"https://kin-money.vercel.app"', '"https://getkin.space"', "po
 const links = read("public/.well-known/assetlinks.json");
 if (!links.includes("xyz.kin.app") || !links.includes("get_login_creds")) fail("assetlinks.json must keep the Android app (old passkeys need it)");
 
-const mobile = "../mobile/src/lib/account.ts";
+const mobile = app("../mobile/src/lib/account.ts");
 if (existsSync(mobile) && !readFileSync(mobile, "utf8").includes('OLD_RP_ID = "kin-money.vercel.app"')) fail("Android oldAccountKey() lost the old RP ID");
 
 console.log("✓ check-move: old-hostname account move intact");
