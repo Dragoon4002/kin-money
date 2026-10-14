@@ -24,3 +24,5 @@ indexer/logs/
 
 # local screen recordings (too big for git)
 /videos/
+/docs/presentation/screenshots/
+/docs/presentation/youtube-thumbnail-*.png
